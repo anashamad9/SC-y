@@ -34,10 +34,10 @@ function computeFromProfile(profile: typeof psychometricProfilesTable.$inferSele
   const cultureContributionScore = Math.round((s.compliance_behavior + s.security_awareness) / 2);
   const complianceBehaviorScore = Math.round(s.compliance_behavior);
 
-  const riskCategory =
-    humanRiskScore > 75 ? "Critical" :
-    humanRiskScore > 60 ? "High" :
-    humanRiskScore > 40 ? "Medium" : "Low";
+  const riskCategory = profile.riskCategory ||
+    (profile.securityReadinessScore <= 14 ? "High Risk" :
+    profile.securityReadinessScore <= 21 ? "Elevated Risk" :
+    profile.securityReadinessScore <= 28 ? "Moderate Risk" : "Low Risk");
 
   return {
     humanRiskScore,
@@ -58,12 +58,13 @@ router.get("/scores/me", requireAuth, async (req, res): Promise<void> => {
 
   // Latest snapshot
   const [snapshot] = await db.select().from(cciSnapshotsTable).where(eq(cciSnapshotsTable.userId, userId)).orderBy(desc(cciSnapshotsTable.computedAt)).limit(1);
+  const [profile] = await db.select().from(psychometricProfilesTable).where(eq(psychometricProfilesTable.userId, userId));
 
   if (snapshot) {
-    const riskCategory =
-      snapshot.humanRiskScore > 75 ? "Critical" :
-      snapshot.humanRiskScore > 60 ? "High" :
-      snapshot.humanRiskScore > 40 ? "Medium" : "Low";
+    const riskCategory = profile?.riskCategory ??
+      (snapshot.humanRiskScore > 75 ? "High Risk" :
+      snapshot.humanRiskScore > 60 ? "Elevated Risk" :
+      snapshot.humanRiskScore > 40 ? "Moderate Risk" : "Low Risk");
 
     res.json({
       humanRiskScore: snapshot.humanRiskScore,
@@ -72,7 +73,7 @@ router.get("/scores/me", requireAuth, async (req, res): Promise<void> => {
       decisionQualityScore: snapshot.decisionQualityScore,
       cultureContributionScore: snapshot.cultureContributionScore,
       complianceBehaviorScore: snapshot.complianceBehaviorScore,
-      securityReadinessScore: 100 - snapshot.humanRiskScore,
+      securityReadinessScore: profile?.securityReadinessScore ?? Math.round(((100 - snapshot.humanRiskScore) / 100) * 24 + 8),
       riskCategory,
       trend: "stable",
       computedAt: snapshot.computedAt.toISOString(),
@@ -81,7 +82,6 @@ router.get("/scores/me", requireAuth, async (req, res): Promise<void> => {
   }
 
   // Fallback: compute from profile
-  const [profile] = await db.select().from(psychometricProfilesTable).where(eq(psychometricProfilesTable.userId, userId));
   if (!profile) {
     res.json({
       humanRiskScore: 65,

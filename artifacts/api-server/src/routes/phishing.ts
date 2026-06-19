@@ -42,77 +42,14 @@ router.get("/phishing/templates", requireAuth, async (req, res) => {
 });
 
 router.post("/phishing/templates/generate", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
-  try {
-    const { industry = "finance", attackType = "email", difficulty = 3, language = "en" } = req.body;
-
-    const templates: Record<string, any> = {
-      email: {
-        en: {
-          subject: `[ACTION REQUIRED] Verify Your ${industry.toUpperCase()} Account Credentials`,
-          body: `Dear Team Member,\n\nWe have detected unusual activity on your account. To secure your access, please verify your credentials within 24 hours.\n\nClick here to verify: https://secure-verify-portal.${industry.toLowerCase()}.com/auth\n\nFailure to verify will result in account suspension.\n\nIT Security Team`,
-          attachmentDesc: "account_verification_form.pdf",
-        },
-        ar: {
-          subject: `[عاجل] تحقق من بيانات اعتماد حسابك في ${industry}`,
-          body: `عزيزي الموظف،\n\nلقد اكتشفنا نشاطاً غير عادي على حسابك. لتأمين وصولك، يرجى التحقق من بيانات اعتمادك خلال 24 ساعة.\n\nانقر هنا للتحقق: https://secure-verify-portal.${industry.toLowerCase()}.com/auth\n\nفريق أمن المعلومات`,
-          attachmentDesc: "نموذج_التحقق.pdf",
-        },
-      },
-      sms: {
-        en: {
-          subject: null,
-          body: `[${industry.toUpperCase()}] Your account requires immediate verification. Click: https://bit.ly/verify-${Math.random().toString(36).substr(2, 6)} to avoid suspension.`,
-          attachmentDesc: null,
-        },
-        ar: {
-          subject: null,
-          body: `[${industry}] حسابك يتطلب التحقق الفوري. اضغط: https://bit.ly/verify-${Math.random().toString(36).substr(2, 6)} لتجنب التعليق.`,
-          attachmentDesc: null,
-        },
-      },
-      invoice: {
-        en: {
-          subject: `Invoice #INV-${Math.floor(Math.random() * 9000) + 1000} - Payment Required`,
-          body: `Please review the attached invoice for services rendered. Payment is due within 3 business days.\n\nAmount: AED ${(Math.random() * 50000 + 5000).toFixed(2)}\nPay Now: https://invoice-payment.${industry.toLowerCase()}-billing.com\n\nAccounts Payable Department`,
-          attachmentDesc: `Invoice_${Math.floor(Math.random() * 9000) + 1000}.xlsx`,
-        },
-        ar: {
-          subject: `فاتورة #INV-${Math.floor(Math.random() * 9000) + 1000} - مطلوب الدفع`,
-          body: `يرجى مراجعة الفاتورة المرفقة للخدمات المقدمة. الدفع مستحق خلال 3 أيام عمل.\n\nالمبلغ: ${(Math.random() * 50000 + 5000).toFixed(2)} درهم\nادفع الآن: https://invoice-payment.${industry.toLowerCase()}-billing.com\n\nإدارة الحسابات`,
-          attachmentDesc: `فاتورة_${Math.floor(Math.random() * 9000) + 1000}.xlsx`,
-        },
-      },
-    };
-
-    const attackTemplate = templates[attackType as string]?.[language as string] ?? templates.email.en;
-    const difficultyScore = Math.min(5, Math.max(1, difficulty as number));
-    const detectionTips = [
-      "Check the sender email domain carefully — it uses a lookalike domain",
-      "The urgency language ('within 24 hours') is a classic pressure tactic",
-      "Hover over links before clicking to see the actual destination URL",
-      "Legitimate IT teams never ask for credentials via email",
-      language === "ar" ? "تحقق من بريد المرسل — يستخدم نطاقاً مشابهاً للنطاق الحقيقي" : "Report suspicious emails using the 'Report Phishing' button",
-    ].slice(0, difficultyScore + 1);
-
-    res.json({
-      subject: attackTemplate.subject,
-      body: attackTemplate.body,
-      attachmentDesc: attackTemplate.attachmentDesc,
-      difficultyScore,
-      detectionTips,
-      attackType,
-      industry,
-      language,
-      generatedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to generate template" });
-  }
+  res.status(501).json({
+    error: "Template generation requires a real AI/content provider and is not configured yet.",
+  });
 });
 
 router.get("/phishing/templates/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const [template] = await db.select().from(phishingTemplatesTable).where(eq(phishingTemplatesTable.id, id));
     if (!template) return res.status(404).json({ error: "Template not found" });
     res.json(template);
@@ -123,7 +60,7 @@ router.get("/phishing/templates/:id", requireAuth, async (req, res) => {
 
 router.patch("/phishing/templates/:id", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const { name, type, subject, body, attachmentDesc, difficulty, language, industry, category, tags } = req.body;
     const [updated] = await db.update(phishingTemplatesTable)
       .set({ name, type, subject, body, attachmentDesc, difficulty, language, industry, category, tags })
@@ -138,7 +75,7 @@ router.patch("/phishing/templates/:id", requireAuth, requireRole(...["admin", "s
 
 router.delete("/phishing/templates/:id", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     await db.delete(phishingTemplatesTable).where(eq(phishingTemplatesTable.id, id));
     res.status(204).send();
   } catch (err) {
@@ -215,7 +152,7 @@ router.post("/phishing/campaigns", requireAuth, requireRole(...["admin", "supera
 
 router.get("/phishing/campaigns/:id", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const [campaign] = await db.select().from(phishingCampaignsTable).where(eq(phishingCampaignsTable.id, id));
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
@@ -241,7 +178,7 @@ router.get("/phishing/campaigns/:id", requireAuth, requireRole(...["admin", "sup
 
 router.patch("/phishing/campaigns/:id", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const { name, description, templateId, targetAudience, difficulty, scheduledAt, status } = req.body;
     const [updated] = await db.update(phishingCampaignsTable)
       .set({ name, description, templateId, targetAudience, difficulty, status,
@@ -257,7 +194,7 @@ router.patch("/phishing/campaigns/:id", requireAuth, requireRole(...["admin", "s
 
 router.delete("/phishing/campaigns/:id", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     await db.delete(phishingResultsTable).where(eq(phishingResultsTable.campaignId, id));
     await db.delete(phishingCampaignsTable).where(eq(phishingCampaignsTable.id, id));
     res.status(204).send();
@@ -268,7 +205,7 @@ router.delete("/phishing/campaigns/:id", requireAuth, requireRole(...["admin", "
 
 router.post("/phishing/campaigns/:id/launch", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const [campaign] = await db.select().from(phishingCampaignsTable).where(eq(phishingCampaignsTable.id, id));
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
@@ -302,7 +239,7 @@ router.post("/phishing/campaigns/:id/launch", requireAuth, requireRole(...["admi
 
 router.get("/phishing/campaigns/:id/results", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
-    const campaignId = parseInt(req.params.id);
+    const campaignId = parseInt(req.params.id as string, 10);
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
     const offset = (page - 1) * limit;

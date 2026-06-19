@@ -7,3 +7,8 @@ dist/
 build/
 coverage/
 *.log
+
+# Local environment secrets
+.env
+.env.local
+.env.*.local

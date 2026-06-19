@@ -4,9 +4,21 @@ import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY environment variable is required for AI chat");
+  }
+
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  return openai;
+}
 
 const SYSTEM_PROMPT = `You are CyberCultX AI — a cybersecurity human risk intelligence assistant embedded in the CyberCultX platform. You help executives, HR managers, and security teams understand their organization's security posture, interpret risk scores, and take action to reduce human risk.
 
@@ -51,7 +63,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
       { role: "user", content: message },
     ];
 
-    const stream = await openai.chat.completions.create({
+    const stream = await getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
       messages,
       stream: true,

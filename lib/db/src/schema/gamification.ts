@@ -7,6 +7,11 @@ export const gamificationProfilesTable = pgTable("gamification_profiles", {
   xp: integer("xp").notNull().default(0),
   level: integer("level").notNull().default(1),
   streakDays: integer("streak_days").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  currentLevelXp: integer("current_level_xp").notNull().default(0),
+  nextLevelXp: integer("next_level_xp").notNull().default(200),
+  totalAssessmentsCompleted: integer("total_assessments_completed").notNull().default(0),
+  totalCoursesCompleted: integer("total_courses_completed").notNull().default(0),
   lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

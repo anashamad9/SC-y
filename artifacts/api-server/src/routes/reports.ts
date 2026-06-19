@@ -55,6 +55,10 @@ router.get("/reports/:id/download", requireAuth, requireRole("admin", "superadmi
     const id = parseInt(req.params.id as string);
     const [job] = await db.select().from(reportJobsTable).where(eq(reportJobsTable.id, id));
     if (!job) { res.status(404).json({ error: "Report not found" }); return; }
+    const [{ value: totalUsers }] = await db.select({ value: count() }).from(usersTable);
+    const [{ value: totalDepartments }] = await db.select({ value: count() }).from(departmentsTable);
+    const [{ value: totalCampaigns }] = await db.select({ value: count() }).from(phishingCampaignsTable);
+    const [{ value: totalPhishingResults }] = await db.select({ value: count() }).from(phishingResultsTable);
 
     const reportData = {
       reportId: job.id,
@@ -64,8 +68,11 @@ router.get("/reports/:id/download", requireAuth, requireRole("admin", "superadmi
       filters: job.filters,
       summary: {
         message: `${job.type} report export — ${(job.format ?? "pdf").toUpperCase()} format`,
-        recordCount: Math.floor(Math.random() * 500) + 50,
-        dateRange: "Last 30 days",
+        recordCount: totalUsers,
+        totalUsers,
+        totalDepartments,
+        totalCampaigns,
+        totalPhishingResults,
       },
     };
 
@@ -195,5 +202,4 @@ router.get(
 );
 
 export default router;
-
 

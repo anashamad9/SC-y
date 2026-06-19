@@ -15,6 +15,9 @@ function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progr
     title: course.title,
     category: course.category,
     description: course.description,
+    videoUrl: course.videoUrl,
+    minScore: course.minScore,
+    maxScore: course.maxScore,
     thumbnailColor: course.thumbnailColor,
     durationMinutes: course.durationMinutes,
     xpReward: course.xpReward,
@@ -40,21 +43,16 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
   const inProgress = allCourses.filter(c => progressMap.get(c.id)?.status === "in_progress").map(c => buildCourseWithProgress(c, progressMap.get(c.id)));
   const notStarted = allCourses.filter(c => !progressMap.has(c.id) || progressMap.get(c.id)?.status === "not_started");
 
-  // Recommend based on psychometric weaknesses
+  // Recommend videos based on the user's readiness assessment points.
   let recommended = notStarted.slice(0, 5);
   if (profile) {
-    const weakAreas: string[] = [];
-    if (profile.securityAwareness < 50) weakAreas.push("social_engineering", "email_security");
-    if (profile.complianceBehavior < 50) weakAreas.push("data_protection");
-    if (profile.trustTendencies > 60) weakAreas.push("phishing", "social_engineering");
-    if (profile.riskTolerance > 65) weakAreas.push("password_security");
-    if (profile.attentionToDetail < 50) weakAreas.push("email_security");
-    if (profile.stressResponse < 50) weakAreas.push("remote_work");
-    if (weakAreas.length > 0) {
-      const priority = notStarted.filter(c => weakAreas.includes(c.category));
-      const rest = notStarted.filter(c => !weakAreas.includes(c.category));
-      recommended = [...priority, ...rest].slice(0, 5);
-    }
+    const points = profile.securityReadinessScore;
+    const matchingRange = notStarted.filter(c =>
+      (c.minScore === null || points >= c.minScore) &&
+      (c.maxScore === null || points <= c.maxScore)
+    );
+    const unranged = notStarted.filter(c => c.minScore === null && c.maxScore === null);
+    recommended = (matchingRange.length > 0 ? matchingRange : unranged).slice(0, 5);
   }
 
   const totalXpEarned = progressRecords.reduce((sum, p) => sum + p.xpEarned, 0);
@@ -170,7 +168,7 @@ router.post("/courses", requireAuth, async (req, res): Promise<void> => {
   if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
     res.status(403).json({ error: "Forbidden" }); return;
   }
-  const { title, category, description, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
+  const { title, category, description, videoUrl, minScore, maxScore, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
   if (!title || !category || !difficulty) {
     res.status(400).json({ error: "title, category, and difficulty are required" }); return;
   }
@@ -178,6 +176,9 @@ router.post("/courses", requireAuth, async (req, res): Promise<void> => {
     title,
     category,
     description: description ?? "",
+    videoUrl: videoUrl || null,
+    minScore: Number.isFinite(Number(minScore)) ? Number(minScore) : null,
+    maxScore: Number.isFinite(Number(maxScore)) ? Number(maxScore) : null,
     thumbnailColor: thumbnailColor ?? "#dc143c",
     durationMinutes: durationMinutes ?? 30,
     xpReward: xpReward ?? 100,
@@ -194,9 +195,21 @@ router.patch("/courses/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(403).json({ error: "Forbidden" }); return;
   }
   const id = parseInt(req.params.id as string);
-  const { title, category, description, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
+  const { title, category, description, videoUrl, minScore, maxScore, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
   const [updated] = await db.update(coursesTable)
-    .set({ title, category, description, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount })
+    .set({
+      title,
+      category,
+      description,
+      videoUrl: videoUrl || null,
+      minScore: Number.isFinite(Number(minScore)) ? Number(minScore) : null,
+      maxScore: Number.isFinite(Number(maxScore)) ? Number(maxScore) : null,
+      thumbnailColor,
+      durationMinutes,
+      xpReward,
+      difficulty,
+      lessonCount,
+    })
     .where(eq(coursesTable.id, id))
     .returning();
   if (!updated) { res.status(404).json({ error: "Course not found" }); return; }

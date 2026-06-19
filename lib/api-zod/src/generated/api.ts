@@ -698,7 +698,7 @@ export const CreatePhishingTemplateBody = zod.object({
 
 
 /**
- * @summary AI-generate a phishing template (mock)
+ * @summary Generate a phishing template
  */
 export const GeneratePhishingTemplateBody = zod.object({
   "industry": zod.string().optional(),
@@ -1609,5 +1609,4 @@ export const GetPredictiveEmployeeResponse = zod.object({
 }),
   "computedAt": zod.string()
 })
-
 

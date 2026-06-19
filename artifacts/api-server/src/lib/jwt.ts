@@ -1,14 +1,9 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET environment variable is required but not set");
-}
-
-const JWT_SECRET: string = jwtSecret;
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const DEV_JWT_SECRET = "cybercultx-local-development-secret";
 
 export interface JwtPayload {
   userId: number;
@@ -16,8 +11,20 @@ export interface JwtPayload {
   role: string;
 }
 
+function getJwtSecret(): string {
+  if (process.env.JWT_SECRET) {
+    return process.env.JWT_SECRET;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return DEV_JWT_SECRET;
+  }
+
+  throw new Error("JWT_SECRET environment variable is required but not set");
+}
+
 export function signAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: ACCESS_TOKEN_TTL });
 }
 
 export function signToken(payload: JwtPayload): string {
@@ -25,7 +32,7 @@ export function signToken(payload: JwtPayload): string {
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  return jwt.verify(token, getJwtSecret()) as JwtPayload;
 }
 
 export function generateRefreshToken(): string {

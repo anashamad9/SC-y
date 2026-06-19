@@ -2839,7 +2839,7 @@ export const getGeneratePhishingTemplateUrl = () => {
 }
 
 /**
- * @summary AI-generate a phishing template (mock)
+ * @summary Generate a phishing template
  */
 export const generatePhishingTemplate = async (phishingGenerateInput: PhishingGenerateInput, options?: RequestInit): Promise<PhishingGenerateResult> => {
 
@@ -2888,7 +2888,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type GeneratePhishingTemplateMutationError = ErrorType<unknown>
 
     /**
- * @summary AI-generate a phishing template (mock)
+ * @summary Generate a phishing template
  */
 export const useGeneratePhishingTemplate = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generatePhishingTemplate>>, TError,{data: BodyType<PhishingGenerateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -5764,7 +5764,6 @@ export function useGetArabicPdfReport<TData = Awaited<ReturnType<typeof getArabi
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
 
 
 

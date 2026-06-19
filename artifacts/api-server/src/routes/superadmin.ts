@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { tenantsTable, systemConfigTable, auditLogsTable, usersTable } from "@workspace/db/schema";
-import { eq, desc, count, like, and } from "drizzle-orm";
+import { tenantsTable, systemConfigTable, auditLogsTable, usersTable, sessionsTable } from "@workspace/db/schema";
+import { eq, desc, count, like, and, gte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/auth";
 
@@ -43,7 +43,7 @@ router.post("/tenants", requireAuth, requireRole(...["superadmin"]), async (req,
 
 router.get("/tenants/:id", requireAuth, requireRole(...["superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id));
     if (!tenant) return res.status(404).json({ error: "Tenant not found" });
     res.json(tenant);
@@ -54,7 +54,7 @@ router.get("/tenants/:id", requireAuth, requireRole(...["superadmin"]), async (r
 
 router.patch("/tenants/:id", requireAuth, requireRole(...["superadmin"]), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string, 10);
     const { name, domain, plan, status, adminEmail, industry, country, employeeCount } = req.body;
     const [updated] = await db.update(tenantsTable)
       .set({ name, domain, plan, status, adminEmail, industry, country, employeeCount, updatedAt: new Date() })
@@ -102,7 +102,18 @@ router.patch("/system/config", requireAuth, requireRole(...["superadmin"]), asyn
 
 router.get("/system/health", requireAuth, requireRole(...["superadmin"]), async (req, res) => {
   try {
+    const requestWindowStart = new Date(Date.now() - 60 * 1000);
+    const activeSessionCutoff = new Date();
     const [userCount] = await db.select({ count: count() }).from(usersTable);
+    const [recentRequests] = await db
+      .select({ count: count() })
+      .from(auditLogsTable)
+      .where(gte(auditLogsTable.createdAt, requestWindowStart));
+    const [activeSessions] = await db
+      .select({ count: count() })
+      .from(sessionsTable)
+      .where(gte(sessionsTable.expiresAt, activeSessionCutoff));
+
     res.json({
       status: "healthy",
       uptime: process.uptime(),
@@ -112,16 +123,14 @@ router.get("/system/health", requireAuth, requireRole(...["superadmin"]), async 
       apiVersion: "1.0.0",
       environment: process.env.NODE_ENV ?? "development",
       services: {
-        database: { status: "healthy", latencyMs: 12 },
-        auth: { status: "healthy", latencyMs: 3 },
-        storage: { status: "healthy", latencyMs: 8 },
-        email: { status: "mock", latencyMs: 0 },
+        database: { status: "healthy" },
+        auth: { status: "healthy" },
+        storage: { status: process.env.STORAGE_PROVIDER ? "configured" : "not_configured" },
+        email: { status: process.env.EMAIL_PROVIDER ? "configured" : "not_configured" },
       },
       metrics: {
-        requestsPerMinute: Math.floor(Math.random() * 200) + 50,
-        avgResponseMs: Math.floor(Math.random() * 100) + 20,
-        errorRate: (Math.random() * 0.5).toFixed(2),
-        activeSessions: Math.floor(Math.random() * 50) + 10,
+        requestsPerMinute: recentRequests?.count ?? 0,
+        activeSessions: activeSessions?.count ?? 0,
       },
     });
   } catch (err) {

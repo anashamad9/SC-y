@@ -4,13 +4,52 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+type PoolInstance = InstanceType<typeof Pool>;
+type DbInstance = ReturnType<typeof drizzle<typeof schema>>;
+
+let poolInstance: PoolInstance | null = null;
+let dbInstance: DbInstance | null = null;
+
+export function getPool(): PoolInstance {
+  if (!poolInstance) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error(
+        "DATABASE_URL must be set. Add your Supabase Postgres connection string before using the API.",
+      );
+    }
+
+    poolInstance = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl:
+        process.env.DATABASE_SSL === "false"
+          ? false
+          : { rejectUnauthorized: false },
+    });
+  }
+
+  return poolInstance;
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+export function getDb(): DbInstance {
+  if (!dbInstance) {
+    dbInstance = drizzle(getPool(), { schema });
+  }
+
+  return dbInstance;
+}
+
+export const pool = new Proxy({} as PoolInstance, {
+  get(_target, prop, receiver) {
+    const value = Reflect.get(getPool(), prop, receiver);
+    return typeof value === "function" ? value.bind(getPool()) : value;
+  },
+});
+
+export const db = new Proxy({} as DbInstance, {
+  get(_target, prop, receiver) {
+    const value = Reflect.get(getDb(), prop, receiver);
+    return typeof value === "function" ? value.bind(getDb()) : value;
+  },
+});
 
 export * from "./schema";
