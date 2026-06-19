@@ -100,10 +100,10 @@ function LanguageToggle() {
   return (
     <button
       onClick={() => setLang(lang === "en" ? "ar" : "en")}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+      className="flex min-h-7 items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/18"
       title="Toggle language / تغيير اللغة"
     >
-      <span className="text-base leading-none">{lang === "en" ? "🇸🇦" : "🇬🇧"}</span>
+      <span className="text-sm leading-none">{lang === "en" ? "🇸🇦" : "🇬🇧"}</span>
       <span className="hidden sm:block font-mono">{lang === "en" ? "العربية" : "English"}</span>
     </button>
   );
@@ -154,33 +154,33 @@ export default function Portal({ role }: { role: string }) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: isRTL ? 280 : -280, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="w-64 bg-card/90 backdrop-blur-xl border-r border-border flex flex-col shrink-0"
+            className="w-60 bg-card/90 backdrop-blur-xl flex flex-col shrink-0 shadow-sm"
           >
             {/* Logo */}
-            <div className="p-6 border-b border-border">
+            <div className="p-4">
               <Link href="/" className="flex items-center gap-3">
-                <img src={logo} alt="CyberCultX" className="w-10 h-10" />
+                <img src={logo} alt="CyberCultX" className="w-8 h-8" />
                 <div>
-                  <div className="font-bold text-sm tracking-widest text-foreground">CYBERCULTX</div>
-                  <div className="text-xs text-muted-foreground">{t(`roleTitle.${role}`)}</div>
+                  <div className="font-bold text-xs tracking-widest text-foreground">CYBERCULTX</div>
+                  <div className="text-[11px] text-muted-foreground">{t(`roleTitle.${role}`)}</div>
                 </div>
               </Link>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3 pb-3 space-y-1 overflow-y-auto">
               {navItems.map((item) => (
                 <button
                   key={item.key}
                   onClick={() => setActiveKey(item.key)}
                   data-testid={`nav-${item.key}`}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-left ${
+                  className={`w-full flex min-h-8 items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition-colors ${
                     activeKey === item.key
-                      ? "bg-primary/20 text-primary border border-primary/30"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      ? "bg-primary/85 text-primary-foreground shadow-sm"
+                      : "bg-primary/7 text-muted-foreground hover:bg-primary/14 hover:text-primary"
                   }`}
                 >
-                  <span className="text-lg font-mono">{item.icon}</span>
+                  <span className="text-sm font-mono leading-none">{item.icon}</span>
                   {t(item.label)}
                 </button>
               ))}
@@ -188,21 +188,21 @@ export default function Portal({ role }: { role: string }) {
 
             {/* User info */}
             {user && (
-              <div className="p-4 border-t border-border">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+              <div className="p-3">
+                <div className="flex items-center gap-2.5 mb-2 rounded-lg bg-primary/5 p-2">
+                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
                     {user.firstName[0]}{user.lastName[0]}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{user.firstName} {user.lastName}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{user.role}</div>
+                    <div className="text-xs font-medium truncate">{user.firstName} {user.lastName}</div>
+                    <div className="text-[11px] text-muted-foreground capitalize">{user.role}</div>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs"
+                  className="w-full bg-primary/7 text-[11px] text-muted-foreground hover:bg-primary/14 hover:text-primary"
                   data-testid="button-logout"
                 >
                   {t("common.logout")}
@@ -216,13 +216,13 @@ export default function Portal({ role }: { role: string }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center px-6 gap-4 shrink-0">
+        <header className="h-14 bg-card/50 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 shadow-sm">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/18"
             data-testid="button-toggle-sidebar"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -237,7 +237,7 @@ export default function Portal({ role }: { role: string }) {
             <div className="text-xs text-muted-foreground hidden sm:block">
               {t("common.platformName")}
             </div>
-            <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-xs font-bold`}>
+            <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-[11px] font-bold`}>
               {user ? `${user.firstName[0]}${user.lastName[0]}` : "?"}
             </div>
           </div>
