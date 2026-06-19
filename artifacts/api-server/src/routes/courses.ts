@@ -1,0 +1,218 @@
+import { Router, type IRouter } from "express";
+import { db, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { requireAuth } from "../middlewares/auth";
+
+const router: IRouter = Router();
+
+async function getUserProgress(userId: number) {
+  return db.select().from(userCourseProgressTable).where(eq(userCourseProgressTable.userId, userId));
+}
+
+function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progress?: typeof userCourseProgressTable.$inferSelect | null) {
+  return {
+    id: course.id,
+    title: course.title,
+    category: course.category,
+    description: course.description,
+    thumbnailColor: course.thumbnailColor,
+    durationMinutes: course.durationMinutes,
+    xpReward: course.xpReward,
+    difficulty: course.difficulty,
+    lessonCount: course.lessonCount,
+    status: progress?.status ?? "not_started",
+    progressPct: progress?.progressPct ?? 0,
+    xpEarned: progress?.xpEarned ?? 0,
+    completedAt: progress?.completedAt?.toISOString() ?? null,
+  };
+}
+
+// GET /courses/learning-path — MUST be before /:id
+router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+
+  const [profile] = await db.select().from(psychometricProfilesTable).where(eq(psychometricProfilesTable.userId, userId));
+  const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
+  const progressRecords = await getUserProgress(userId);
+  const progressMap = new Map(progressRecords.map(p => [p.courseId, p]));
+
+  const completed = allCourses.filter(c => progressMap.get(c.id)?.status === "completed").map(c => buildCourseWithProgress(c, progressMap.get(c.id)));
+  const inProgress = allCourses.filter(c => progressMap.get(c.id)?.status === "in_progress").map(c => buildCourseWithProgress(c, progressMap.get(c.id)));
+  const notStarted = allCourses.filter(c => !progressMap.has(c.id) || progressMap.get(c.id)?.status === "not_started");
+
+  // Recommend based on psychometric weaknesses
+  let recommended = notStarted.slice(0, 5);
+  if (profile) {
+    const weakAreas: string[] = [];
+    if (profile.securityAwareness < 50) weakAreas.push("social_engineering", "email_security");
+    if (profile.complianceBehavior < 50) weakAreas.push("data_protection");
+    if (profile.trustTendencies > 60) weakAreas.push("phishing", "social_engineering");
+    if (profile.riskTolerance > 65) weakAreas.push("password_security");
+    if (profile.attentionToDetail < 50) weakAreas.push("email_security");
+    if (profile.stressResponse < 50) weakAreas.push("remote_work");
+    if (weakAreas.length > 0) {
+      const priority = notStarted.filter(c => weakAreas.includes(c.category));
+      const rest = notStarted.filter(c => !weakAreas.includes(c.category));
+      recommended = [...priority, ...rest].slice(0, 5);
+    }
+  }
+
+  const totalXpEarned = progressRecords.reduce((sum, p) => sum + p.xpEarned, 0);
+  const completionRate = allCourses.length > 0 ? Math.round((completed.length / allCourses.length) * 100) : 0;
+
+  res.json({
+    recommended: recommended.map(c => buildCourseWithProgress(c, progressMap.get(c.id))),
+    inProgress,
+    completed,
+    totalXpEarned,
+    completionRate,
+  });
+});
+
+// GET /courses — list all with user progress
+router.get("/courses", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const { category, difficulty } = req.query as { category?: string; difficulty?: string };
+
+  const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
+  const progressRecords = await getUserProgress(userId);
+  const progressMap = new Map(progressRecords.map(p => [p.courseId, p]));
+
+  let filtered = allCourses;
+  if (category) filtered = filtered.filter(c => c.category === category);
+  if (difficulty) filtered = filtered.filter(c => c.difficulty === difficulty);
+
+  res.json(filtered.map(c => buildCourseWithProgress(c, progressMap.get(c.id))));
+});
+
+// GET /courses/:id — course detail with lessons
+router.get("/courses/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const courseId = Number(req.params.id);
+
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId));
+  if (!course) { res.status(404).json({ message: "Not found" }); return; }
+
+  const lessons = await db.select().from(lessonsTable).where(eq(lessonsTable.courseId, courseId)).orderBy(lessonsTable.displayOrder);
+  const [progress] = await db.select().from(userCourseProgressTable).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId)));
+
+  res.json({
+    ...buildCourseWithProgress(course, progress),
+    lessons: lessons.map(l => ({
+      id: l.id,
+      title: l.title,
+      type: l.type,
+      content: l.content,
+      xpReward: l.xpReward,
+      displayOrder: l.displayOrder,
+    })),
+  });
+});
+
+// PATCH /courses/:id/progress
+router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const courseId = Number(req.params.id);
+  const { progressPct, lastLessonId } = req.body as { progressPct: number; lastLessonId?: number };
+
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId));
+  if (!course) { res.status(404).json({ message: "Not found" }); return; }
+
+  const clampedPct = Math.min(100, Math.max(0, progressPct));
+  const isCompleted = clampedPct >= 100;
+  const xpEarned = isCompleted ? course.xpReward : Math.round(course.xpReward * clampedPct / 100);
+
+  const [existing] = await db.select().from(userCourseProgressTable).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId)));
+
+  let record;
+  if (existing) {
+    [record] = await db.update(userCourseProgressTable).set({
+      progressPct: clampedPct,
+      status: isCompleted ? "completed" : "in_progress",
+      xpEarned,
+      lastLessonId: lastLessonId ?? existing.lastLessonId,
+      completedAt: isCompleted ? (existing.completedAt ?? new Date()) : null,
+    }).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId))).returning();
+  } else {
+    [record] = await db.insert(userCourseProgressTable).values({
+      userId,
+      courseId,
+      progressPct: clampedPct,
+      status: isCompleted ? "completed" : (clampedPct > 0 ? "in_progress" : "not_started"),
+      xpEarned,
+      lastLessonId: lastLessonId ?? null,
+      startedAt: new Date(),
+      completedAt: isCompleted ? new Date() : null,
+    }).returning();
+  }
+
+  // Update gamification XP if completed
+  if (isCompleted && !existing?.completedAt) {
+    const [gp] = await db.select().from(gamificationProfilesTable).where(eq(gamificationProfilesTable.userId, userId));
+    if (gp) {
+      const newXp = gp.xp + course.xpReward;
+      await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
+    }
+  }
+
+  res.json({
+    courseId: record.courseId,
+    status: record.status,
+    progressPct: record.progressPct,
+    xpEarned: record.xpEarned,
+    completedAt: record.completedAt?.toISOString() ?? null,
+  });
+});
+
+// POST /courses — create a new course (admin/superadmin)
+router.post("/courses", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+  const { title, category, description, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
+  if (!title || !category || !difficulty) {
+    res.status(400).json({ error: "title, category, and difficulty are required" }); return;
+  }
+  const [course] = await db.insert(coursesTable).values({
+    title,
+    category,
+    description: description ?? "",
+    thumbnailColor: thumbnailColor ?? "#dc143c",
+    durationMinutes: durationMinutes ?? 30,
+    xpReward: xpReward ?? 100,
+    difficulty,
+    lessonCount: lessonCount ?? 0,
+  }).returning();
+  res.status(201).json(course);
+});
+
+// PATCH /courses/:id — update a course (admin/superadmin)
+router.patch("/courses/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+  const id = parseInt(req.params.id as string);
+  const { title, category, description, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
+  const [updated] = await db.update(coursesTable)
+    .set({ title, category, description, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount })
+    .where(eq(coursesTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Course not found" }); return; }
+  res.json(updated);
+});
+
+// DELETE /courses/:id — delete a course (admin/superadmin)
+router.delete("/courses/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+  const id = parseInt(req.params.id as string);
+  const [deleted] = await db.delete(coursesTable).where(eq(coursesTable.id, id)).returning();
+  if (!deleted) { res.status(404).json({ error: "Course not found" }); return; }
+  res.json({ success: true });
+});
+
+export default router;

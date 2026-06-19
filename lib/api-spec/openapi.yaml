@@ -1,0 +1,2942 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: CyberCultX Human Risk Intelligence Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: users
+    description: User management
+  - name: departments
+    description: Department management
+  - name: assessments
+    description: Psychometric and cyber behavior assessments
+  - name: courses
+    description: Learning courses and progress
+  - name: scores
+    description: Risk and culture scores
+  - name: gamification
+    description: XP, badges, leaderboard
+  - name: phishing
+    description: Phishing simulation templates and campaigns
+  - name: reports
+    description: Report generation and download
+  - name: admin
+    description: Admin management operations
+  - name: superadmin
+    description: Super admin and tenant management
+  - name: executive
+    description: Executive intelligence dashboard
+  - name: hr
+    description: HR people-analytics dashboard
+  - name: ai
+    description: AI security intelligence assistant
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already registered
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Refresh access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenInput"
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshTokenResponse"
+        "401":
+          description: Invalid or expired refresh token
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Reset link sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/mfa/setup:
+    post:
+      operationId: setupMfa
+      tags: [auth]
+      summary: Setup MFA - returns TOTP secret and QR URI
+      responses:
+        "200":
+          description: MFA setup info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaSetupResponse"
+
+  /auth/mfa/verify:
+    post:
+      operationId: verifyMfa
+      tags: [auth]
+      summary: Verify MFA code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaVerifyInput"
+      responses:
+        "200":
+          description: MFA verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid code
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      parameters:
+        - in: query
+          name: role
+          schema:
+            type: string
+        - in: query
+          name: departmentId
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/stats/summary:
+    get:
+      operationId: getUserStats
+      tags: [users]
+      summary: Get user statistics summary
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+
+  /departments:
+    get:
+      operationId: listDepartments
+      tags: [departments]
+      summary: List all departments
+      responses:
+        "200":
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+    post:
+      operationId: createDepartment
+      tags: [departments]
+      summary: Create department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "201":
+          description: Created department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+
+  /departments/{id}:
+    get:
+      operationId: getDepartment
+      tags: [departments]
+      summary: Get department by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateDepartment
+      tags: [departments]
+      summary: Update department
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentUpdate"
+      responses:
+        "200":
+          description: Updated department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+    delete:
+      operationId: deleteDepartment
+      tags: [departments]
+      summary: Delete department
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /assessments:
+    get:
+      operationId: listAssessments
+      tags: [assessments]
+      summary: List available assessments
+      responses:
+        "200":
+          description: List of assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assessment"
+
+  /assessments/{id}:
+    get:
+      operationId: getAssessment
+      tags: [assessments]
+      summary: Get assessment with questions
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assessment with questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentDetail"
+
+  /assessments/{id}/submit:
+    post:
+      operationId: submitAssessment
+      tags: [assessments]
+      summary: Submit assessment answers
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentSubmission"
+      responses:
+        "200":
+          description: Assessment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentResult"
+
+  /assessments/{id}/results:
+    get:
+      operationId: getAssessmentResults
+      tags: [assessments]
+      summary: Get user's results for an assessment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assessment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentResult"
+        "404":
+          description: No result found
+
+  /assessments/profile:
+    get:
+      operationId: getPsychometricProfile
+      tags: [assessments]
+      summary: Get current user's psychometric profile
+      responses:
+        "200":
+          description: Psychometric profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PsychometricProfile"
+        "404":
+          description: Profile not found
+
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List courses with optional filters
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: difficulty
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of courses with user progress
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseWithProgress"
+
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get course details with lessons
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDetail"
+        "404":
+          description: Not found
+
+  /courses/{id}/progress:
+    patch:
+      operationId: updateCourseProgress
+      tags: [courses]
+      summary: Update user's progress on a course
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseProgressUpdate"
+      responses:
+        "200":
+          description: Updated progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseProgress"
+
+  /courses/learning-path:
+    get:
+      operationId: getLearningPath
+      tags: [courses]
+      summary: Get recommended learning path for current user
+      responses:
+        "200":
+          description: Personalized learning path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningPath"
+
+  /scores/me:
+    get:
+      operationId: getMyScores
+      tags: [scores]
+      summary: Get current user's full score profile
+      responses:
+        "200":
+          description: User score profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserScores"
+
+  /scores/cci-history:
+    get:
+      operationId: getCciHistory
+      tags: [scores]
+      summary: Get CCI and HRS historical snapshots for trend chart
+      responses:
+        "200":
+          description: CCI history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CciHistory"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [gamification]
+      summary: Get XP leaderboard
+      parameters:
+        - in: query
+          name: departmentId
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardResponse"
+
+  /gamification/me:
+    get:
+      operationId: getMyGamification
+      tags: [gamification]
+      summary: Get current user's gamification profile
+      responses:
+        "200":
+          description: Gamification profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamificationProfile"
+
+  /gamification/badges:
+    get:
+      operationId: getMyBadges
+      tags: [gamification]
+      summary: Get current user's earned badges
+      responses:
+        "200":
+          description: User badges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserBadgeDetail"
+
+  /auth/complete-onboarding:
+    post:
+      operationId: completeOnboarding
+      tags: [auth]
+      summary: Mark onboarding wizard as completed
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Onboarding marked complete
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+
+  /telemetry/event:
+    post:
+      operationId: recordTelemetryEvent
+      tags: [telemetry]
+      summary: Record a behavioral telemetry event
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelemetryEventInput"
+      responses:
+        "200":
+          description: Event recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+
+  /phishing/templates:
+    get:
+      operationId: listPhishingTemplates
+      tags: [phishing]
+      summary: List phishing templates
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: language
+          schema:
+            type: string
+        - in: query
+          name: difficulty
+          schema:
+            type: integer
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of phishing templates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingTemplateList"
+    post:
+      operationId: createPhishingTemplate
+      tags: [phishing]
+      summary: Create a phishing template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhishingTemplateInput"
+      responses:
+        "201":
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingTemplate"
+
+  /phishing/templates/generate:
+    post:
+      operationId: generatePhishingTemplate
+      tags: [phishing]
+      summary: AI-generate a phishing template (mock)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhishingGenerateInput"
+      responses:
+        "200":
+          description: Generated phishing content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingGenerateResult"
+
+  /phishing/templates/{id}:
+    get:
+      operationId: getPhishingTemplate
+      tags: [phishing]
+      summary: Get phishing template by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Phishing template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingTemplate"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePhishingTemplate
+      tags: [phishing]
+      summary: Update phishing template
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhishingTemplateInput"
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingTemplate"
+    delete:
+      operationId: deletePhishingTemplate
+      tags: [phishing]
+      summary: Delete phishing template
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /phishing/campaigns:
+    get:
+      operationId: listPhishingCampaigns
+      tags: [phishing]
+      summary: List phishing campaigns
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingCampaignList"
+    post:
+      operationId: createPhishingCampaign
+      tags: [phishing]
+      summary: Create a phishing campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhishingCampaignInput"
+      responses:
+        "201":
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingCampaign"
+
+  /phishing/campaigns/{id}:
+    get:
+      operationId: getPhishingCampaign
+      tags: [phishing]
+      summary: Get campaign by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign with stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingCampaignDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePhishingCampaign
+      tags: [phishing]
+      summary: Update campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhishingCampaignInput"
+      responses:
+        "200":
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingCampaign"
+    delete:
+      operationId: deletePhishingCampaign
+      tags: [phishing]
+      summary: Delete campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /phishing/campaigns/{id}/launch:
+    post:
+      operationId: launchPhishingCampaign
+      tags: [phishing]
+      summary: Launch a campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Launched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhishingCampaign"
+
+  /phishing/campaigns/{id}/results:
+    get:
+      operationId: getCampaignResults
+      tags: [phishing]
+      summary: Get per-employee results for a campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignResultsList"
+
+  /phishing/my-results:
+    get:
+      operationId: getMyPhishingResults
+      tags: [phishing]
+      summary: Get current employee's phishing result history
+      responses:
+        "200":
+          description: Employee phishing results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyPhishingResults"
+
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List report jobs
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReportJob"
+
+  /reports/generate:
+    post:
+      operationId: generateReport
+      tags: [reports]
+      summary: Generate a report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportGenerateInput"
+      responses:
+        "200":
+          description: Report job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportJob"
+
+  /reports/{id}/download:
+    get:
+      operationId: downloadReport
+      tags: [reports]
+      summary: Download a report file
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report file download (mock JSON)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportJob"
+        "404":
+          description: Not found
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform-wide admin statistics
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /tenants:
+    get:
+      operationId: listTenants
+      tags: [superadmin]
+      summary: List all tenants
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantList"
+    post:
+      operationId: createTenant
+      tags: [superadmin]
+      summary: Create a new tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantInput"
+      responses:
+        "201":
+          description: Created tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+
+  /tenants/{id}:
+    get:
+      operationId: getTenant
+      tags: [superadmin]
+      summary: Get tenant by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTenant
+      tags: [superadmin]
+      summary: Update tenant
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantInput"
+      responses:
+        "200":
+          description: Updated tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+
+  /system/config:
+    get:
+      operationId: getSystemConfig
+      tags: [superadmin]
+      summary: Get all system configuration values
+      responses:
+        "200":
+          description: System config
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SystemConfigItem"
+    patch:
+      operationId: updateSystemConfig
+      tags: [superadmin]
+      summary: Update system configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SystemConfigUpdate"
+      responses:
+        "200":
+          description: Updated config item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigItem"
+
+  /system/health:
+    get:
+      operationId: getSystemHealth
+      tags: [superadmin]
+      summary: Get system health and monitoring metrics
+      responses:
+        "200":
+          description: System health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemHealth"
+
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [superadmin]
+      summary: List audit log events
+      parameters:
+        - in: query
+          name: userId
+          schema:
+            type: integer
+        - in: query
+          name: action
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit log list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogList"
+
+  /telemetry/trends:
+    get:
+      operationId: getTelemetryTrends
+      tags: [telemetry]
+      summary: Get current user's behavioral telemetry trends
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Telemetry trend data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetryTrendsResponse"
+
+  /users/{id}/delete:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Deleted successfully }
+        "404": { description: User not found }
+
+  /courses/{id}/manage:
+    patch:
+      operationId: updateCourse
+      tags: [courses]
+      summary: Update a course (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: Updated course
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Course" }
+    delete:
+      operationId: deleteCourse
+      tags: [courses]
+      summary: Delete a course (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Deleted successfully }
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get all admin settings from system config
+      responses:
+        "200":
+          description: Map of setting key to value
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+
+  /admin/settings/{key}:
+    put:
+      operationId: updateAdminSetting
+      tags: [admin]
+      summary: Update a single admin setting
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value: { type: string }
+      responses:
+        "200": { description: Updated }
+
+  /admin/assessments/{id}/results:
+    get:
+      operationId: getAssessmentResults
+      tags: [admin]
+      summary: Get paginated employee results for an assessment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Assessment results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { type: object }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+
+  /admin/notifications:
+    get:
+      operationId: listAdminNotifications
+      tags: [admin]
+      summary: List platform announcements
+      responses:
+        "200":
+          description: List of announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: string }
+                    body: { type: string }
+                    type: { type: string, enum: [info, warning, critical] }
+                    audience: { type: string, enum: [all, employee, admin] }
+                    createdAt: { type: string }
+                    active: { type: boolean }
+    post:
+      operationId: createAdminNotification
+      tags: [admin]
+      summary: Create a new announcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title: { type: string }
+                body: { type: string }
+                type: { type: string, enum: [info, warning, critical] }
+                audience: { type: string, enum: [all, employee, admin] }
+      responses:
+        "201": { description: Created announcement }
+
+  /admin/notifications/{id}:
+    delete:
+      operationId: deleteAdminNotification
+      tags: [admin]
+      summary: Remove an announcement
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Deleted successfully }
+
+  /executive/dashboard:
+    get:
+      operationId: getExecutiveDashboard
+      tags: [executive]
+      summary: Get executive org-wide risk intelligence dashboard
+      responses:
+        "200":
+          description: Executive dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutiveDashboard"
+        "403": { description: Forbidden }
+
+  /hr/dashboard:
+    get:
+      operationId: getHRDashboard
+      tags: [hr]
+      summary: Get HR people-analytics dashboard
+      responses:
+        "200":
+          description: HR dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HRDashboard"
+        "403": { description: Forbidden }
+
+  /ai/chat:
+    post:
+      operationId: aiChat
+      tags: [ai]
+      summary: Stream AI security intelligence response (SSE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIChatRequest"
+      responses:
+        "200":
+          description: SSE stream of AI response chunks
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /predictive/org:
+    get:
+      operationId: getPredictiveOrg
+      tags: [predictive]
+      summary: Get org-level predictive risk indicators
+      responses:
+        "200":
+          description: Org predictive risk indicators
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictiveOrgResponse"
+        "403": { description: Forbidden }
+
+  /predictive/employee/{id}:
+    get:
+      operationId: getPredictiveEmployee
+      tags: [predictive]
+      summary: Get employee-level predictive risk indicators
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Employee predictive risk indicators
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictiveEmployeeResponse"
+        "403": { description: Forbidden }
+        "404": { description: Employee not found }
+
+  /reports/arabic-pdf:
+    get:
+      operationId: getArabicPdfReport
+      tags: [reports]
+      summary: Generate Arabic RTL PDF security intelligence report
+      responses:
+        "200":
+          description: PDF report (RTL Arabic)
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "403": { description: Forbidden }
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    RegisterInput:
+      type: object
+      required: [email, password, firstName, lastName]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        departmentId:
+          type: ["integer", "null"]
+
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+
+    MfaVerifyInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+
+    MfaSetupResponse:
+      type: object
+      required: [secret, otpauthUrl, qrCodeUrl]
+      properties:
+        secret:
+          type: string
+        otpauthUrl:
+          type: string
+        qrCodeUrl:
+          type: string
+
+    RefreshTokenInput:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    RefreshTokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, refreshToken, user]
+      properties:
+        token:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, email, firstName, lastName, role, onboardingCompleted, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        departmentId:
+          type: ["integer", "null"]
+        departmentName:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        jobTitle:
+          type: ["string", "null"]
+        onboardingCompleted:
+          type: boolean
+        mfaEnabled:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jobTitle:
+          type: ["string", "null"]
+        departmentId:
+          type: ["integer", "null"]
+        role:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+
+    UserListResponse:
+      type: object
+      required: [users, total]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+
+    UserStats:
+      type: object
+      required: [total, byRole, recentSignups]
+      properties:
+        total:
+          type: integer
+        byRole:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleCount"
+        recentSignups:
+          type: integer
+
+    RoleCount:
+      type: object
+      required: [role, count]
+      properties:
+        role:
+          type: string
+        count:
+          type: integer
+
+    Department:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+
+    DepartmentInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+
+    Assessment:
+      type: object
+      required: [id, type, title, description, estimatedMinutes]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        estimatedMinutes:
+          type: integer
+        questionCount:
+          type: integer
+        completed:
+          type: boolean
+        lastCompletedAt:
+          type: ["string", "null"]
+
+    QuestionOption:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: integer
+        label:
+          type: string
+
+    AssessmentQuestion:
+      type: object
+      required: [id, text, category, options, displayOrder]
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        category:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionOption"
+        displayOrder:
+          type: integer
+
+    AssessmentDetail:
+      type: object
+      required: [id, type, title, description, estimatedMinutes, questions]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        estimatedMinutes:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentQuestion"
+
+    AssessmentSubmission:
+      type: object
+      required: [answers, timeTakenSec]
+      properties:
+        answers:
+          type: object
+          additionalProperties:
+            type: integer
+        timeTakenSec:
+          type: integer
+
+    CategoryScore:
+      type: object
+      required: [category, score, label]
+      properties:
+        category:
+          type: string
+        score:
+          type: number
+        label:
+          type: string
+
+    AssessmentResult:
+      type: object
+      required: [id, assessmentId, overallScore, categoryScores, completedAt]
+      properties:
+        id:
+          type: integer
+        assessmentId:
+          type: integer
+        overallScore:
+          type: number
+        categoryScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryScore"
+        timeTakenSec:
+          type: ["integer", "null"]
+        completedAt:
+          type: string
+
+    PsychometricProfile:
+      type: object
+      required: [userId, riskTolerance, impulsiveness, securityAwareness, decisionMaking, attentionToDetail, trustTendencies, stressResponse, complianceBehavior, behavioralType, learningStyle, riskCategory, securityReadinessScore]
+      properties:
+        userId:
+          type: integer
+        riskTolerance:
+          type: number
+        impulsiveness:
+          type: number
+        securityAwareness:
+          type: number
+        decisionMaking:
+          type: number
+        attentionToDetail:
+          type: number
+        trustTendencies:
+          type: number
+        stressResponse:
+          type: number
+        complianceBehavior:
+          type: number
+        behavioralType:
+          type: string
+        learningStyle:
+          type: string
+        riskCategory:
+          type: string
+        securityReadinessScore:
+          type: number
+
+    CourseWithProgress:
+      type: object
+      required: [id, title, category, description, durationMinutes, xpReward, difficulty, lessonCount]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        thumbnailColor:
+          type: string
+        durationMinutes:
+          type: integer
+        xpReward:
+          type: integer
+        difficulty:
+          type: string
+        lessonCount:
+          type: integer
+        status:
+          type: string
+        progressPct:
+          type: number
+        xpEarned:
+          type: integer
+        completedAt:
+          type: ["string", "null"]
+
+    Lesson:
+      type: object
+      required: [id, title, type, displayOrder]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+        content:
+          type: ["string", "null"]
+        xpReward:
+          type: integer
+        displayOrder:
+          type: integer
+
+    CourseDetail:
+      type: object
+      required: [id, title, category, description, durationMinutes, xpReward, difficulty, lessons]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        thumbnailColor:
+          type: string
+        durationMinutes:
+          type: integer
+        xpReward:
+          type: integer
+        difficulty:
+          type: string
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+        status:
+          type: string
+        progressPct:
+          type: number
+
+    CourseProgress:
+      type: object
+      required: [courseId, status, progressPct, xpEarned]
+      properties:
+        courseId:
+          type: integer
+        status:
+          type: string
+        progressPct:
+          type: number
+        xpEarned:
+          type: integer
+        completedAt:
+          type: ["string", "null"]
+
+    CourseProgressUpdate:
+      type: object
+      required: [progressPct]
+      properties:
+        progressPct:
+          type: number
+        lastLessonId:
+          type: integer
+
+    LearningPath:
+      type: object
+      required: [recommended, inProgress, completed, totalXpEarned, completionRate]
+      properties:
+        recommended:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseWithProgress"
+        inProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseWithProgress"
+        completed:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseWithProgress"
+        totalXpEarned:
+          type: integer
+        completionRate:
+          type: number
+
+    CciHistoryPoint:
+      type: object
+      required: [date, cciScore, humanRiskScore]
+      properties:
+        date:
+          type: string
+        cciScore:
+          type: number
+        humanRiskScore:
+          type: number
+        behavioralStabilityScore:
+          type: number
+        decisionQualityScore:
+          type: number
+        cultureContributionScore:
+          type: number
+
+    CciHistory:
+      type: object
+      required: [history]
+      properties:
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/CciHistoryPoint"
+
+    UserScores:
+      type: object
+      required: [humanRiskScore, cciScore, behavioralStabilityScore, decisionQualityScore, cultureContributionScore, complianceBehaviorScore, riskCategory, computedAt]
+      properties:
+        humanRiskScore:
+          type: number
+        cciScore:
+          type: number
+        behavioralStabilityScore:
+          type: number
+        decisionQualityScore:
+          type: number
+        cultureContributionScore:
+          type: number
+        complianceBehaviorScore:
+          type: number
+        securityReadinessScore:
+          type: number
+        riskCategory:
+          type: string
+        trend:
+          type: string
+        computedAt:
+          type: string
+
+    GamificationProfile:
+      type: object
+      required: [userId, xp, level, streakDays, nextLevelXp, currentLevelXp]
+      properties:
+        userId:
+          type: integer
+        xp:
+          type: integer
+        level:
+          type: integer
+        streakDays:
+          type: integer
+        nextLevelXp:
+          type: integer
+        currentLevelXp:
+          type: integer
+        lastActivityAt:
+          type: ["string", "null"]
+
+    Badge:
+      type: object
+      required: [id, name, description, iconName, category]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        iconName:
+          type: string
+        category:
+          type: string
+        xpRequired:
+          type: integer
+
+    UserBadgeDetail:
+      type: object
+      required: [badgeId, name, description, iconName, category, earnedAt]
+      properties:
+        badgeId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        iconName:
+          type: string
+        category:
+          type: string
+        earnedAt:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, userId, firstName, lastName, xp, level, cciScore]
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        departmentName:
+          type: ["string", "null"]
+        xp:
+          type: integer
+        level:
+          type: integer
+        cciScore:
+          type: number
+        isCurrentUser:
+          type: boolean
+
+    LeaderboardResponse:
+      type: object
+      required: [entries, currentUserRank]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+        currentUserRank:
+          type: ["integer", "null"]
+
+    TelemetryEventInput:
+      type: object
+      required: [eventType]
+      properties:
+        eventType:
+          type: string
+          enum: [question_answered, assessment_started, assessment_completed, course_started, course_lesson_completed, page_focus_lost, page_focus_gained]
+        assessmentId:
+          type: ["integer", "null"]
+        questionId:
+          type: ["integer", "null"]
+        decisionLatencyMs:
+          type: ["integer", "null"]
+        confidenceRating:
+          type: ["number", "null"]
+        attentionScore:
+          type: ["number", "null"]
+        payload:
+          type: ["object", "null"]
+
+    TelemetryTrendPoint:
+      type: object
+      required: [day, avgLatencyMs, avgConfidence, avgAttention, count]
+      properties:
+        day:
+          type: string
+          format: date
+        avgLatencyMs:
+          type: integer
+        avgConfidence:
+          type: number
+        avgAttention:
+          type: number
+        count:
+          type: integer
+
+    TelemetryTrendsResponse:
+      type: object
+      required: [trends, totalEvents, daysCovered]
+      properties:
+        trends:
+          type: array
+          items:
+            $ref: "#/components/schemas/TelemetryTrendPoint"
+        totalEvents:
+          type: integer
+        daysCovered:
+          type: integer
+
+    PhishingTemplate:
+      type: object
+      required: [id, name, type, body, difficulty, language, industry, category, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        subject:
+          type: ["string", "null"]
+        body:
+          type: string
+        attachmentDesc:
+          type: ["string", "null"]
+        difficulty:
+          type: integer
+        language:
+          type: string
+        industry:
+          type: string
+        category:
+          type: string
+        isAiGenerated:
+          type: integer
+        tags:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    PhishingTemplateInput:
+      type: object
+      required: [name, body]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        attachmentDesc:
+          type: string
+        difficulty:
+          type: integer
+        language:
+          type: string
+        industry:
+          type: string
+        category:
+          type: string
+        tags:
+          type: string
+
+    PhishingTemplateList:
+      type: object
+      required: [templates, total, page, limit]
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhishingTemplate"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    PhishingGenerateInput:
+      type: object
+      properties:
+        industry:
+          type: string
+        attackType:
+          type: string
+        difficulty:
+          type: integer
+        language:
+          type: string
+
+    PhishingGenerateResult:
+      type: object
+      required: [body, difficultyScore, detectionTips, attackType, industry, language, generatedAt]
+      properties:
+        subject:
+          type: ["string", "null"]
+        body:
+          type: string
+        attachmentDesc:
+          type: ["string", "null"]
+        difficultyScore:
+          type: integer
+        detectionTips:
+          type: array
+          items:
+            type: string
+        attackType:
+          type: string
+        industry:
+          type: string
+        language:
+          type: string
+        generatedAt:
+          type: string
+
+    PhishingCampaign:
+      type: object
+      required: [id, name, status, difficulty, totalTargeted, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+        templateId:
+          type: ["integer", "null"]
+        templateName:
+          type: ["string", "null"]
+        templateType:
+          type: ["string", "null"]
+        difficulty:
+          type: integer
+        scheduledAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        totalTargeted:
+          type: integer
+        createdAt:
+          type: string
+
+    PhishingCampaignInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        templateId:
+          type: integer
+        difficulty:
+          type: integer
+        scheduledAt:
+          type: string
+        status:
+          type: string
+
+    PhishingCampaignStats:
+      type: object
+      required: [totalTargeted, sent, opened, clicked, submitted, reported, openRate, clickRate, submitRate, reportRate]
+      properties:
+        totalTargeted:
+          type: integer
+        sent:
+          type: integer
+        opened:
+          type: integer
+        clicked:
+          type: integer
+        submitted:
+          type: integer
+        reported:
+          type: integer
+        openRate:
+          type: integer
+        clickRate:
+          type: integer
+        submitRate:
+          type: integer
+        reportRate:
+          type: integer
+
+    PhishingCampaignDetail:
+      allOf:
+        - $ref: "#/components/schemas/PhishingCampaign"
+        - type: object
+          properties:
+            stats:
+              $ref: "#/components/schemas/PhishingCampaignStats"
+
+    PhishingCampaignList:
+      type: object
+      required: [campaigns, total, page, limit]
+      properties:
+        campaigns:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhishingCampaign"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    CampaignResult:
+      type: object
+      required: [id, userId, sentAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        sentAt:
+          type: string
+        openedAt:
+          type: ["string", "null"]
+        clickedAt:
+          type: ["string", "null"]
+        credentialSubmittedAt:
+          type: ["string", "null"]
+        reportedAt:
+          type: ["string", "null"]
+        trainingCompletedAt:
+          type: ["string", "null"]
+
+    CampaignResultsList:
+      type: object
+      required: [results, total, page, limit]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampaignResult"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    MyPhishingResultItem:
+      type: object
+      required: [id, campaignId, sentAt]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        campaignName:
+          type: ["string", "null"]
+        campaignDifficulty:
+          type: ["integer", "null"]
+        templateType:
+          type: ["string", "null"]
+        sentAt:
+          type: string
+        openedAt:
+          type: ["string", "null"]
+        clickedAt:
+          type: ["string", "null"]
+        credentialSubmittedAt:
+          type: ["string", "null"]
+        reportedAt:
+          type: ["string", "null"]
+        trainingCompletedAt:
+          type: ["string", "null"]
+
+    PhishingResultSummary:
+      type: object
+      required: [totalSent, clicked, reported, clickRate, reportRate]
+      properties:
+        totalSent:
+          type: integer
+        clicked:
+          type: integer
+        reported:
+          type: integer
+        clickRate:
+          type: integer
+        reportRate:
+          type: integer
+
+    MyPhishingResults:
+      type: object
+      required: [results, summary]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyPhishingResultItem"
+        summary:
+          $ref: "#/components/schemas/PhishingResultSummary"
+
+    ReportJob:
+      type: object
+      required: [id, type, status, format, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        status:
+          type: string
+        format:
+          type: string
+        filters:
+          type: ["object", "null"]
+        fileUrl:
+          type: ["string", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+
+    ReportGenerateInput:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+        format:
+          type: string
+        filters:
+          type: object
+
+    AdminStats:
+      type: object
+      required: [users, departments, campaigns, activeCampaigns, reports, overallClickRate, byRole]
+      properties:
+        users:
+          type: integer
+        departments:
+          type: integer
+        campaigns:
+          type: integer
+        activeCampaigns:
+          type: integer
+        reports:
+          type: integer
+        overallClickRate:
+          type: integer
+        byRole:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleCount"
+        recentAuditLogs:
+          type: array
+          items:
+            type: object
+
+    Tenant:
+      type: object
+      required: [id, name, domain, plan, status, employeeCount, adminEmail, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        domain:
+          type: string
+        plan:
+          type: string
+        status:
+          type: string
+        employeeCount:
+          type: integer
+        adminEmail:
+          type: string
+        industry:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        licenseExpiry:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    TenantInput:
+      type: object
+      required: [name, domain, adminEmail]
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        plan:
+          type: string
+        status:
+          type: string
+        adminEmail:
+          type: string
+        industry:
+          type: string
+        country:
+          type: string
+        employeeCount:
+          type: integer
+
+    Course:
+      type: object
+      required: [id, title, category, difficulty]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        category: { type: string }
+        difficulty: { type: string }
+        estimatedMinutes: { type: ["integer", "null"] }
+        imageUrl: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+
+    AIChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        conversationId:
+          type: string
+
+    MaturityDimension:
+      type: object
+      required: [dimension, score]
+      properties:
+        dimension: { type: string }
+        score: { type: integer }
+
+    ForecastPoint:
+      type: object
+      required: [cciPrediction, hrsPrediction, confidence]
+      properties:
+        cciPrediction: { type: integer }
+        hrsPrediction: { type: integer }
+        confidence: { type: integer }
+
+    VulnerabilityEntry:
+      type: object
+      required: [name, avgHrs, avgCci, userCount, riskLevel]
+      properties:
+        name: { type: string }
+        avgHrs: { type: integer }
+        avgCci: { type: integer }
+        userCount: { type: integer }
+        riskLevel: { type: string }
+
+    ComplianceBreakdownEntry:
+      type: object
+      required: [name, score]
+      properties:
+        name: { type: string }
+        score: { type: integer }
+
+    ExecutiveDashboard:
+      type: object
+      required: [org, departments, phishing, cciTrend, riskDistribution, maturityRadar, forecast, financialRisk, vulnerabilityRanking, complianceGauge]
+      properties:
+        org:
+          type: object
+          required: [totalUsers, avgCci, avgHrs, avgCompliance, cultureIndex]
+          properties:
+            totalUsers: { type: integer }
+            avgCci: { type: integer }
+            avgHrs: { type: integer }
+            avgCompliance: { type: integer }
+            cultureIndex: { type: integer }
+        departments:
+          type: array
+          items:
+            type: object
+            required: [id, name, userCount, avgCci, avgHrs, avgCompliance]
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              userCount: { type: integer }
+              avgCci: { type: integer }
+              avgHrs: { type: integer }
+              avgCompliance: { type: integer }
+        phishing:
+          type: object
+          required: [total, clicked, opened, reported, clickRate, reportRate, openRate]
+          properties:
+            total: { type: integer }
+            clicked: { type: integer }
+            opened: { type: integer }
+            reported: { type: integer }
+            clickRate: { type: integer }
+            reportRate: { type: integer }
+            openRate: { type: integer }
+        cciTrend:
+          type: array
+          items:
+            type: object
+            required: [label, cci, hrs, compliance]
+            properties:
+              label: { type: string }
+              cci: { type: integer }
+              hrs: { type: integer }
+              compliance: { type: integer }
+        riskDistribution:
+          type: array
+          items:
+            type: object
+            required: [category, count]
+            properties:
+              category: { type: string }
+              count: { type: integer }
+        maturityRadar:
+          type: array
+          items:
+            $ref: "#/components/schemas/MaturityDimension"
+        forecast:
+          type: object
+          required: [days30, days60, days90]
+          properties:
+            days30: { $ref: "#/components/schemas/ForecastPoint" }
+            days60: { $ref: "#/components/schemas/ForecastPoint" }
+            days90: { $ref: "#/components/schemas/ForecastPoint" }
+        financialRisk:
+          type: object
+          required: [estimatedAnnualLoss, financialRiskReduction, breachProbabilityPct, totalUsers]
+          properties:
+            estimatedAnnualLoss: { type: integer }
+            financialRiskReduction: { type: integer }
+            breachProbabilityPct: { type: integer }
+            totalUsers: { type: integer }
+        vulnerabilityRanking:
+          type: array
+          items:
+            $ref: "#/components/schemas/VulnerabilityEntry"
+        complianceGauge:
+          type: object
+          required: [score, breakdown]
+          properties:
+            score: { type: integer }
+            breakdown:
+              type: array
+              items:
+                $ref: "#/components/schemas/ComplianceBreakdownEntry"
+
+    HRChampion:
+      type: object
+      required: [rank, userId, name, jobTitle, department, xp, level, streakDays, badgeCount]
+      properties:
+        rank: { type: integer }
+        userId: { type: integer }
+        name: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        xp: { type: integer }
+        level: { type: integer }
+        streakDays: { type: integer }
+        badgeCount: { type: integer }
+
+    HREngagement:
+      type: object
+      required: [weeklyActiveCount, engagementRate, courseCompletionRate, avgStreak, avgXp]
+      properties:
+        weeklyActiveCount: { type: integer }
+        engagementRate: { type: integer }
+        courseCompletionRate: { type: integer }
+        avgStreak: { type: integer }
+        avgXp: { type: integer }
+
+    HRDashboard:
+      type: object
+      required: [summary, employees, deptLearning, riskDistribution, champions, engagement]
+      properties:
+        summary:
+          type: object
+          required: [totalEmployees, avgCci, avgHrs, avgCompliance, avgXp, avgStreak]
+          properties:
+            totalEmployees: { type: integer }
+            avgCci: { type: integer }
+            avgHrs: { type: integer }
+            avgCompliance: { type: integer }
+            avgXp: { type: integer }
+            avgStreak: { type: integer }
+        employees:
+          type: array
+          items:
+            type: object
+            required: [id, name, email, jobTitle, department, cciScore, humanRiskScore, complianceScore, xp, level, streakDays, coursesCompleted, coursesTotal]
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              email: { type: string }
+              jobTitle: { type: string }
+              department: { type: string }
+              cciScore: { type: integer }
+              humanRiskScore: { type: integer }
+              complianceScore: { type: integer }
+              xp: { type: integer }
+              level: { type: integer }
+              streakDays: { type: integer }
+              coursesCompleted: { type: integer }
+              coursesTotal: { type: integer }
+        deptLearning:
+          type: array
+          items:
+            type: object
+            required: [name, avgXp, userCount, completionRate, avgStreak]
+            properties:
+              name: { type: string }
+              avgXp: { type: integer }
+              userCount: { type: integer }
+              completionRate: { type: integer }
+              avgStreak: { type: integer }
+        riskDistribution:
+          type: array
+          items:
+            type: object
+            required: [band, count]
+            properties:
+              band: { type: string }
+              count: { type: integer }
+        champions:
+          type: array
+          items:
+            $ref: "#/components/schemas/HRChampion"
+        engagement:
+          $ref: "#/components/schemas/HREngagement"
+
+    TenantList:
+      type: object
+      required: [tenants, total, page, limit]
+      properties:
+        tenants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tenant"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    SystemConfigItem:
+      type: object
+      required: [id, key, category, updatedAt]
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        value:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        category:
+          type: string
+        updatedAt:
+          type: string
+
+    SystemConfigUpdate:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    SystemServiceHealth:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+        latencyMs:
+          type: integer
+
+    SystemHealth:
+      type: object
+      required: [status, database, totalUsers, apiVersion]
+      properties:
+        status:
+          type: string
+        uptime:
+          type: number
+        database:
+          type: string
+        totalUsers:
+          type: integer
+        apiVersion:
+          type: string
+        environment:
+          type: string
+        services:
+          type: object
+        metrics:
+          type: object
+
+    AuditLogEntry:
+      type: object
+      required: [id, action, createdAt]
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        ipAddress:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        metadata:
+          type: ["object", "null"]
+        createdAt:
+          type: string
+        userId:
+          type: ["integer", "null"]
+        userEmail:
+          type: ["string", "null"]
+        userFirstName:
+          type: ["string", "null"]
+        userLastName:
+          type: ["string", "null"]
+
+    AuditLogList:
+      type: object
+      required: [logs, total, page, limit]
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLogEntry"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    PredictiveIndicator:
+      type: object
+      required: [key, score, level, confidence, trend]
+      properties:
+        key:
+          type: string
+        score:
+          type: number
+        level:
+          type: string
+        confidence:
+          type: number
+        trend:
+          type: string
+        description:
+          type: string
+
+    PredictiveOrgResponse:
+      type: object
+      required: [indicators, meta]
+      properties:
+        indicators:
+          type: array
+          items:
+            $ref: "#/components/schemas/PredictiveIndicator"
+        meta:
+          type: object
+          properties:
+            totalUsers:
+              type: integer
+            usersWithProfile:
+              type: integer
+            usersWithCci:
+              type: integer
+            computedAt:
+              type: string
+
+    PredictiveEmployeeResponse:
+      type: object
+      required: [userId, indicators, meta]
+      properties:
+        userId:
+          type: integer
+        indicators:
+          type: array
+          items:
+            $ref: "#/components/schemas/PredictiveIndicator"
+        meta:
+          type: object
+          properties:
+            hasProfile:
+              type: boolean
+            hasCci:
+              type: boolean
+            hasPhish:
+              type: boolean
+            totalPhishEvents:
+              type: integer
+            computedAt:
+              type: string
+

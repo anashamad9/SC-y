@@ -1,0 +1,40 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import authRouter from "./auth";
+import usersRouter from "./users";
+import departmentsRouter from "./departments";
+import assessmentsRouter from "./assessments";
+import coursesRouter from "./courses";
+import scoresRouter from "./scores";
+import gamificationRouter from "./gamification";
+import telemetryRouter from "./telemetry";
+import phishingRouter from "./phishing";
+import reportsRouter from "./reports";
+import adminRouter from "./admin";
+import superadminRouter from "./superadmin";
+import executiveRouter from "./executive";
+import hrRouter from "./hr";
+import aiRouter from "./ai";
+import predictiveRouter from "./predictive";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(authRouter);
+router.use(usersRouter);
+router.use(departmentsRouter);
+router.use(assessmentsRouter);
+router.use(coursesRouter);
+router.use(scoresRouter);
+router.use(gamificationRouter);
+router.use(telemetryRouter);
+router.use(phishingRouter);
+router.use(reportsRouter);
+router.use(adminRouter);
+router.use(superadminRouter);
+router.use(executiveRouter);
+router.use(hrRouter);
+router.use(aiRouter);
+router.use(predictiveRouter);
+
+export default router;

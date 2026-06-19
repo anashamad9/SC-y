@@ -1,0 +1,181 @@
+import { Link, useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useRegister } from "@workspace/api-client-react";
+import logo from "@/assets/logo";
+
+const registerSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: z.string().min(1, "Select your role"),
+});
+
+const roleMap: Record<string, string> = {
+  employee: "/portal",
+  executive: "/executive",
+  hr: "/hr",
+  admin: "/admin",
+  superadmin: "/superadmin",
+};
+
+export default function Register() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const registerMutation = useRegister();
+
+  const form = useForm<z.infer<typeof registerSchema>>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { firstName: "", lastName: "", email: "", password: "", role: "employee" },
+  });
+
+  const onSubmit = (values: z.infer<typeof registerSchema>) => {
+    registerMutation.mutate(
+      { data: values },
+      {
+        onSuccess: (data) => {
+          toast({ title: "Access Granted", description: "Welcome to CyberCultX" });
+          setLocation(roleMap[data.user.role] ?? "/portal");
+        },
+        onError: (err: any) => {
+          toast({
+            variant: "destructive",
+            title: "Registration Failed",
+            description: err.data?.error || err.message || "Registration failed",
+          });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md bg-card/80 backdrop-blur-xl border border-card-border p-8 rounded-2xl shadow-2xl relative z-10"
+      >
+        <div className="flex flex-col items-center mb-8">
+          <Link href="/">
+            <img src={logo} alt="CyberCultX" className="w-16 h-16 mb-4 cursor-pointer hover:scale-105 transition-transform" />
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight text-center">Request Clearance</h1>
+          <p className="text-sm text-muted-foreground mt-2 text-center">Create your intelligence portal account</p>
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <Label>First Name</Label>
+                    <FormControl>
+                      <Input placeholder="Ahmed" {...field} className="bg-background/50 border-input" data-testid="input-first-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <Label>Last Name</Label>
+                    <FormControl>
+                      <Input placeholder="Al-Rashidi" {...field} className="bg-background/50 border-input" data-testid="input-last-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <Label>Email Address</Label>
+                  <FormControl>
+                    <Input placeholder="agent@organization.com" {...field} className="bg-background/50 border-input" data-testid="input-email" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <Label>Passphrase</Label>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} className="bg-background/50 border-input" data-testid="input-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <Label>Access Level</Label>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-background/50 border-input" data-testid="select-role">
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="employee">Operative (Employee)</SelectItem>
+                      <SelectItem value="executive">Executive</SelectItem>
+                      <SelectItem value="hr">HR Officer</SelectItem>
+                      <SelectItem value="admin">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90 text-white mt-2"
+              disabled={registerMutation.isPending}
+              data-testid="button-register"
+            >
+              {registerMutation.isPending ? "Processing..." : "Initiate Access"}
+            </Button>
+          </form>
+        </Form>
+
+        <div className="mt-6 text-center text-sm text-muted-foreground border-t border-border/50 pt-6">
+          Already have clearance?{" "}
+          <Link href="/login" className="text-primary hover:underline font-medium" data-testid="link-login">
+            Authenticate
+          </Link>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
