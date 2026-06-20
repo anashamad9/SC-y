@@ -16,6 +16,7 @@ import Landing from "@/views/landing";
 import Login from "@/views/auth/login";
 import Register from "@/views/auth/register";
 import ForgotPassword from "@/views/auth/forgot-password";
+import ResetPassword from "@/views/auth/reset-password";
 import MfaSetup from "@/views/auth/mfa-setup";
 import Portal from "@/views/portal";
 
@@ -97,6 +98,7 @@ function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/mfa-setup" component={MfaSetup} />
 
       <Route path="/portal">

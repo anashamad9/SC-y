@@ -259,7 +259,7 @@ export default function Landing() {
                   "{t.quote}"
                 </blockquote>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-pink-800 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-red-900 flex items-center justify-center text-white text-sm font-bold shrink-0">
                     {t.initials}
                   </div>
                   <div>

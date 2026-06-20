@@ -15,6 +15,7 @@ const ROLE_COLORS: Record<string, string> = {
   hr: "bg-teal-500/20 text-teal-400 border-teal-500/30",
 };
 const ROLES = ["employee", "admin", "executive", "hr", "superadmin"];
+const EMPTY_EDIT_FORM = { role: "", departmentId: "", firstName: "", lastName: "", jobTitle: "", avatarUrl: "" };
 
 async function apiFetch(path: string, opts?: RequestInit) {
   const r = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
@@ -29,7 +30,8 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("");
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<{ role: string; departmentId: string }>({ role: "", departmentId: "" });
+  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
+  const [editImageMessage, setEditImageMessage] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ ...BLANK_FORM });
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -70,13 +72,57 @@ export default function AdminUsers() {
 
   async function saveEdit(id: number) {
     try {
-      await updateUser.mutateAsync({ id, data: { role: editForm.role, departmentId: editForm.departmentId ? parseInt(editForm.departmentId) : null } });
+      await updateUser.mutateAsync({
+        id,
+        data: {
+          firstName: editForm.firstName,
+          lastName: editForm.lastName,
+          jobTitle: editForm.jobTitle || null,
+          avatarUrl: editForm.avatarUrl || null,
+          role: editForm.role,
+          departmentId: editForm.departmentId ? parseInt(editForm.departmentId) : null,
+        },
+      });
       setEditingId(null);
+      setEditImageMessage(null);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "User updated" });
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
     }
+  }
+
+  function startEdit(u: any) {
+    setEditingId(u.id);
+    setEditImageMessage(null);
+    setEditForm({
+      role: u.role,
+      departmentId: String(u.departmentId ?? ""),
+      firstName: u.firstName ?? "",
+      lastName: u.lastName ?? "",
+      jobTitle: u.jobTitle ?? "",
+      avatarUrl: u.avatarUrl ?? "",
+    });
+  }
+
+  function handleEditAvatarFile(file?: File) {
+    setEditImageMessage(null);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setEditImageMessage("Choose an image file.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setEditImageMessage("Image must be 1MB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditForm(f => ({ ...f, avatarUrl: String(reader.result ?? "") }));
+      setEditImageMessage("Image selected. Save to apply it.");
+    };
+    reader.onerror = () => setEditImageMessage("Could not read image.");
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -174,7 +220,7 @@ export default function AdminUsers() {
       {/* Table */}
       <div className="bg-card/80 border border-border rounded-xl overflow-hidden">
         <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] text-xs text-muted-foreground uppercase tracking-wider px-5 py-3 border-b border-border bg-muted/20">
-          <div>Name</div><div>Email</div><div>Role</div><div>Department</div><div>Actions</div>
+          <div>Profile</div><div>Email</div><div>Role</div><div>Department</div><div>Actions</div>
         </div>
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -185,7 +231,42 @@ export default function AdminUsers() {
             {filtered.map((u, i) => (
               <motion.div key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
                 className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] px-5 py-3 items-center hover:bg-muted/10">
-                <div className="font-medium text-sm">{u.firstName} {u.lastName}</div>
+                <div className="min-w-0">
+                  {editingId === u.id ? (
+                    <div className="space-y-2 pr-2">
+                      <div className="flex items-center gap-2">
+                        {editForm.avatarUrl ? (
+                          <img src={editForm.avatarUrl} alt={`${editForm.firstName} ${editForm.lastName}`} className="h-8 w-8 rounded-full object-cover border border-border" />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                            {(editForm.firstName[0] ?? "?")}{editForm.lastName[0] ?? ""}
+                          </div>
+                        )}
+                        <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e => handleEditAvatarFile(e.target.files?.[0])} className="h-8 text-xs" />
+                      </div>
+                      {editImageMessage && <div className="text-[11px] text-muted-foreground">{editImageMessage}</div>}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input value={editForm.firstName} onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))} className="h-8 text-xs" placeholder="First" />
+                        <Input value={editForm.lastName} onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))} className="h-8 text-xs" placeholder="Last" />
+                      </div>
+                      <Input value={editForm.jobTitle} onChange={e => setEditForm(f => ({ ...f, jobTitle: e.target.value }))} className="h-8 text-xs" placeholder="Job title" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {(u as any).avatarUrl ? (
+                        <img src={(u as any).avatarUrl} alt={`${u.firstName} ${u.lastName}`} className="h-8 w-8 rounded-full object-cover border border-border" />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                          {u.firstName[0]}{u.lastName[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">{u.firstName} {u.lastName}</div>
+                        <div className="text-xs text-muted-foreground truncate">{(u as any).jobTitle ?? "—"}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground truncate">{u.email}</div>
                 <div>
                   {editingId === u.id ? (
@@ -214,12 +295,12 @@ export default function AdminUsers() {
                   {editingId === u.id ? (
                     <>
                       <Button size="sm" className="h-6 text-xs px-2" onClick={() => saveEdit(u.id)}>Save</Button>
-                      <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setEditingId(null)}>Cancel</Button>
+                      <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => { setEditingId(null); setEditImageMessage(null); }}>Cancel</Button>
                     </>
                   ) : (
                     <>
                       <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
-                        onClick={() => { setEditingId(u.id); setEditForm({ role: u.role, departmentId: String((u as any).departmentId ?? "") }); }}>
+                        onClick={() => startEdit(u)}>
                         Edit
                       </Button>
                       <button onClick={() => { setConfirmDeleteId(u.id); setEditingId(null); }}

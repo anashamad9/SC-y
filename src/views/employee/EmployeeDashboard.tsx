@@ -90,6 +90,7 @@ export default function EmployeeDashboard() {
 
   const hrsColor = !scores ? "#6b7280" : scores.humanRiskScore > 70 ? "#ef4444" : scores.humanRiskScore > 50 ? "#f97316" : "#22c55e";
   const cciColor = !scores ? "#6b7280" : scores.cciScore > 70 ? "#22c55e" : scores.cciScore > 50 ? "#f97316" : "#ef4444";
+  const hasScores = !!scores && (scores as any).hasScores !== false && (scores.securityReadinessScore ?? 0) > 0;
 
   const recommended = path?.recommended?.slice(0, 3) ?? [];
   const recentBadges = badges?.slice(0, 4) ?? [];
@@ -113,8 +114,8 @@ export default function EmployeeDashboard() {
       {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Human Risk Score", value: scores?.humanRiskScore ?? 65, unit: "/100", color: hrsColor, sub: scores?.riskCategory ?? "Medium" },
-          { label: "Culture Index (CCI)", value: scores?.cciScore ?? 52, unit: "/100", color: cciColor, sub: scores?.trend ?? "stable" },
+          { label: "Human Risk Score", value: hasScores ? scores?.humanRiskScore ?? 0 : 0, unit: "/100", color: hrsColor, sub: hasScores ? scores?.riskCategory ?? "Not Assessed" : "Not Assessed" },
+          { label: "Culture Index (CCI)", value: hasScores ? scores?.cciScore ?? 0 : 0, unit: "/100", color: cciColor, sub: hasScores ? scores?.trend ?? "stable" : "no data" },
           { label: "XP Earned", value: gp?.xp ?? 0, unit: " xp", color: "#a855f7", sub: `Level ${gp?.level ?? 1}` },
           { label: "Learning Streak", value: gp?.streakDays ?? 0, unit: " days", color: "#f97316", sub: "Active Streak" },
         ].map((card, i) => (
@@ -146,13 +147,13 @@ export default function EmployeeDashboard() {
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">Risk & Culture Gauges</div>
           <div className="flex items-center justify-around">
             <div className="text-center">
-              <CircleGauge value={scores?.humanRiskScore ?? 65} label="Risk Score" color={hrsColor} />
+              <CircleGauge value={hasScores ? scores?.humanRiskScore ?? 0 : 0} label="Risk Score" color={hrsColor} />
               <div className="text-xs mt-1 font-medium" style={{ color: hrsColor }}>
-                {scores?.riskCategory ?? "Medium"} Risk
+                {hasScores ? scores?.riskCategory ?? "Not Assessed" : "Not Assessed"}
               </div>
             </div>
             <div className="text-center">
-              <CircleGauge value={scores?.cciScore ?? 52} label="CCI Score" color={cciColor} />
+              <CircleGauge value={hasScores ? scores?.cciScore ?? 0 : 0} label="CCI Score" color={cciColor} />
               <div className="text-xs mt-1 font-medium" style={{ color: cciColor }}>
                 Culture Index
               </div>
@@ -161,10 +162,10 @@ export default function EmployeeDashboard() {
           {/* CCI sub-scores */}
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
             {[
-              { label: "Behavioral Stability", value: scores?.behavioralStabilityScore ?? 55 },
-              { label: "Decision Quality", value: scores?.decisionQualityScore ?? 55 },
-              { label: "Compliance", value: scores?.complianceBehaviorScore ?? 50 },
-              { label: "Culture Contribution", value: scores?.cultureContributionScore ?? 50 },
+              { label: "Behavioral Stability", value: hasScores ? scores?.behavioralStabilityScore ?? 0 : 0 },
+              { label: "Decision Quality", value: hasScores ? scores?.decisionQualityScore ?? 0 : 0 },
+              { label: "Compliance", value: hasScores ? scores?.complianceBehaviorScore ?? 0 : 0 },
+              { label: "Culture Contribution", value: hasScores ? scores?.cultureContributionScore ?? 0 : 0 },
             ].map(s => (
               <div key={s.label} className="flex justify-between">
                 <span className="text-muted-foreground">{s.label}</span>

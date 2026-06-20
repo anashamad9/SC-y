@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import {
   db,
   usersTable,
@@ -7,6 +8,7 @@ import {
   sessionsTable,
   auditLogsTable,
   gamificationProfilesTable,
+  systemConfigTable,
   AUDIT_ACTIONS,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -26,6 +28,8 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const ACCESS_MAX_AGE = 15 * 60 * 1000;
 const REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const TEST_ROLES = ["employee", "executive", "hr", "admin", "superadmin"] as const;
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 type TestRole = (typeof TEST_ROLES)[number];
 
@@ -120,6 +124,61 @@ function isTempLoginEnabled() {
 
 function isTestRole(value: unknown): value is TestRole {
   return typeof value === "string" && TEST_ROLES.includes(value as TestRole);
+}
+
+function hashResetToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function canExposeResetToken() {
+  return process.env.EXPOSE_PASSWORD_RESET_TOKEN === "true" && process.env.NODE_ENV !== "production";
+}
+
+function resetConfigKey(tokenHash: string) {
+  return `auth.password_reset.${tokenHash}`;
+}
+
+function generateTotpSecret(length = 20) {
+  const bytes = crypto.randomBytes(length);
+  let bits = "";
+  for (const byte of bytes) bits += byte.toString(2).padStart(8, "0");
+  let secret = "";
+  for (let i = 0; i < bits.length; i += 5) {
+    secret += BASE32_ALPHABET[parseInt(bits.slice(i, i + 5).padEnd(5, "0"), 2)];
+  }
+  return secret;
+}
+
+function base32ToBuffer(secret: string) {
+  const clean = secret.replace(/=+$/g, "").replace(/\s+/g, "").toUpperCase();
+  let bits = "";
+  for (const char of clean) {
+    const value = BASE32_ALPHABET.indexOf(char);
+    if (value === -1) continue;
+    bits += value.toString(2).padStart(5, "0");
+  }
+  const bytes: number[] = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+function totp(secret: string, timeStep = Math.floor(Date.now() / 30000)) {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(timeStep));
+  const hmac = crypto.createHmac("sha1", base32ToBuffer(secret)).update(counter).digest();
+  const offset = hmac[hmac.length - 1] & 0xf;
+  const code = ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  return String(code % 1_000_000).padStart(6, "0");
+}
+
+function verifyTotp(secret: string, code: string) {
+  const step = Math.floor(Date.now() / 30000);
+  return [-1, 0, 1].some(offset => totp(secret, step + offset) === code);
 }
 
 async function getOrCreateTestDepartment() {
@@ -395,11 +454,121 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  res.json({ message: "If that email exists, a reset link has been sent." });
+  const email = parsed.data.email.toLowerCase();
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+  let resetUrl: string | undefined;
+  if (user) {
+    const token = crypto.randomBytes(32).toString("base64url");
+    const tokenHash = hashResetToken(token);
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+    await db.insert(systemConfigTable)
+      .values({
+        key: resetConfigKey(tokenHash),
+        value: JSON.stringify({ userId: user.id, expiresAt: expiresAt.toISOString() }),
+        category: "auth",
+      })
+      .onConflictDoUpdate({
+        target: systemConfigTable.key,
+        set: {
+          value: JSON.stringify({ userId: user.id, expiresAt: expiresAt.toISOString() }),
+          updatedAt: new Date(),
+        },
+      });
+
+    await writeAudit("PASSWORD_RESET_REQUESTED", user.id, req);
+    if (canExposeResetToken()) {
+      const origin = process.env.NEXT_PUBLIC_SITE_URL || `${req.protocol}://${req.get("host")}`;
+      resetUrl = `${origin}/reset-password?token=${token}`;
+    }
+  }
+
+  res.json({
+    message: "If that email exists, recovery instructions have been sent.",
+    ...(resetUrl ? { resetUrl } : {}),
+  });
 });
 
-router.post("/auth/mfa/setup", requireAuth, async (_req, res): Promise<void> => {
-  res.status(501).json({ error: "MFA setup requires a real TOTP provider and is not configured yet." });
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const { token, password } = req.body as { token?: string; password?: string };
+  if (!token || !password || password.length < 8) {
+    res.status(400).json({ error: "A valid token and password of at least 8 characters are required." });
+    return;
+  }
+
+  const tokenHash = hashResetToken(token);
+  const [resetRow] = await db.select().from(systemConfigTable).where(eq(systemConfigTable.key, resetConfigKey(tokenHash))).limit(1);
+  const resetData = resetRow?.value ? JSON.parse(resetRow.value) as { userId?: number; expiresAt?: string } : null;
+  if (!resetData?.userId || !resetData.expiresAt || new Date(resetData.expiresAt) < new Date()) {
+    res.status(400).json({ error: "Reset link is invalid or expired." });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, resetData.userId)).limit(1);
+  if (!user) {
+    res.status(400).json({ error: "Reset link is invalid or expired." });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.update(usersTable)
+    .set({
+      passwordHash,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    })
+    .where(eq(usersTable.id, user.id));
+  await db.delete(sessionsTable).where(eq(sessionsTable.userId, user.id));
+  await db.delete(systemConfigTable).where(eq(systemConfigTable.key, resetConfigKey(tokenHash)));
+  await writeAudit("PASSWORD_RESET_COMPLETED", user.id, req);
+  res.json({ message: "Password has been reset. Sign in with your new password." });
+});
+
+router.post("/auth/change-password", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!currentPassword || !newPassword || newPassword.length < 8) {
+    res.status(400).json({ error: "Current password and a new password of at least 8 characters are required." });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    await writeAudit("PASSWORD_CHANGE_FAILED", user.id, req);
+    res.status(401).json({ error: "Current password is incorrect." });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, user.id));
+  await writeAudit("PASSWORD_CHANGED", user.id, req);
+  res.json({ message: "Password updated successfully." });
+});
+
+router.post("/auth/mfa/setup", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const secret = user.mfaSecret || generateTotpSecret();
+  await db.update(usersTable).set({ mfaSecret: secret, mfaEnabled: false }).where(eq(usersTable.id, user.id));
+  const label = encodeURIComponent(`CyberCultX:${user.email}`);
+  const issuer = encodeURIComponent("CyberCultX");
+  const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+  res.json({
+    secret,
+    otpauthUrl,
+    qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(otpauthUrl)}`,
+  });
 });
 
 router.post("/auth/mfa/verify", requireAuth, async (req, res): Promise<void> => {
@@ -409,7 +578,22 @@ router.post("/auth/mfa/verify", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
-  res.status(501).json({ error: "MFA verification requires a real TOTP provider and is not configured yet." });
+  const userId = req.user!.userId;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user?.mfaSecret) {
+    res.status(400).json({ error: "MFA setup has not been started." });
+    return;
+  }
+
+  if (!verifyTotp(user.mfaSecret, parsed.data.code)) {
+    await writeAudit("MFA_VERIFY_FAILED", user.id, req);
+    res.status(401).json({ error: "Invalid MFA code" });
+    return;
+  }
+
+  await db.update(usersTable).set({ mfaEnabled: true }).where(eq(usersTable.id, user.id));
+  await writeAudit("MFA_ENABLED", user.id, req);
+  res.json({ message: "MFA enabled successfully." });
 });
 
 // POST /auth/complete-onboarding — marks onboarding wizard as finished

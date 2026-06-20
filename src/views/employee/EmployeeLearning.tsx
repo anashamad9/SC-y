@@ -85,12 +85,15 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
 
   const currentPct = localProgress ?? (course?.progressPct ?? 0);
   const status = course?.status ?? "not_started";
+  const lessons = course?.lessons ?? [];
+  const videoUrl = (course as any)?.videoUrl;
 
   function startLesson(lessonIndex: number) {
-    const pct = Math.round(((lessonIndex + 1) / (course?.lessons?.length ?? 1)) * 100);
+    const lessonCount = Math.max(lessons.length, 1);
+    const pct = Math.round(((lessonIndex + 1) / lessonCount) * 100);
     setLocalProgress(pct);
     progressMutation.mutate(
-      { id: courseId, data: { progressPct: pct, lastLessonId: course?.lessons?.[lessonIndex]?.id } },
+      { id: courseId, data: { progressPct: pct, lastLessonId: lessons[lessonIndex]?.id } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["listCourses"] });
@@ -135,6 +138,20 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
 
         <p className="text-sm text-muted-foreground leading-relaxed mb-5">{course.description}</p>
 
+        {videoUrl && (
+          <div className="mb-5 overflow-hidden rounded-lg bg-primary/5 shadow-sm">
+            <div className="aspect-video w-full bg-background">
+              <iframe
+                src={videoUrl}
+                title={course.title}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
+
         {/* Progress */}
         <div className="mb-5">
           <div className="flex justify-between text-xs mb-1.5">
@@ -153,9 +170,26 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
 
         {/* Lessons */}
         <div className="space-y-2 mb-5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Lesson Plan</div>
-          {(course.lessons ?? []).map((lesson: any, i: number) => {
-            const lessonPct = ((i + 1) / (course.lessons?.length ?? 1)) * 100;
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{lessons.length > 0 ? "Lesson Plan" : "Video Progress"}</div>
+          {lessons.length === 0 ? (
+            <button
+              onClick={() => startLesson(0)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-left transition-all ${
+                currentPct >= 100
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-primary/10 hover:bg-primary/18 text-primary"
+              }`}
+            >
+              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono shrink-0 bg-primary/15">
+                {currentPct >= 100 ? "✓" : "▶"}
+              </span>
+              <div className="flex-1">
+                <div>{currentPct >= 100 ? "Video completed" : "Mark video as complete"}</div>
+                <div className="text-xs text-muted-foreground">Updates your course progress and XP</div>
+              </div>
+            </button>
+          ) : lessons.map((lesson: any, i: number) => {
+            const lessonPct = ((i + 1) / lessons.length) * 100;
             const isDone = currentPct >= lessonPct;
             return (
               <button
@@ -189,9 +223,9 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
         ) : (
           <Button
             onClick={() => {
-              const nextIdx = Math.floor((currentPct / 100) * (course.lessons?.length ?? 1));
-              startLesson(nextIdx);
-            }}
+                  const nextIdx = Math.min(Math.floor((currentPct / 100) * Math.max(lessons.length, 1)), Math.max(lessons.length - 1, 0));
+                  startLesson(nextIdx);
+                }}
             disabled={progressMutation.isPending}
             className="w-full bg-primary text-white hover:bg-primary/80"
           >

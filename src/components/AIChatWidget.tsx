@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import { API_BASE } from "@/lib/runtime";
+import logo from "@/assets/logo";
 
 const ARABIC_RE = /[\u0600-\u06FF]/;
 
@@ -135,11 +136,15 @@ export default function AIChatWidget() {
     <>
       <motion.button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary shadow-lg shadow-primary/30 flex items-center justify-center text-white text-2xl hover:scale-110 transition-transform"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center hover:scale-105 transition-transform"
         whileTap={{ scale: 0.95 }}
         title={t("ai.title")}
       >
-        {open ? "✕" : "🤖"}
+        {open ? (
+          <span className="text-xl text-primary leading-none">×</span>
+        ) : (
+          <img src={logo} alt="The Harvesters Logo" className="h-10 w-8 object-contain" />
+        )}
       </motion.button>
 
       <AnimatePresence>
@@ -149,12 +154,14 @@ export default function AIChatWidget() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[560px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[560px] bg-card border border-border rounded-2xl flex flex-col overflow-hidden"
             dir={isArabic ? "rtl" : "ltr"}
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-primary/20 to-pink-900/20 border-b border-border">
-              <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-base">🤖</div>
+            <div className="flex items-center gap-3 px-4 py-3 bg-background border-b border-border">
+              <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+                <img src={logo} alt="The Harvesters Logo" className="h-6 w-5 object-contain" />
+              </div>
               <div>
                 <div className="text-sm font-semibold">{t("ai.title")}</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1">

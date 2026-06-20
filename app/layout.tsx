@@ -3,6 +3,7 @@ import "../src/index.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cybercultx.com";
 const siteName = "CyberCultX";
+const brandLogo = "/harvesters-logo-pTM7qJ45.png";
 const siteDescription =
   "CyberCultX is a human-risk intelligence and security readiness platform for psychometric assessment, training recommendations, phishing resilience, and executive cyber culture analytics.";
 
@@ -39,10 +40,10 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: "/opengraph.jpg",
-        width: 1200,
-        height: 630,
-        alt: "CyberCultX human risk intelligence platform",
+        url: brandLogo,
+        width: 1367,
+        height: 1920,
+        alt: "The Harvesters logo",
       },
     ],
   },
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "CyberCultX | Human Risk Intelligence Platform",
     description: siteDescription,
-    images: ["/opengraph.jpg"],
+    images: [brandLogo],
   },
   robots: {
     index: true,
@@ -64,9 +65,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: brandLogo,
+    shortcut: brandLogo,
+    apple: brandLogo,
   },
 };
 

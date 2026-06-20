@@ -1,12 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetMe, useLogout, useGetUserStats, useListDepartments } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import logo from "@/assets/logo";
 import { useI18n } from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
+import {
+  Activity,
+  Award,
+  BarChart3,
+  BookOpen,
+  Bot,
+  Building2,
+  ClipboardCheck,
+  FileText,
+  KeyRound,
+  Languages,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  Menu,
+  Monitor,
+  Network,
+  PieChart,
+  ScrollText,
+  Settings,
+  ShieldAlert,
+  Target,
+  UserCircle,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import ThemeToggle from "@/components/theme-toggle";
 import EmployeeDashboard from "./employee/EmployeeDashboard";
 import EmployeeAssessments from "./employee/EmployeeAssessments";
@@ -23,7 +50,6 @@ import AdminReports from "./admin/AdminReports";
 import AdminSettings from "./admin/AdminSettings";
 import SuperAdminTenants from "./superadmin/SuperAdminTenants";
 import SuperAdminAuditLogs from "./superadmin/SuperAdminAuditLogs";
-import SuperAdminConfig from "./superadmin/SuperAdminConfig";
 import SuperAdminMonitoring from "./superadmin/SuperAdminMonitoring";
 import AdminAssessments from "./admin/AdminAssessments";
 import AdminNotifications from "./admin/AdminNotifications";
@@ -31,64 +57,78 @@ import SuperAdminAnalytics from "./superadmin/SuperAdminAnalytics";
 import ExecutiveDashboard from "./executive/ExecutiveDashboard";
 import HRDashboard from "./hr/HRDashboard";
 import AIChatWidget from "@/components/AIChatWidget";
+import { API_BASE } from "@/lib/runtime";
 
 interface NavItem {
   label: string;
-  icon: string;
+  icon: LucideIcon;
   key: string;
 }
 
 const navByRole: Record<string, NavItem[]> = {
   Employee: [
-    { label: "nav.dashboard", icon: "⬡", key: "dashboard" },
-    { label: "nav.myAssessments", icon: "◈", key: "assessments" },
-    { label: "nav.learning", icon: "◉", key: "learning" },
-    { label: "nav.achievements", icon: "◆", key: "achievements" },
-    { label: "nav.phishingResults", icon: "◎", key: "phishing" },
-    { label: "nav.profile", icon: "◯", key: "profile" },
+    { label: "nav.dashboard", icon: LayoutDashboard, key: "dashboard" },
+    { label: "nav.myAssessments", icon: ClipboardCheck, key: "assessments" },
+    { label: "nav.learning", icon: BookOpen, key: "learning" },
+    { label: "nav.achievements", icon: Award, key: "achievements" },
+    { label: "nav.phishingResults", icon: Target, key: "phishing" },
+    { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
   Executive: [
-    { label: "nav.executiveDashboard", icon: "⬡", key: "dashboard" },
-    { label: "nav.riskOverview", icon: "◈", key: "risk" },
-    { label: "nav.departmentHeatmap", icon: "◉", key: "heatmap" },
-    { label: "nav.reports", icon: "◆", key: "reports" },
-    { label: "nav.aiInsights", icon: "◎", key: "ai" },
+    { label: "nav.executiveDashboard", icon: LayoutDashboard, key: "dashboard" },
+    { label: "nav.riskOverview", icon: ShieldAlert, key: "risk" },
+    { label: "nav.departmentHeatmap", icon: Network, key: "heatmap" },
+    { label: "nav.reports", icon: FileText, key: "reports" },
+    { label: "nav.aiInsights", icon: Bot, key: "ai" },
+    { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
   HR: [
-    { label: "nav.hrDashboard", icon: "⬡", key: "dashboard" },
-    { label: "nav.learningProgress", icon: "◈", key: "learning" },
-    { label: "nav.riskDistribution", icon: "◉", key: "risk" },
-    { label: "nav.employeeManagement", icon: "◆", key: "employees" },
-    { label: "nav.reports", icon: "◎", key: "reports" },
+    { label: "nav.hrDashboard", icon: LayoutDashboard, key: "dashboard" },
+    { label: "nav.learningProgress", icon: BarChart3, key: "learning" },
+    { label: "nav.riskDistribution", icon: PieChart, key: "risk" },
+    { label: "nav.employeeManagement", icon: Users, key: "employees" },
+    { label: "nav.reports", icon: FileText, key: "reports" },
+    { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
   Admin: [
-    { label: "nav.users", icon: "⬡", key: "users" },
-    { label: "nav.departments", icon: "◈", key: "departments" },
-    { label: "nav.courses", icon: "◉", key: "courses" },
-    { label: "nav.simulations", icon: "◆", key: "simulations" },
-    { label: "nav.assessments", icon: "◎", key: "assessments" },
-    { label: "nav.reports", icon: "◯", key: "reports" },
-    { label: "nav.notifications", icon: "◐", key: "notifications" },
-    { label: "nav.settings", icon: "◑", key: "settings" },
+    { label: "nav.users", icon: Users, key: "users" },
+    { label: "nav.departments", icon: Building2, key: "departments" },
+    { label: "nav.courses", icon: BookOpen, key: "courses" },
+    { label: "nav.simulations", icon: Target, key: "simulations" },
+    { label: "nav.assessments", icon: ClipboardCheck, key: "assessments" },
+    { label: "nav.reports", icon: FileText, key: "reports" },
+    { label: "nav.notifications", icon: Megaphone, key: "notifications" },
+    { label: "nav.settings", icon: Settings, key: "settings" },
+    { label: "nav.auditLogs", icon: ScrollText, key: "audit" },
+    { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
   SuperAdmin: [
-    { label: "nav.tenants", icon: "⬡", key: "tenants" },
-    { label: "nav.analytics", icon: "◈", key: "analytics" },
-    { label: "nav.systemConfig", icon: "◉", key: "config" },
-    { label: "nav.aiConfig", icon: "◆", key: "ai" },
-    { label: "nav.licensing", icon: "◎", key: "licensing" },
-    { label: "nav.auditLogs", icon: "◯", key: "audit" },
-    { label: "nav.monitoring", icon: "◑", key: "monitoring" },
+    { label: "nav.tenants", icon: Building2, key: "tenants" },
+    { label: "nav.analytics", icon: Activity, key: "analytics" },
+    { label: "nav.courses", icon: BookOpen, key: "courses" },
+    { label: "nav.licensing", icon: KeyRound, key: "licensing" },
+    { label: "nav.auditLogs", icon: ScrollText, key: "audit" },
+    { label: "nav.monitoring", icon: Monitor, key: "monitoring" },
+    { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
 };
 
 const roleColors: Record<string, string> = {
   Employee: "from-blue-600 to-blue-800",
-  Executive: "from-primary to-pink-800",
+  employee: "from-blue-600 to-blue-800",
+  Executive: "from-primary to-red-900",
+  executive: "from-primary to-red-900",
   HR: "from-purple-600 to-purple-800",
+  hr: "from-purple-600 to-purple-800",
   Admin: "from-orange-600 to-orange-800",
+  admin: "from-orange-600 to-orange-800",
   SuperAdmin: "from-primary to-red-900",
+  superadmin: "from-primary to-red-900",
 };
+
+function roleColorClass(role: string) {
+  return roleColors[role] ?? roleColors.Employee;
+}
 
 function useRoleTitle(role: string): string {
   const { t } = useTranslation();
@@ -100,12 +140,200 @@ function LanguageToggle() {
   return (
     <button
       onClick={() => setLang(lang === "en" ? "ar" : "en")}
-      className="flex min-h-7 items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/18"
+      className="flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-[11px] font-medium text-primary border border-border transition-colors hover:bg-muted"
       title="Toggle language / تغيير اللغة"
     >
-      <span className="text-sm leading-none">{lang === "en" ? "🇸🇦" : "🇬🇧"}</span>
-      <span className="hidden sm:block font-mono">{lang === "en" ? "العربية" : "English"}</span>
+      <Languages className="h-3.5 w-3.5" />
+      <span className="font-mono">{lang === "en" ? "العربية" : "English"}</span>
     </button>
+  );
+}
+
+function UserAvatar({ user, role, className = "h-9 w-9" }: { user: any; role: string; className?: string }) {
+  const initials = user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` : "?";
+  if (user?.avatarUrl) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt={`${user.firstName} ${user.lastName}`}
+        className={`${className} rounded-full object-cover border border-border bg-background shrink-0`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${className} rounded-full bg-gradient-to-br ${roleColorClass(role)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+      {initials}
+    </div>
+  );
+}
+
+function ProfileSettings({ user }: { user: any }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    firstName: user?.firstName ?? "",
+    lastName: user?.lastName ?? "",
+    jobTitle: user?.jobTitle ?? "",
+    avatarUrl: user?.avatarUrl ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "" });
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [imageMessage, setImageMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setForm({
+      firstName: user?.firstName ?? "",
+      lastName: user?.lastName ?? "",
+      jobTitle: user?.jobTitle ?? "",
+      avatarUrl: user?.avatarUrl ?? "",
+    });
+  }, [user?.firstName, user?.lastName, user?.jobTitle, user?.avatarUrl]);
+
+  if (!user) {
+    return <div className="text-sm text-muted-foreground">Loading profile...</div>;
+  }
+
+  async function saveProfile() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/users/${user.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) throw new Error("Profile update failed");
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setMessage("Profile updated");
+    } catch {
+      setMessage("Could not update profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleAvatarFile(file?: File) {
+    setImageMessage(null);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageMessage("Choose an image file.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setImageMessage("Profile image must be 1MB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm(f => ({ ...f, avatarUrl: String(reader.result ?? "") }));
+      setImageMessage("Image selected. Save profile to apply it.");
+    };
+    reader.onerror = () => setImageMessage("Could not read image.");
+    reader.readAsDataURL(file);
+  }
+
+  async function changePassword() {
+    setPasswordMessage(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(passwordForm),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Password update failed");
+      setPasswordForm({ currentPassword: "", newPassword: "" });
+      setPasswordMessage(data.message || "Password updated");
+    } catch (error: any) {
+      setPasswordMessage(error.message || "Password update failed");
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div>
+        <h2 className="text-lg font-bold mb-1">Profile Settings</h2>
+        <p className="text-sm text-muted-foreground">Manage the account details stored in the database.</p>
+      </div>
+      <div className="bg-card rounded-lg p-5 border border-border space-y-4">
+        <div className="flex items-center gap-3">
+          <UserAvatar user={{ ...user, avatarUrl: form.avatarUrl, firstName: form.firstName, lastName: form.lastName }} role={user.role ?? "Employee"} className="h-12 w-12" />
+          <div>
+            <div className="text-sm font-semibold">{form.firstName} {form.lastName}</div>
+            <div className="text-xs text-muted-foreground capitalize">{user.role}</div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+          <label className="text-xs text-muted-foreground block">Profile Image</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={e => handleAvatarFile(e.target.files?.[0])}
+              className="max-w-xs"
+            />
+            <Button type="button" size="sm" variant="outline" onClick={() => setForm(f => ({ ...f, avatarUrl: "" }))}>
+              Remove Image
+            </Button>
+          </div>
+          {imageMessage && <div className="text-xs text-muted-foreground">{imageMessage}</div>}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">First Name</label>
+            <Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Last Name</label>
+            <Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Job Title</label>
+            <Input value={form.jobTitle} onChange={e => setForm(f => ({ ...f, jobTitle: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Avatar URL</label>
+            <Input value={form.avatarUrl} onChange={e => setForm(f => ({ ...f, avatarUrl: e.target.value }))} />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button onClick={saveProfile} disabled={saving || !form.firstName || !form.lastName}>
+            {saving ? "Saving..." : "Save Profile"}
+          </Button>
+          {message && <span className="text-xs text-muted-foreground">{message}</span>}
+        </div>
+      </div>
+      <div className="bg-card rounded-lg p-5 border border-border space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold">Password</h3>
+          <p className="text-xs text-muted-foreground">Change your password using your current credentials.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input
+            type="password"
+            value={passwordForm.currentPassword}
+            onChange={e => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))}
+            placeholder="Current password"
+          />
+          <Input
+            type="password"
+            value={passwordForm.newPassword}
+            onChange={e => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))}
+            placeholder="New password"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Button onClick={changePassword} disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 8}>
+            Change Password
+          </Button>
+          {passwordMessage && <span className="text-xs text-muted-foreground">{passwordMessage}</span>}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -154,59 +382,70 @@ export default function Portal({ role }: { role: string }) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: isRTL ? 280 : -280, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="w-60 bg-card/90 backdrop-blur-xl flex flex-col shrink-0 shadow-sm"
+            className="sticky top-0 h-screen w-64 bg-card text-card-foreground flex flex-col shrink-0 border-r border-border"
           >
             {/* Logo */}
-            <div className="p-4">
-              <Link href="/" className="flex items-center gap-3">
-                <img src={logo} alt="CyberCultX" className="w-8 h-8" />
+            <div className="px-5 py-4">
+              <Link href="/" className="flex items-center gap-3.5">
+                <img src={logo} alt="The Harvesters Logo" className="h-12 w-10 object-contain" />
                 <div>
-                  <div className="font-bold text-xs tracking-widest text-foreground">CYBERCULTX</div>
-                  <div className="text-[11px] text-muted-foreground">{t(`roleTitle.${role}`)}</div>
+                  <div className="font-bold text-sm tracking-[0.22em] text-foreground">CYBERCULTX</div>
+                  <div className="text-sm text-muted-foreground">{t(`roleTitle.${role}`)}</div>
                 </div>
               </Link>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 px-3 pb-3 space-y-1 overflow-y-auto">
-              {navItems.map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => setActiveKey(item.key)}
-                  data-testid={`nav-${item.key}`}
-                  className={`w-full flex min-h-8 items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition-colors ${
-                    activeKey === item.key
-                      ? "bg-primary/85 text-primary-foreground shadow-sm"
-                      : "bg-primary/7 text-muted-foreground hover:bg-primary/14 hover:text-primary"
-                  }`}
-                >
-                  <span className="text-sm font-mono leading-none">{item.icon}</span>
-                  {t(item.label)}
-                </button>
-              ))}
+            <nav className="flex-1 px-3 pb-3 space-y-1 overflow-hidden">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = activeKey === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveKey(item.key)}
+                    data-testid={`nav-${item.key}`}
+                    className={`w-full flex min-h-8 items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-white"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-muted-foreground"}`} strokeWidth={2} />
+                    <span className="truncate">{t(item.label)}</span>
+                  </button>
+                );
+              })}
             </nav>
 
             {/* User info */}
             {user && (
-              <div className="p-3">
-                <div className="flex items-center gap-2.5 mb-2 rounded-lg bg-primary/5 p-2">
-                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                    {user.firstName[0]}{user.lastName[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium truncate">{user.firstName} {user.lastName}</div>
-                    <div className="text-[11px] text-muted-foreground capitalize">{user.role}</div>
-                  </div>
+              <div className="mt-auto p-3 space-y-2 border-t border-border">
+                <div className="flex gap-2">
+                  <ThemeToggle />
+                  <LanguageToggle />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
+                  onClick={() => setActiveKey("profile")}
+                  className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${
+                    activeKey === "profile" ? "bg-primary text-white" : "bg-background hover:bg-muted"
+                  }`}
+                  data-testid="button-sidebar-profile"
+                >
+                  <UserAvatar user={user} role={role} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{user.firstName} {user.lastName}</div>
+                    <div className={`text-xs capitalize ${activeKey === "profile" ? "text-white/80" : "text-muted-foreground"}`}>{user.role}</div>
+                  </div>
+                </button>
+                <button
                   onClick={handleLogout}
-                  className="w-full bg-primary/7 text-[11px] text-muted-foreground hover:bg-primary/14 hover:text-primary"
+                  className="flex min-h-9 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium text-primary transition-colors hover:bg-muted"
                   data-testid="button-logout"
                 >
+                  <LogOut className="h-4 w-4" />
                   {t("common.logout")}
-                </Button>
+                </button>
               </div>
             )}
           </motion.aside>
@@ -216,15 +455,13 @@ export default function Portal({ role }: { role: string }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 bg-card/50 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 shadow-sm">
+        <header className="h-14 bg-card/50 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 border-b border-border">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/18"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             data-testid="button-toggle-sidebar"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="h-4 w-4" />
           </button>
 
           <div className="flex-1">
@@ -232,14 +469,9 @@ export default function Portal({ role }: { role: string }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <LanguageToggle />
-            <div className="text-xs text-muted-foreground hidden sm:block">
-              {t("common.platformName")}
-            </div>
-            <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-[11px] font-bold`}>
-              {user ? `${user.firstName[0]}${user.lastName[0]}` : "?"}
-            </div>
+            <button onClick={() => setActiveKey("profile")} className="rounded-full" data-testid="button-topbar-profile">
+              <UserAvatar user={user} role={role} className="h-7 w-7" />
+            </button>
           </div>
         </header>
 
@@ -251,7 +483,7 @@ export default function Portal({ role }: { role: string }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <PortalContent role={role} activeKey={activeKey} stats={stats} departments={departments} />
+            <PortalContent role={role} activeKey={activeKey} stats={stats} departments={departments} user={user} />
           </motion.div>
         </main>
       </div>
@@ -262,13 +494,16 @@ export default function Portal({ role }: { role: string }) {
   );
 }
 
-function PortalContent({ role, activeKey, stats, departments }: {
+function PortalContent({ role, activeKey, stats, departments, user }: {
   role: string;
   activeKey: string;
   stats: any;
   departments: any;
+  user?: any;
 }) {
   const { t } = useTranslation();
+
+  if (activeKey === "profile") return <ProfileSettings user={user} />;
 
   // ── Employee Portal ──────────────────────────────────────────────────────
   if (role === "Employee" || role === "employee") {
@@ -284,22 +519,21 @@ function PortalContent({ role, activeKey, stats, departments }: {
     if (activeKey === "dashboard") return <ExecutiveDashboard />;
     if (activeKey === "risk") return <ExecutiveDashboard />;
     if (activeKey === "heatmap") return <ExecutiveDashboard />;
-    if (activeKey === "reports" || activeKey === "ai") return (
+    if (activeKey === "reports") return <AdminReports />;
+    if (activeKey === "ai") return (
       <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-center">
-        <div className="text-4xl">{activeKey === "ai" ? "🤖" : "📊"}</div>
-        <div className="text-lg font-semibold">{activeKey === "ai" ? t("ai.aiReports") : t("ai.executiveReports")}</div>
+        <img src={logo} alt="The Harvesters Logo" className="h-14 w-10 object-contain" />
+        <div className="text-lg font-semibold">{t("ai.aiReports")}</div>
         <div className="text-sm text-muted-foreground max-w-sm">
-          {activeKey === "ai"
-            ? t("common.aiAssistantHint")
-            : t("common.reportsComingSoon")}
+          {t("common.aiAssistantHint")}
         </div>
-        {activeKey === "ai" && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-primary">
-            <span>Look for the</span>
-            <span className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm">🤖</span>
-            <span>button at the bottom right</span>
-          </div>
-        )}
+        <div className="mt-2 flex items-center gap-2 text-xs text-primary">
+          <span>Look for the</span>
+          <span className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+            <img src={logo} alt="The Harvesters Logo" className="h-6 w-5 object-contain" />
+          </span>
+          <span>button at the bottom right</span>
+        </div>
       </div>
     );
     return <ExecutiveDashboard />;
@@ -311,15 +545,7 @@ function PortalContent({ role, activeKey, stats, departments }: {
     if (activeKey === "learning") return <HRDashboard />;
     if (activeKey === "risk") return <HRDashboard />;
     if (activeKey === "employees") return <HRDashboard />;
-    if (activeKey === "reports") return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-center">
-        <div className="text-4xl">📋</div>
-        <div className="text-lg font-semibold">{t("nav.reports")}</div>
-        <div className="text-sm text-muted-foreground max-w-sm">
-          {t("common.hrReportsComingSoon")}
-        </div>
-      </div>
-    );
+    if (activeKey === "reports") return <AdminReports />;
     return <HRDashboard />;
   }
 
@@ -333,6 +559,7 @@ function PortalContent({ role, activeKey, stats, departments }: {
     if (activeKey === "reports") return <AdminReports />;
     if (activeKey === "notifications") return <AdminNotifications />;
     if (activeKey === "settings") return <AdminSettings />;
+    if (activeKey === "audit") return <SuperAdminAuditLogs />;
     return <AdminDashboard />;
   }
 
@@ -340,94 +567,17 @@ function PortalContent({ role, activeKey, stats, departments }: {
   if (role === "SuperAdmin") {
     if (activeKey === "tenants") return <SuperAdminTenants />;
     if (activeKey === "analytics") return <SuperAdminAnalytics />;
+    if (activeKey === "courses") return <AdminCourses />;
     if (activeKey === "audit") return <SuperAdminAuditLogs />;
-    if (activeKey === "config") return <SuperAdminConfig />;
     if (activeKey === "monitoring") return <SuperAdminMonitoring />;
-    if (activeKey === "ai" || activeKey === "licensing") return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-center">
-        <div className="text-4xl">{activeKey === "ai" ? "🤖" : "🔑"}</div>
-        <div className="text-lg font-semibold capitalize">{activeKey === "ai" ? "AI Configuration" : "Licensing"}</div>
-        <div className="text-sm text-muted-foreground max-w-sm">
-          {activeKey === "ai"
-            ? t("common.moduleIncomingSub")
-            : t("common.moduleIncomingSub")}
-        </div>
-      </div>
-    );
+    if (activeKey === "licensing") return <SuperAdminTenants />;
     return <SuperAdminTenants />;
   }
 
-  // ── Profile placeholder ──────────────────────────────────────────────────
-  if (activeKey === "profile") return (
-    <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-center">
-      <div className="text-4xl">◯</div>
-      <div className="text-lg font-semibold">{t("common.profileSettings")}</div>
-      <div className="text-sm text-muted-foreground">{t("common.profileComingSoon")}</div>
-    </div>
-  );
-
-  if (activeKey === "dashboard" || activeKey === "risk" || activeKey === "users" || activeKey === "tenants") {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-bold mb-1">{t(`roleTitle.${role}`)}</h2>
-          <p className="text-sm text-muted-foreground">No data is available for this module yet.</p>
-        </div>
-
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card/80 border border-border rounded-xl p-5">
-              <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">{t("common.totalOperatives")}</div>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <div className="text-xs text-muted-foreground mt-1">{stats.recentSignups} new this week</div>
-            </div>
-            <div className="bg-card/80 border border-border rounded-xl p-5">
-              <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">{t("nav.departments")}</div>
-              <div className="text-2xl font-bold">{departments?.length ?? "—"}</div>
-              <div className="text-xs text-muted-foreground mt-1">{t("common.activeDepartments")}</div>
-            </div>
-            <div className="bg-card/80 border border-border rounded-xl p-5">
-              <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">{t("common.roleDistribution")}</div>
-              <div className="space-y-1 mt-2">
-                {stats.byRole?.slice(0, 3).map((r: any) => (
-                  <div key={r.role} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground capitalize">{r.role}</span>
-                    <span className="font-medium">{r.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="space-y-4"
-      >
-        <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto">
-          <div className="text-3xl font-mono text-primary">◈</div>
-        </div>
-        <h2 className="text-xl font-bold">{t("common.moduleIncoming")}</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          {t("common.moduleIncomingSub")}
-        </p>
-        <div className="flex gap-1 justify-center">
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="w-2 h-2 rounded-full bg-primary"
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.2, delay: i * 0.2, repeat: Infinity }}
-            />
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  );
+  if (role === "Employee" || role === "employee") return <EmployeeDashboard />;
+  if (role === "Executive") return <ExecutiveDashboard />;
+  if (role === "HR") return <HRDashboard />;
+  if (role === "Admin") return <AdminDashboard />;
+  if (role === "SuperAdmin") return <SuperAdminTenants />;
+  return <EmployeeDashboard />;
 }

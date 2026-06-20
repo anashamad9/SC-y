@@ -143,7 +143,7 @@ export default function Login() {
       <div className="absolute right-4 top-4 z-20">
         <ThemeToggle />
       </div>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_left,_var(--tw-gradient-stops))] from-primary/8 via-background to-background" />
+      <div className="absolute inset-0 bg-background" />
       
       <motion.div 
         initial={{ opacity: 0, x: -18 }}
@@ -151,10 +151,10 @@ export default function Login() {
         transition={{ duration: 0.5 }}
         className="relative z-10 flex min-h-screen items-center justify-center px-5 py-10 lg:px-10"
       >
-        <div className="w-full max-w-sm bg-card/88 backdrop-blur-xl p-6 rounded-lg shadow-xl">
+        <div className="w-full max-w-sm bg-card p-6 rounded-lg border border-border text-card-foreground">
           <div className="flex flex-col items-center mb-6">
             <Link href="/">
-              <img src={logo} alt="Logo" className="w-12 h-12 mb-3 cursor-pointer hover:scale-105 transition-transform" />
+              <img src={logo} alt="The Harvesters Logo" className="h-16 w-12 object-contain mb-3 cursor-pointer hover:scale-105 transition-transform" />
             </Link>
             <h1 className="text-xl font-bold tracking-tight text-center">Identity Verification</h1>
             <p className="text-xs text-muted-foreground mt-1.5 text-center">Authenticate to access the intelligence portal</p>
@@ -170,7 +170,7 @@ export default function Login() {
                     <FormItem>
                       <Label className="text-xs">Email Coordinate</Label>
                       <FormControl>
-                        <Input placeholder="agent@harvesters.com" {...field} className="bg-primary/7" data-testid="input-email" />
+                        <Input placeholder="agent@harvesters.com" {...field} data-testid="input-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -188,7 +188,7 @@ export default function Login() {
                         </Link>
                       </div>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} className="bg-primary/7" data-testid="input-password" />
+                        <Input type="password" placeholder="••••••••" {...field} data-testid="input-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -198,7 +198,7 @@ export default function Login() {
                   {loginMutation.isPending ? "Authenticating..." : "Authorize Access"}
                 </Button>
 
-                <div className="space-y-2 bg-primary/5 rounded-lg p-3">
+                <div className="space-y-2 bg-background rounded-lg p-3 border border-border">
                   <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Temporary test access
                   </div>
@@ -231,7 +231,7 @@ export default function Login() {
                     <FormItem>
                       <Label className="text-xs">Multi-Factor Authorization Code</Label>
                       <FormControl>
-                        <Input placeholder="000000" maxLength={6} {...field} className="bg-primary/7 text-center tracking-[0.5em] text-base font-mono" data-testid="input-mfa" />
+                        <Input placeholder="000000" maxLength={6} {...field} className="text-center tracking-[0.5em] text-base font-mono" data-testid="input-mfa" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -244,7 +244,7 @@ export default function Login() {
             </Form>
           )}
 
-          <div className="mt-5 text-center text-xs text-muted-foreground bg-primary/5 rounded-lg py-3">
+          <div className="mt-5 text-center text-xs text-muted-foreground bg-background rounded-lg py-3 border border-border">
             Unregistered operative?{" "}
             <Link href="/register" className="text-primary hover:underline font-medium" data-testid="link-register">
               Request Clearance
@@ -257,24 +257,25 @@ export default function Login() {
         initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
-        className="relative z-10 hidden min-h-screen overflow-hidden bg-primary/8 lg:flex items-center justify-center p-10"
+        className="relative z-10 hidden min-h-screen overflow-hidden bg-background lg:flex items-center justify-center p-10"
       >
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,hsl(var(--primary)/0.12)_45%,transparent_100%)]" />
         <div className="relative h-[520px] w-[520px] max-w-full">
           {[0, 1, 2].map((ring) => (
             <motion.div
               key={ring}
-              className="absolute inset-0 rounded-full bg-primary/8"
+              className="absolute inset-0 rounded-full bg-background border border-primary"
               style={{ margin: ring * 58 }}
-              animate={{ scale: [1, 1.05, 1], opacity: [0.6, 0.9, 0.6] }}
+              animate={{ scale: [1, 1.05, 1], opacity: [0.18, 0.32, 0.18] }}
               transition={{ duration: 4 + ring, repeat: Infinity, ease: "easeInOut" }}
             />
           ))}
           <motion.div
-            className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-primary shadow-[0_24px_80px_hsl(var(--primary)/0.35)]"
+            className="absolute left-1/2 top-1/2 flex h-32 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-card border border-border"
             animate={{ rotate: [0, 8, -8, 0], scale: [1, 1.04, 1] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          />
+          >
+            <img src={logo} alt="The Harvesters Logo" className="h-24 w-16 object-contain" />
+          </motion.div>
           {[
             ["left-10 top-20", "Threat Signals"],
             ["right-5 top-40", "Readiness Score"],
@@ -283,11 +284,11 @@ export default function Login() {
           ].map(([position, label], index) => (
             <motion.div
               key={label}
-              className={`absolute ${position} rounded-lg bg-card/90 px-4 py-3 text-xs shadow-lg`}
+              className={`absolute ${position} rounded-lg bg-card px-4 py-3 text-xs text-card-foreground border border-border`}
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 3.2 + index * 0.4, repeat: Infinity, ease: "easeInOut" }}
             >
-              <div className="h-1.5 w-16 rounded-full bg-primary/45 mb-2" />
+              <div className="h-1.5 w-16 rounded-full bg-primary mb-2" />
               <div className="font-medium">{label}</div>
             </motion.div>
           ))}

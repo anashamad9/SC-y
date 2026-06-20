@@ -67,17 +67,17 @@ export default function MfaSetup() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
+      <div className="absolute inset-0 bg-background" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-card/80 backdrop-blur-xl border border-card-border p-8 rounded-2xl shadow-2xl relative z-10"
+        className="w-full max-w-md bg-card text-card-foreground border border-border p-8 rounded-2xl relative z-10"
       >
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <img src={logo} alt="CyberCultX" className="w-14 h-14 mb-4 cursor-pointer hover:scale-105 transition-transform" />
+            <img src={logo} alt="The Harvesters Logo" className="h-16 w-12 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Multi-Factor Authentication</h1>
           <p className="text-sm text-muted-foreground mt-2 text-center">
@@ -101,7 +101,7 @@ export default function MfaSetup() {
                 ))}
               </div>
               <Button
-                className="w-full bg-primary hover:bg-primary/90 text-white"
+                className="w-full"
                 onClick={handleSetup}
                 disabled={setupMutation.isPending}
                 data-testid="button-setup-mfa"
@@ -130,7 +130,7 @@ export default function MfaSetup() {
                 </div>
               </div>
               <Button
-                className="w-full bg-primary hover:bg-primary/90 text-white"
+                className="w-full"
                 onClick={() => setStep("verify")}
                 data-testid="button-continue-verify"
               >
@@ -154,7 +154,7 @@ export default function MfaSetup() {
                             placeholder="000000"
                             maxLength={6}
                             {...field}
-                            className="bg-background/50 border-input text-center tracking-[0.5em] text-lg font-mono"
+                            className="text-center tracking-[0.5em] text-lg font-mono"
                             data-testid="input-mfa-code"
                           />
                         </FormControl>
@@ -164,7 +164,7 @@ export default function MfaSetup() {
                   />
                   <Button
                     type="submit"
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
+                    className="w-full"
                     disabled={verifyMutation.isPending}
                     data-testid="button-verify-mfa"
                   >
@@ -180,8 +180,8 @@ export default function MfaSetup() {
 
           {step === "done" && (
             <motion.div key="done" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center mx-auto">
-                <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto">
+                <svg className="w-10 h-10 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>

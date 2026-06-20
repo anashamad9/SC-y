@@ -14,7 +14,7 @@ export default function Navbar() {
     >
       <div className="container mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          <img src={logo} alt="The Harvesters Logo" className="w-10 h-10 object-contain" />
+          <img src={logo} alt="The Harvesters Logo" className="h-12 w-10 object-contain" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             CyberCultX
           </span>
@@ -32,7 +32,7 @@ export default function Navbar() {
             </Button>
           </Link>
           <Link href="/register">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(204,0,0,0.4)] transition-all" data-testid="nav-register">
+            <Button data-testid="nav-register">
               Book a Demo
             </Button>
           </Link>

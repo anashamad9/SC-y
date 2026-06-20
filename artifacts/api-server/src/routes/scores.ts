@@ -84,15 +84,16 @@ router.get("/scores/me", requireAuth, async (req, res): Promise<void> => {
   // Fallback: compute from profile
   if (!profile) {
     res.json({
-      humanRiskScore: 65,
-      cciScore: 52,
-      behavioralStabilityScore: 55,
-      decisionQualityScore: 55,
-      cultureContributionScore: 50,
-      complianceBehaviorScore: 50,
-      securityReadinessScore: 55,
-      riskCategory: "Medium",
-      trend: "stable",
+      humanRiskScore: 0,
+      cciScore: 0,
+      behavioralStabilityScore: 0,
+      decisionQualityScore: 0,
+      cultureContributionScore: 0,
+      complianceBehaviorScore: 0,
+      securityReadinessScore: 0,
+      riskCategory: "Not Assessed",
+      trend: "no_data",
+      hasScores: false,
       computedAt: new Date().toISOString(),
     });
     return;

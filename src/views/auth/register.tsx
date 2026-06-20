@@ -59,17 +59,17 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
+      <div className="absolute inset-0 bg-background" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-card/80 backdrop-blur-xl border border-card-border p-8 rounded-2xl shadow-2xl relative z-10"
+        className="w-full max-w-md bg-card text-card-foreground border border-border p-8 rounded-2xl relative z-10"
       >
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <img src={logo} alt="CyberCultX" className="w-16 h-16 mb-4 cursor-pointer hover:scale-105 transition-transform" />
+            <img src={logo} alt="The Harvesters Logo" className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Request Clearance</h1>
           <p className="text-sm text-muted-foreground mt-2 text-center">Create your intelligence portal account</p>
@@ -85,7 +85,7 @@ export default function Register() {
                   <FormItem>
                     <Label>First Name</Label>
                     <FormControl>
-                      <Input placeholder="Ahmed" {...field} className="bg-background/50 border-input" data-testid="input-first-name" />
+                      <Input placeholder="Ahmed" {...field} data-testid="input-first-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -98,7 +98,7 @@ export default function Register() {
                   <FormItem>
                     <Label>Last Name</Label>
                     <FormControl>
-                      <Input placeholder="Al-Rashidi" {...field} className="bg-background/50 border-input" data-testid="input-last-name" />
+                      <Input placeholder="Al-Rashidi" {...field} data-testid="input-last-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -113,7 +113,7 @@ export default function Register() {
                 <FormItem>
                   <Label>Email Address</Label>
                   <FormControl>
-                    <Input placeholder="agent@organization.com" {...field} className="bg-background/50 border-input" data-testid="input-email" />
+                    <Input placeholder="agent@organization.com" {...field} data-testid="input-email" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -127,7 +127,7 @@ export default function Register() {
                 <FormItem>
                   <Label>Passphrase</Label>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} className="bg-background/50 border-input" data-testid="input-password" />
+                    <Input type="password" placeholder="••••••••" {...field} data-testid="input-password" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -142,7 +142,7 @@ export default function Register() {
                   <Label>Access Level</Label>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="bg-background/50 border-input" data-testid="select-role">
+                      <SelectTrigger className="bg-white text-foreground dark:bg-white dark:text-zinc-950" data-testid="select-role">
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                     </FormControl>
@@ -160,7 +160,7 @@ export default function Register() {
 
             <Button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-white mt-2"
+              className="w-full mt-2"
               disabled={registerMutation.isPending}
               data-testid="button-register"
             >

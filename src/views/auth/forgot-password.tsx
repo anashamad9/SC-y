@@ -42,17 +42,17 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
+      <div className="absolute inset-0 bg-background" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-card/80 backdrop-blur-xl border border-card-border p-8 rounded-2xl shadow-2xl relative z-10"
+        className="w-full max-w-md bg-card text-card-foreground border border-border p-8 rounded-2xl relative z-10"
       >
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <img src={logo} alt="CyberCultX" className="w-16 h-16 mb-4 cursor-pointer hover:scale-105 transition-transform" />
+            <img src={logo} alt="The Harvesters Logo" className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Access Recovery</h1>
           <p className="text-sm text-muted-foreground mt-2 text-center">
@@ -75,7 +75,6 @@ export default function ForgotPassword() {
                           <Input
                             placeholder="agent@organization.com"
                             {...field}
-                            className="bg-background/50 border-input"
                             data-testid="input-email"
                           />
                         </FormControl>
@@ -85,7 +84,7 @@ export default function ForgotPassword() {
                   />
                   <Button
                     type="submit"
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
+                    className="w-full"
                     disabled={forgotMutation.isPending}
                     data-testid="button-submit"
                   >
@@ -101,8 +100,8 @@ export default function ForgotPassword() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center space-y-4"
             >
-              <div className="w-16 h-16 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
