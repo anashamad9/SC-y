@@ -70,6 +70,29 @@ export interface Translations {
   aiSub: string;
   aiPlaceholder: string;
   aiClear: string;
+  // Employee
+  xpEarned: string;
+  learningStreak: string;
+  days: string;
+  xpUnit: string;
+  activeStreak: string;
+  riskCultureGauges: string;
+  behavioralProfile: string;
+  operativeStatus: string;
+  yourLearningPath: string;
+  completeAssessment: string;
+  allCoursesComplete: string;
+  completeForBadges: string;
+  recentBadges: string;
+  historicalTrend: string;
+  snapshots: string;
+  telemetryTrend: string;
+  eventsRecorded: string;
+  xpToLevel: string;
+  behavioralStability: string;
+  decisionQuality: string;
+  compliance: string;
+  cultureContribution: string;
   // Scores
   critical: string;
   high: string;
@@ -160,6 +183,28 @@ function makeT(lang: Lang): Translations {
     aiSub: t("ai.sub"),
     aiPlaceholder: t("ai.placeholder"),
     aiClear: t("ai.clear"),
+    xpEarned: t("employee.xpEarned"),
+    learningStreak: t("employee.learningStreak"),
+    days: t("employee.days"),
+    xpUnit: t("employee.xpUnit"),
+    activeStreak: t("employee.activeStreak"),
+    riskCultureGauges: t("employee.riskCultureGauges"),
+    behavioralProfile: t("employee.behavioralProfile"),
+    operativeStatus: t("employee.operativeStatus"),
+    yourLearningPath: t("employee.yourLearningPath"),
+    completeAssessment: t("employee.completeAssessment"),
+    allCoursesComplete: t("employee.allCoursesComplete"),
+    completeForBadges: t("employee.completeForBadges"),
+    recentBadges: t("employee.recentBadges"),
+    historicalTrend: t("employee.historicalTrend"),
+    snapshots: t("employee.snapshots"),
+    telemetryTrend: t("employee.telemetryTrend"),
+    eventsRecorded: t("employee.eventsRecorded"),
+    xpToLevel: t("employee.xpToLevel"),
+    behavioralStability: t("employee.behavioralStability"),
+    decisionQuality: t("employee.decisionQuality"),
+    compliance: t("employee.compliance"),
+    cultureContribution: t("employee.cultureContribution"),
     critical: t("risk.critical"),
     high: t("risk.high"),
     medium: t("risk.medium"),

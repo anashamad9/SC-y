@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useGetMyScores, useGetMyGamification, useGetLearningPath, useGetMyBadges, useGetPsychometricProfile, useGetTelemetryTrends, useGetCciHistory } from "@workspace/api-client-react";
+import { useI18n } from "@/lib/i18n";
 
 function CircleGauge({ value, label, color }: { value: number; label: string; color: string }) {
   const r = 58;
@@ -78,6 +79,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function EmployeeDashboard() {
+  const { t, isRTL } = useI18n();
   const { data: scores, isLoading: scoresLoading } = useGetMyScores();
   const { data: gp, isLoading: gpLoading } = useGetMyGamification();
   const { data: path } = useGetLearningPath();
@@ -110,14 +112,14 @@ export default function EmployeeDashboard() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir={isRTL ? "rtl" : "ltr"}>
       {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Human Risk Score", value: hasScores ? scores?.humanRiskScore ?? 0 : 0, unit: "/100", color: hrsColor, sub: hasScores ? scores?.riskCategory ?? "Not Assessed" : "Not Assessed" },
-          { label: "Culture Index (CCI)", value: hasScores ? scores?.cciScore ?? 0 : 0, unit: "/100", color: cciColor, sub: hasScores ? scores?.trend ?? "stable" : "no data" },
-          { label: "XP Earned", value: gp?.xp ?? 0, unit: " xp", color: "#a855f7", sub: `Level ${gp?.level ?? 1}` },
-          { label: "Learning Streak", value: gp?.streakDays ?? 0, unit: " days", color: "#f97316", sub: "Active Streak" },
+          { label: t.humanRiskScore, value: hasScores ? scores?.humanRiskScore ?? 0 : 0, unit: "/100", color: hrsColor, sub: hasScores ? scores?.riskCategory ?? "Not Assessed" : "Not Assessed" },
+          { label: t.cultureIndex, value: hasScores ? scores?.cciScore ?? 0 : 0, unit: "/100", color: cciColor, sub: hasScores ? scores?.trend ?? "stable" : "no data" },
+          { label: t.xpEarned, value: gp?.xp ?? 0, unit: ` ${t.xpUnit}`, color: "#a855f7", sub: `${t.level} ${gp?.level ?? 1}` },
+          { label: t.learningStreak, value: gp?.streakDays ?? 0, unit: ` ${t.days}`, color: "#f97316", sub: t.activeStreak },
         ].map((card, i) => (
           <motion.div
             key={card.label}
@@ -144,7 +146,7 @@ export default function EmployeeDashboard() {
           transition={{ delay: 0.2 }}
           className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
         >
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">Risk & Culture Gauges</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">{t.riskCultureGauges}</div>
           <div className="flex items-center justify-around">
             <div className="text-center">
               <CircleGauge value={hasScores ? scores?.humanRiskScore ?? 0 : 0} label="Risk Score" color={hrsColor} />
@@ -155,17 +157,17 @@ export default function EmployeeDashboard() {
             <div className="text-center">
               <CircleGauge value={hasScores ? scores?.cciScore ?? 0 : 0} label="CCI Score" color={cciColor} />
               <div className="text-xs mt-1 font-medium" style={{ color: cciColor }}>
-                Culture Index
+                {t.cultureIndex}
               </div>
             </div>
           </div>
           {/* CCI sub-scores */}
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
             {[
-              { label: "Behavioral Stability", value: hasScores ? scores?.behavioralStabilityScore ?? 0 : 0 },
-              { label: "Decision Quality", value: hasScores ? scores?.decisionQualityScore ?? 0 : 0 },
-              { label: "Compliance", value: hasScores ? scores?.complianceBehaviorScore ?? 0 : 0 },
-              { label: "Culture Contribution", value: hasScores ? scores?.cultureContributionScore ?? 0 : 0 },
+              { label: t.behavioralStability, value: hasScores ? scores?.behavioralStabilityScore ?? 0 : 0 },
+              { label: t.decisionQuality, value: hasScores ? scores?.decisionQualityScore ?? 0 : 0 },
+              { label: t.compliance, value: hasScores ? scores?.complianceBehaviorScore ?? 0 : 0 },
+              { label: t.cultureContribution, value: hasScores ? scores?.cultureContributionScore ?? 0 : 0 },
             ].map(s => (
               <div key={s.label} className="flex justify-between">
                 <span className="text-muted-foreground">{s.label}</span>
@@ -182,7 +184,7 @@ export default function EmployeeDashboard() {
           transition={{ delay: 0.25 }}
           className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
         >
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Behavioral Profile</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t.behavioralProfile}</div>
           {profile ? (
             <>
               <div className="flex items-center gap-2 mb-4">
@@ -200,7 +202,7 @@ export default function EmployeeDashboard() {
           ) : (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-sm">
               <div className="text-2xl mb-2">◈</div>
-              Complete the Psychometric Assessment to unlock your profile
+              {t.completeAssessment}
             </div>
           )}
         </motion.div>
@@ -215,8 +217,8 @@ export default function EmployeeDashboard() {
           className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">Culture & Risk Index — Historical Trend</div>
-            <div className="text-xs text-muted-foreground">{cciHistory.history.length} snapshots</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">{t.historicalTrend}</div>
+            <div className="text-xs text-muted-foreground">{cciHistory.history.length} {t.snapshots}</div>
           </div>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={cciHistory.history} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -241,8 +243,8 @@ export default function EmployeeDashboard() {
           className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">Behavioral Telemetry — 30 Day Trend</div>
-            <div className="text-xs text-muted-foreground">{telemetry.totalEvents} events recorded</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">{t.telemetryTrend}</div>
+            <div className="text-xs text-muted-foreground">{telemetry.totalEvents} {t.eventsRecorded}</div>
           </div>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={telemetry.trends} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -267,12 +269,12 @@ export default function EmployeeDashboard() {
           className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">Your Learning Path</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">{t.yourLearningPath}</div>
             <div className="text-xs text-primary">{path?.completionRate ?? 0}% complete</div>
           </div>
           <div className="space-y-3">
             {recommended.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">All recommended courses completed! 🏆</div>
+              <div className="text-sm text-muted-foreground text-center py-6">{t.allCoursesComplete}</div>
             ) : recommended.map((course: any, i: number) => (
               <div key={course.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/3 border border-border/50 hover:border-primary/30 transition-colors">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: course.thumbnailColor + "33", color: course.thumbnailColor }}>
@@ -303,12 +305,12 @@ export default function EmployeeDashboard() {
           transition={{ delay: 0.35 }}
           className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
         >
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">Operative Status</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">{t.operativeStatus}</div>
           {/* XP Bar */}
           <div className="mb-5">
             <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-purple-400 font-medium">Level {gp?.level ?? 1}</span>
-              <span className="text-muted-foreground">{gp?.xp ?? 0} / {gp?.nextLevelXp ?? 200} XP</span>
+              <span className="text-purple-400 font-medium">{t.level} {gp?.level ?? 1}</span>
+              <span className="text-muted-foreground">{gp?.xp ?? 0} / {gp?.nextLevelXp ?? 200} {t.xpUnit}</span>
             </div>
             <div className="h-3 rounded-full bg-white/5 overflow-hidden border border-border/50">
               <motion.div
@@ -318,13 +320,13 @@ export default function EmployeeDashboard() {
                 className="h-full rounded-full bg-gradient-to-r from-purple-600 to-primary"
               />
             </div>
-            <div className="text-xs text-muted-foreground mt-1">{xpNeeded - xpCurrent} XP to Level {(gp?.level ?? 1) + 1}</div>
+            <div className="text-xs text-muted-foreground mt-1">{xpNeeded - xpCurrent} {t.xpToLevel.replace("{{level}}", String((gp?.level ?? 1) + 1))}</div>
           </div>
 
           {/* Badge shelf */}
-          <div className="text-xs text-muted-foreground mb-3">Recent Badges ({badges?.length ?? 0} earned)</div>
+          <div className="text-xs text-muted-foreground mb-3">{t.recentBadges} ({badges?.length ?? 0})</div>
           {recentBadges.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-4">Complete assessments to earn badges</div>
+            <div className="text-sm text-muted-foreground text-center py-4">{t.completeForBadges}</div>
           ) : (
             <div className="grid grid-cols-4 gap-2">
               {recentBadges.map((badge: any) => (

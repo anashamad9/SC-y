@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses, useGetCourse, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   beginner: "#22c55e",
@@ -19,9 +20,68 @@ const LESSON_ICONS: Record<string, string> = {
 
 type FilterDifficulty = "all" | "beginner" | "intermediate" | "advanced";
 
-function CourseCard({ course, onClick }: { course: any; onClick: () => void }) {
+function useLearningCopy(lang: "en" | "ar") {
+  return lang === "ar"
+    ? {
+        done: "مكتمل",
+        inProgress: "قيد التقدم",
+        newItem: "جديد",
+        lessons: "دروس",
+        completePct: "مكتمل",
+        courseDetail: "تفاصيل الدورة",
+        completionReward: "نقطة عند الإكمال",
+        progress: "التقدم",
+        lessonPlan: "خطة الدروس",
+        videoProgress: "تقدم الفيديو",
+        videoCompleted: "اكتمل الفيديو",
+        markComplete: "تحديد الفيديو كمكتمل",
+        progressHelp: "يتم تحديث تقدم الدورة ونقاط الخبرة",
+        courseCompleted: "اكتملت الدورة",
+        earned: "تم كسب",
+        continueLearning: "متابعة التعلم",
+        startCourse: "ابدأ الدورة",
+        title: "مكتبة التعلم الأمني",
+        sub: "وحدات أمنية مخصصة حسب ملف المخاطر الخاص بك",
+        completedCount: "مكتمل",
+        inProgressCount: "قيد التقدم",
+        allCourses: "كل الدورات",
+        beginner: "مبتدئ",
+        intermediate: "متوسط",
+        advanced: "متقدم",
+      }
+    : {
+        done: "Done",
+        inProgress: "In Progress",
+        newItem: "New",
+        lessons: "lessons",
+        completePct: "complete",
+        courseDetail: "Course Detail",
+        completionReward: "xp on completion",
+        progress: "Progress",
+        lessonPlan: "Lesson Plan",
+        videoProgress: "Video Progress",
+        videoCompleted: "Video completed",
+        markComplete: "Mark video as complete",
+        progressHelp: "Updates your course progress and XP",
+        courseCompleted: "Course Completed!",
+        earned: "earned",
+        continueLearning: "Continue Learning",
+        startCourse: "Start Course",
+        title: "Security Learning Library",
+        sub: "Security modules calibrated to your risk profile",
+        completedCount: "Completed",
+        inProgressCount: "In Progress",
+        allCourses: "All Courses",
+        beginner: "Beginner",
+        intermediate: "Intermediate",
+        advanced: "Advanced",
+      };
+}
+
+function CourseCard({ course, onClick, lang }: { course: any; onClick: () => void; lang: "en" | "ar" }) {
   const status = course.status ?? "not_started";
   const pct = course.progressPct ?? 0;
+  const copy = useLearningCopy(lang);
 
   return (
     <motion.button
@@ -30,37 +90,37 @@ function CourseCard({ course, onClick }: { course: any; onClick: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
-      className="w-full text-left bg-card/80 border border-border rounded-xl overflow-hidden backdrop-blur-sm hover:border-primary/30 transition-colors group"
+      className="group w-full overflow-hidden rounded-xl border border-border bg-card/80 text-left backdrop-blur-sm transition-colors hover:border-primary/30"
     >
-      {/* Thumbnail bar */}
       <div className="h-2 w-full" style={{ backgroundColor: course.thumbnailColor ?? "#dc143c" }} />
 
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">{course.title}</h3>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 border ${
-            status === "completed" ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" :
-            status === "in_progress" ? "bg-orange-500/10 border-orange-500/30 text-orange-400" :
-            "bg-white/5 border-white/10 text-muted-foreground"
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <h3 className="text-sm font-semibold leading-snug transition-colors group-hover:text-primary">{course.title}</h3>
+          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-xs ${
+            status === "completed"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              : status === "in_progress"
+                ? "border-orange-500/30 bg-orange-500/10 text-orange-400"
+                : "border-white/10 bg-white/5 text-muted-foreground"
           }`}>
-            {status === "completed" ? "✓ Done" : status === "in_progress" ? "In Progress" : "New"}
+            {status === "completed" ? `✓ ${copy.done}` : status === "in_progress" ? copy.inProgress : copy.newItem}
           </span>
         </div>
 
-        <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">{course.description}</p>
+        <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{course.description}</p>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+        <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
           <span style={{ color: DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280" }}>{course.difficulty}</span>
           <span>·</span>
           <span>{course.durationMinutes}min</span>
           <span>·</span>
-          <span>{course.lessonCount} lessons</span>
+          <span>{course.lessonCount} {copy.lessons}</span>
           <span>·</span>
           <span className="text-purple-400">+{course.xpReward}xp</span>
         </div>
 
-        {/* Progress bar */}
-        <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -69,9 +129,7 @@ function CourseCard({ course, onClick }: { course: any; onClick: () => void }) {
             }}
           />
         </div>
-        {pct > 0 && (
-          <div className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% complete</div>
-        )}
+        {pct > 0 && <div className="mt-1 text-xs text-muted-foreground">{Math.round(pct)}% {copy.completePct}</div>}
       </div>
     </motion.button>
   );
@@ -82,6 +140,8 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
   const { data: course, isLoading } = useGetCourse(courseId);
   const progressMutation = useUpdateCourseProgress();
   const [localProgress, setLocalProgress] = useState<number | null>(null);
+  const { lang, isRTL } = useI18n();
+  const copy = useLearningCopy(lang);
 
   const currentPct = localProgress ?? (course?.progressPct ?? 0);
   const status = course?.status ?? "not_started";
@@ -100,16 +160,11 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
           queryClient.invalidateQueries({ queryKey: ["getLearningPath"] });
           queryClient.invalidateQueries({ queryKey: ["getMyGamification"] });
         },
-      }
+      },
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="bg-card/80 border border-border rounded-xl p-6 animate-pulse h-64" />
-    );
-  }
-
+  if (isLoading) return <div className="h-64 animate-pulse rounded-xl border border-border bg-card/80 p-6" />;
   if (!course) return null;
 
   return (
@@ -117,29 +172,30 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="bg-card/80 border border-border rounded-xl overflow-hidden backdrop-blur-sm"
+      className="overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm"
+      dir={isRTL ? "rtl" : "ltr"}
     >
       <div className="h-1.5 w-full" style={{ backgroundColor: course.thumbnailColor ?? "#dc143c" }} />
       <div className="p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="mb-4 flex items-start justify-between">
           <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Course Detail</div>
+            <div className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">{copy.courseDetail}</div>
             <h2 className="text-lg font-bold">{course.title}</h2>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+            <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
               <span style={{ color: DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280" }}>{course.difficulty}</span>
               <span>·</span>
               <span>{course.durationMinutes}min</span>
               <span>·</span>
-              <span className="text-purple-400">+{course.xpReward}xp on completion</span>
+              <span className="text-purple-400">+{course.xpReward} {copy.completionReward}</span>
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-xl leading-none text-muted-foreground hover:text-foreground">×</button>
         </div>
 
-        <p className="text-sm text-muted-foreground leading-relaxed mb-5">{course.description}</p>
+        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{course.description}</p>
 
         {videoUrl && (
-          <div className="mb-5 overflow-hidden rounded-lg bg-primary/5 shadow-sm">
+          <div className="mb-5 overflow-hidden rounded-lg border border-border bg-primary/5">
             <div className="aspect-video w-full bg-background">
               <iframe
                 src={videoUrl}
@@ -152,40 +208,33 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
           </div>
         )}
 
-        {/* Progress */}
         <div className="mb-5">
-          <div className="flex justify-between text-xs mb-1.5">
-            <span className="text-muted-foreground">Progress</span>
+          <div className="mb-1.5 flex justify-between text-xs">
+            <span className="text-muted-foreground">{copy.progress}</span>
             <span className={status === "completed" ? "text-emerald-400" : "text-primary"}>{Math.round(currentPct)}%</span>
           </div>
-          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-            <motion.div
-              animate={{ width: `${currentPct}%` }}
-              transition={{ duration: 0.4 }}
-              className="h-full rounded-full"
-              style={{ backgroundColor: status === "completed" ? "#22c55e" : "#dc143c" }}
-            />
+          <div className="h-2 overflow-hidden rounded-full bg-white/5">
+            <motion.div animate={{ width: `${currentPct}%` }} transition={{ duration: 0.4 }} className="h-full rounded-full" style={{ backgroundColor: status === "completed" ? "#22c55e" : "#dc143c" }} />
           </div>
         </div>
 
-        {/* Lessons */}
-        <div className="space-y-2 mb-5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{lessons.length > 0 ? "Lesson Plan" : "Video Progress"}</div>
+        <div className="mb-5 space-y-2">
+          <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">{lessons.length > 0 ? copy.lessonPlan : copy.videoProgress}</div>
           {lessons.length === 0 ? (
             <button
               onClick={() => startLesson(0)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-left transition-all ${
-                currentPct >= 100
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "bg-primary/10 hover:bg-primary/18 text-primary"
+              className={`w-full rounded-lg px-4 py-3 text-left text-sm transition-all ${
+                currentPct >= 100 ? "bg-emerald-500/10 text-emerald-400" : "bg-primary/10 text-primary hover:bg-primary/18"
               }`}
             >
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono shrink-0 bg-primary/15">
-                {currentPct >= 100 ? "✓" : "▶"}
-              </span>
-              <div className="flex-1">
-                <div>{currentPct >= 100 ? "Video completed" : "Mark video as complete"}</div>
-                <div className="text-xs text-muted-foreground">Updates your course progress and XP</div>
+              <div className="flex items-center gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-mono">
+                  {currentPct >= 100 ? "✓" : "▶"}
+                </span>
+                <div className="flex-1">
+                  <div>{currentPct >= 100 ? copy.videoCompleted : copy.markComplete}</div>
+                  <div className="text-xs text-muted-foreground">{copy.progressHelp}</div>
+                </div>
               </div>
             </button>
           ) : lessons.map((lesson: any, i: number) => {
@@ -195,20 +244,18 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
               <button
                 key={lesson.id}
                 onClick={() => startLesson(i)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm text-left transition-all ${
-                  isDone
-                    ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
-                    : "border-border bg-white/3 hover:bg-white/5 hover:border-primary/30 text-foreground"
+                className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition-all ${
+                  isDone ? "border-emerald-500/30 bg-emerald-500/5 text-foreground" : "border-border bg-white/3 text-foreground hover:border-primary/30 hover:bg-white/5"
                 }`}
               >
-                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono shrink-0 ${
-                  isDone ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-muted-foreground"
-                }`}>
-                  {isDone ? "✓" : LESSON_ICONS[lesson.type] ?? "○"}
-                </span>
-                <div className="flex-1">
-                  <div className={isDone ? "text-foreground" : "text-foreground"}>{lesson.title}</div>
-                  <div className="text-xs text-muted-foreground capitalize">{lesson.type} · +{lesson.xpReward}xp</div>
+                <div className="flex items-center gap-3">
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-mono ${isDone ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-muted-foreground"}`}>
+                    {isDone ? "✓" : LESSON_ICONS[lesson.type] ?? "○"}
+                  </span>
+                  <div className="flex-1">
+                    <div>{lesson.title}</div>
+                    <div className="text-xs capitalize text-muted-foreground">{lesson.type} · +{lesson.xpReward}xp</div>
+                  </div>
                 </div>
               </button>
             );
@@ -216,20 +263,20 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
         </div>
 
         {currentPct >= 100 ? (
-          <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+          <div className="flex items-center gap-2 text-sm font-medium text-emerald-400">
             <span>🏆</span>
-            <span>Course Completed! +{course.xpReward}xp earned</span>
+            <span>{copy.courseCompleted} +{course.xpReward}xp {copy.earned}</span>
           </div>
         ) : (
           <Button
             onClick={() => {
-                  const nextIdx = Math.min(Math.floor((currentPct / 100) * Math.max(lessons.length, 1)), Math.max(lessons.length - 1, 0));
-                  startLesson(nextIdx);
-                }}
+              const nextIdx = Math.min(Math.floor((currentPct / 100) * Math.max(lessons.length, 1)), Math.max(lessons.length - 1, 0));
+              startLesson(nextIdx);
+            }}
             disabled={progressMutation.isPending}
             className="w-full bg-primary text-white hover:bg-primary/80"
           >
-            {currentPct > 0 ? "Continue Learning →" : "Start Course →"}
+            {currentPct > 0 ? (isRTL ? `← ${copy.continueLearning}` : `${copy.continueLearning} →`) : (isRTL ? `← ${copy.startCourse}` : `${copy.startCourse} →`)}
           </Button>
         )}
       </div>
@@ -241,47 +288,48 @@ export default function EmployeeLearning() {
   const [filter, setFilter] = useState<FilterDifficulty>("all");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
   const { data: courses, isLoading } = useListCourses({ difficulty: filter === "all" ? undefined : filter });
+  const { lang, isRTL } = useI18n();
+  const copy = useLearningCopy(lang);
 
   const filters: { label: string; value: FilterDifficulty }[] = [
-    { label: "All Courses", value: "all" },
-    { label: "Beginner", value: "beginner" },
-    { label: "Intermediate", value: "intermediate" },
-    { label: "Advanced", value: "advanced" },
+    { label: copy.allCourses, value: "all" },
+    { label: copy.beginner, value: "beginner" },
+    { label: copy.intermediate, value: "intermediate" },
+    { label: copy.advanced, value: "advanced" },
   ];
 
   const completedCount = (courses ?? []).filter((c: any) => c.status === "completed").length;
   const inProgressCount = (courses ?? []).filter((c: any) => c.status === "in_progress").length;
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
+    <div className="space-y-5" dir={isRTL ? "rtl" : "ltr"}>
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-bold mb-1">Security Learning Library</h2>
-          <p className="text-sm text-muted-foreground">10 security modules calibrated to your risk profile</p>
+          <h2 className="mb-1 text-lg font-bold">{copy.title}</h2>
+          <p className="text-sm text-muted-foreground">{copy.sub}</p>
         </div>
-        <div className="flex gap-4 text-xs text-right">
+        <div className="flex gap-4 text-right text-xs">
           <div>
-            <div className="text-emerald-400 font-bold text-lg">{completedCount}</div>
-            <div className="text-muted-foreground">Completed</div>
+            <div className="text-lg font-bold text-emerald-400">{completedCount}</div>
+            <div className="text-muted-foreground">{copy.completedCount}</div>
           </div>
           <div>
-            <div className="text-orange-400 font-bold text-lg">{inProgressCount}</div>
-            <div className="text-muted-foreground">In Progress</div>
+            <div className="text-lg font-bold text-orange-400">{inProgressCount}</div>
+            <div className="text-muted-foreground">{copy.inProgressCount}</div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
-        {filters.map(f => (
+      <div className="flex flex-wrap gap-2">
+        {filters.map((f) => (
           <button
             key={f.value}
-            onClick={() => { setFilter(f.value); setSelectedCourse(null); }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              filter === f.value
-                ? "bg-primary/20 text-primary border border-primary/30"
-                : "bg-white/5 text-muted-foreground border border-border hover:text-foreground"
+            onClick={() => {
+              setFilter(f.value);
+              setSelectedCourse(null);
+            }}
+            className={`rounded-lg border px-4 py-1.5 text-xs font-medium transition-all ${
+              filter === f.value ? "border-primary/30 bg-primary/20 text-primary" : "border-border bg-white/5 text-muted-foreground hover:text-foreground"
             }`}
           >
             {f.label}
@@ -289,31 +337,23 @@ export default function EmployeeLearning() {
         ))}
       </div>
 
-      <div className={selectedCourse ? "grid grid-cols-1 lg:grid-cols-2 gap-5" : "block"}>
-        {/* Course grid */}
+      <div className={selectedCourse ? "grid grid-cols-1 gap-5 lg:grid-cols-2" : "block"}>
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-48 rounded-xl bg-card/50 animate-pulse border border-border" />)}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {[1, 2, 3, 4].map((i) => <div key={i} className="h-48 rounded-xl border border-border bg-card/50 animate-pulse" />)}
             </div>
           ) : (
             <div className={`grid gap-4 ${selectedCourse ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
               {(courses ?? []).map((course: any) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  onClick={() => setSelectedCourse(selectedCourse === course.id ? null : course.id)}
-                />
+                <CourseCard key={course.id} course={course} onClick={() => setSelectedCourse(selectedCourse === course.id ? null : course.id)} lang={lang} />
               ))}
             </div>
           )}
         </div>
 
-        {/* Course detail panel */}
         <AnimatePresence>
-          {selectedCourse && (
-            <CourseDetail key={selectedCourse} courseId={selectedCourse} onClose={() => setSelectedCourse(null)} />
-          )}
+          {selectedCourse && <CourseDetail key={selectedCourse} courseId={selectedCourse} onClose={() => setSelectedCourse(null)} />}
         </AnimatePresence>
       </div>
     </div>
