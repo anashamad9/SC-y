@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real, bigint } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const coursesTable = pgTable("courses", {
@@ -7,6 +7,15 @@ export const coursesTable = pgTable("courses", {
   category: text("category").notNull(),
   description: text("description").notNull(),
   videoUrl: text("video_url"),
+  videoFileName: text("video_file_name"),
+  videoMimeType: text("video_mime_type"),
+  videoSizeBytes: bigint("video_size_bytes", { mode: "number" }),
+  videoUploadedAt: timestamp("video_uploaded_at", { withTimezone: true }),
+  markdownUrl: text("markdown_url"),
+  markdownFileName: text("markdown_file_name"),
+  markdownContent: text("markdown_content"),
+  markdownSizeBytes: bigint("markdown_size_bytes", { mode: "number" }),
+  markdownUploadedAt: timestamp("markdown_uploaded_at", { withTimezone: true }),
   minScore: integer("min_score"),
   maxScore: integer("max_score"),
   thumbnailColor: text("thumbnail_color").notNull().default("#dc143c"),

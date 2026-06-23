@@ -117,7 +117,6 @@ export default function AdminNotifications() {
         <div className="flex justify-center py-12"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" /></div>
       ) : announcements.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
-          <div className="text-4xl mb-3">📢</div>
           <div className="text-sm">No announcements yet. Create one to notify your team.</div>
         </div>
       ) : (

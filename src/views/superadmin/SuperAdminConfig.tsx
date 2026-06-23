@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const CATEGORY_ORDER = ["general", "branding", "ai", "security", "notifications"];
 const CATEGORY_ICONS: Record<string, string> = {
-  general: "⚙️", branding: "🎨", ai: "🤖", security: "🔒", notifications: "🔔",
+  general: "SYS", branding: "BR", ai: "AI", security: "SEC", notifications: "NTF",
 };
 
 export default function SuperAdminConfig() {
@@ -51,7 +51,7 @@ export default function SuperAdminConfig() {
             <motion.div key={cat} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.06 }}
               className="bg-card/80 border border-border rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-border bg-muted/20 flex items-center gap-2">
-                <span className="text-base">{CATEGORY_ICONS[cat] ?? "⚙️"}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">{CATEGORY_ICONS[cat] ?? "SYS"}</span>
                 <div className="text-sm font-semibold capitalize">{cat} Configuration</div>
               </div>
               <div className="divide-y divide-border/40">

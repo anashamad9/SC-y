@@ -240,7 +240,6 @@ function LearningPathStep({ user, onComplete }: { user: Props["user"]; onComplet
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
       <div className="text-center mb-2">
-        <div className="text-2xl mb-1">🎯</div>
         <div className="text-sm text-muted-foreground">Based on your risk profile, here's your personalized learning path</div>
       </div>
 
@@ -270,7 +269,7 @@ function LearningPathStep({ user, onComplete }: { user: Props["user"]; onComplet
         disabled={completing}
         className="w-full bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 font-semibold py-3"
       >
-        {completing ? "Activating…" : "🚀 Begin My Training →"}
+        {completing ? "Activating…" : "Begin My Training →"}
       </Button>
     </motion.div>
   );

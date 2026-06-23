@@ -89,7 +89,7 @@ export default function EmployeePhishing() {
         transition={{ delay: 0.25 }}
         className="bg-primary/5 border border-primary/20 rounded-xl p-5"
       >
-        <div className="text-sm font-semibold text-primary mb-3">🛡️ How to Stay Safe</div>
+        <div className="text-sm font-semibold text-primary mb-3">How to Stay Safe</div>
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li className="flex gap-2"><span className="text-primary">◈</span>Always verify the sender email domain — attackers use lookalike domains</li>
           <li className="flex gap-2"><span className="text-primary">◈</span>Hover over links before clicking to inspect the real destination URL</li>
@@ -136,7 +136,6 @@ export default function EmployeePhishing() {
         </motion.div>
       ) : (
         <div className="flex flex-col items-center justify-center min-h-[200px] text-center text-muted-foreground">
-          <div className="text-4xl mb-3">🎣</div>
           <div className="font-medium">No phishing simulations yet</div>
           <div className="text-sm mt-1">Results will appear here once your first simulation is launched by the admin team.</div>
         </div>

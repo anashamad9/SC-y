@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, assessmentsTable, assessmentQuestionsTable, assessmentResultsTable, psychometricProfilesTable, gamificationProfilesTable, cciSnapshotsTable } from "@workspace/db";
+import { db, assessmentsTable, assessmentQuestionsTable, assessmentResultsTable, psychometricProfilesTable, gamificationProfilesTable, cciSnapshotsTable, usersTable } from "@workspace/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
@@ -340,6 +340,8 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
       await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
     }
 
+    await db.update(usersTable).set({ onboardingCompleted: true }).where(eq(usersTable.id, userId));
+
     res.json({
       id: result.id,
       assessmentId: result.assessmentId,
@@ -458,6 +460,8 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
     const newXp = gp.xp + xpGain;
     await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
   }
+
+  await db.update(usersTable).set({ onboardingCompleted: true }).where(eq(usersTable.id, userId));
 
   res.json({
     id: result.id,

@@ -23,6 +23,7 @@
     "notifications": "الإشعارات",
     "settings": "الإعدادات",
     "tenants": "المستأجرون",
+    "requests": "طلبات الوصول",
     "analytics": "التحليلات",
     "systemConfig": "إعدادات النظام",
     "aiConfig": "إعدادات الذكاء الاصطناعي",
@@ -74,7 +75,7 @@
     "operativeStatus": "حالة الموظف",
     "yourLearningPath": "مسار التعلم الخاص بك",
     "completeAssessment": "أكمل التقييم النفسي لفتح ملفك الشخصي",
-    "allCoursesComplete": "تم إكمال جميع الدورات الموصى بها! 🏆",
+    "allCoursesComplete": "تم إكمال جميع الدورات الموصى بها.",
     "completeForBadges": "أكمل التقييمات لكسب الشارات",
     "recentBadges": "الشارات الأخيرة",
     "historicalTrend": "اتجاه مؤشر الثقافة والمخاطر — الاتجاه التاريخي",
@@ -92,9 +93,9 @@
     "decisionMaking": "اتخاذ القرار",
     "attentionToDetail": "الانتباه للتفاصيل",
     "stressResponse": "الاستجابة للضغط",
-    "riskTolerance": "تحمل المخاطر ⚠",
-    "impulsiveness": "الاندفاعية ⚠",
-    "trustTendencies": "ميول الثقة ⚠"
+    "riskTolerance": "تحمل المخاطر",
+    "impulsiveness": "الاندفاعية",
+    "trustTendencies": "ميول الثقة"
   },
   "executive": {
     "title": "الذكاء التنفيذي",

@@ -1,11 +1,28 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { tenantsTable, systemConfigTable, auditLogsTable, usersTable, sessionsTable } from "@workspace/db/schema";
+import { tenantsTable, systemConfigTable, auditLogsTable, usersTable, sessionsTable, AUDIT_ACTIONS } from "@workspace/db/schema";
 import { eq, desc, count, like, and, gte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/auth";
 
 const router = Router();
+
+function buildApprovalUser(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    jobTitle: user.jobTitle,
+    onboardingCompleted: user.onboardingCompleted,
+    approvalStatus: user.approvalStatus,
+    approvedBy: user.approvedBy,
+    approvedAt: user.approvedAt?.toISOString() ?? null,
+    rejectedAt: user.rejectedAt?.toISOString() ?? null,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
 
 // ── Tenants ──────────────────────────────────────────────────────────────────
 
@@ -135,6 +152,88 @@ router.get("/system/health", requireAuth, requireRole(...["superadmin"]), async 
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to get system health" });
+  }
+});
+
+// ── Approval Requests ────────────────────────────────────────────────────────
+
+router.get("/superadmin/approval-requests", requireAuth, requireRole("superadmin"), async (req, res) => {
+  try {
+    const status = typeof req.query.status === "string" ? req.query.status : "pending";
+    const users = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.approvalStatus, status))
+      .orderBy(desc(usersTable.createdAt));
+
+    res.json({
+      requests: users.map(buildApprovalUser),
+      total: users.length,
+      status,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to load approval requests" });
+  }
+});
+
+router.patch("/superadmin/approval-requests/:id", requireAuth, requireRole("superadmin"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const status = typeof req.body?.status === "string" ? req.body.status : "";
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid request id" });
+      return;
+    }
+    if (!["approved", "rejected"].includes(status)) {
+      res.status(400).json({ error: "status must be approved or rejected" });
+      return;
+    }
+
+    const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+    if (!target) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const now = new Date();
+    const [updated] = await db.update(usersTable)
+      .set(
+        status === "approved"
+          ? {
+              approvalStatus: "approved",
+              approvedBy: req.user!.userId,
+              approvedAt: now,
+              rejectedAt: null,
+              onboardingCompleted: false,
+            }
+          : {
+              approvalStatus: "rejected",
+              approvedBy: null,
+              approvedAt: null,
+              rejectedAt: now,
+              onboardingCompleted: false,
+            },
+      )
+      .where(eq(usersTable.id, id))
+      .returning();
+
+    if (status === "rejected") {
+      await db.delete(sessionsTable).where(eq(sessionsTable.userId, id));
+    }
+
+    await db.insert(auditLogsTable).values({
+      userId: req.user!.userId,
+      action: status === "approved" ? AUDIT_ACTIONS.APPROVAL_APPROVED : AUDIT_ACTIONS.APPROVAL_REJECTED,
+      metadata: {
+        targetUserId: target.id,
+        targetEmail: target.email,
+        role: target.role,
+      },
+    });
+
+    res.json(buildApprovalUser(updated));
+  } catch {
+    res.status(500).json({ error: "Failed to update approval request" });
   }
 });
 

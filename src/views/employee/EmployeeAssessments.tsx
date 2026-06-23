@@ -312,8 +312,8 @@ export default function EmployeeAssessments() {
             className="flex flex-col rounded-xl border border-border bg-card/80 p-5 backdrop-blur-sm"
           >
             <div className="mb-3 flex items-start justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-lg">
-                {assessment.type === "psychometric" ? "🧠" : "🎯"}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                {assessment.type === "psychometric" ? "PSY" : "TASK"}
               </div>
               <span className={`rounded-full border px-2 py-0.5 text-xs ${
                 assessment.completed ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-orange-500/30 bg-orange-500/10 text-orange-400"

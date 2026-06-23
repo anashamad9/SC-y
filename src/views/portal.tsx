@@ -35,12 +35,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import ThemeToggle from "@/components/theme-toggle";
+import ReadinessAssessmentModal from "@/components/readiness-assessment-modal";
 import EmployeeDashboard from "./employee/EmployeeDashboard";
 import EmployeeAssessments from "./employee/EmployeeAssessments";
 import EmployeeLearning from "./employee/EmployeeLearning";
 import EmployeeAchievements from "./employee/EmployeeAchievements";
 import EmployeePhishing from "./employee/EmployeePhishing";
-import OnboardingWizard from "./onboarding/OnboardingWizard";
 import AdminDashboard from "./admin/AdminDashboard";
 import AdminUsers from "./admin/AdminUsers";
 import AdminDepartments from "./admin/AdminDepartments";
@@ -54,6 +54,7 @@ import SuperAdminMonitoring from "./superadmin/SuperAdminMonitoring";
 import AdminAssessments from "./admin/AdminAssessments";
 import AdminNotifications from "./admin/AdminNotifications";
 import SuperAdminAnalytics from "./superadmin/SuperAdminAnalytics";
+import SuperAdminRequests from "./superadmin/SuperAdminRequests";
 import ExecutiveDashboard from "./executive/ExecutiveDashboard";
 import HRDashboard from "./hr/HRDashboard";
 import AIChatWidget from "@/components/AIChatWidget";
@@ -103,6 +104,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
   SuperAdmin: [
+    { label: "nav.requests", icon: Users, key: "requests" },
     { label: "nav.tenants", icon: Building2, key: "tenants" },
     { label: "nav.analytics", icon: Activity, key: "analytics" },
     { label: "nav.courses", icon: BookOpen, key: "courses" },
@@ -360,17 +362,11 @@ export default function Portal({ role }: { role: string }) {
     });
   };
 
-  const queryClient = useQueryClient();
-  const needsOnboarding = role === "Employee" && user && !(user as any).onboardingCompleted;
-
-  if (needsOnboarding) {
-    return (
-      <OnboardingWizard
-        user={{ id: (user as any).id, firstName: (user as any).firstName, lastName: (user as any).lastName, email: (user as any).email }}
-        onComplete={() => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] })}
-      />
-    );
-  }
+  const needsReadinessAssessment =
+    role === "Employee" &&
+    user &&
+    (user as any).approvalStatus === "approved" &&
+    !(user as any).onboardingCompleted;
 
   return (
     <div className="min-h-screen bg-background flex" dir={isRTL ? "rtl" : "ltr"}>
@@ -490,6 +486,8 @@ export default function Portal({ role }: { role: string }) {
 
       {/* AI Chat Widget — available across all portals */}
       <AIChatWidget />
+
+      {needsReadinessAssessment && <ReadinessAssessmentModal />}
     </div>
   );
 }
@@ -565,6 +563,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
 
   // ── Super Admin Portal ────────────────────────────────────────────────────
   if (role === "SuperAdmin") {
+    if (activeKey === "requests") return <SuperAdminRequests />;
     if (activeKey === "tenants") return <SuperAdminTenants />;
     if (activeKey === "analytics") return <SuperAdminAnalytics />;
     if (activeKey === "courses") return <AdminCourses />;

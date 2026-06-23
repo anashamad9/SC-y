@@ -118,11 +118,11 @@ export default function AdminReports() {
       };
 
   const reportTypes = [
-    { value: "employee", label: copy.employeeReport, desc: copy.employeeDesc, icon: "👤" },
-    { value: "department", label: copy.departmentReport, desc: copy.departmentDesc, icon: "🏢" },
-    { value: "risk", label: copy.riskReport, desc: copy.riskDesc, icon: "⚠️" },
-    { value: "compliance", label: copy.complianceReport, desc: copy.complianceDesc, icon: "✅" },
-    { value: "executive", label: copy.executiveReport, desc: copy.executiveDesc, icon: "📊" },
+    { value: "employee", label: copy.employeeReport, desc: copy.employeeDesc, icon: "EMP" },
+    { value: "department", label: copy.departmentReport, desc: copy.departmentDesc, icon: "DEPT" },
+    { value: "risk", label: copy.riskReport, desc: copy.riskDesc, icon: "RISK" },
+    { value: "compliance", label: copy.complianceReport, desc: copy.complianceDesc, icon: "COMP" },
+    { value: "executive", label: copy.executiveReport, desc: copy.executiveDesc, icon: "EXEC" },
   ];
 
   async function handleGenerate() {
@@ -171,7 +171,7 @@ export default function AdminReports() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{rt.icon}</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">{rt.icon}</span>
                   <div>
                     <div className="text-sm font-medium">{rt.label}</div>
                     <div className="text-xs text-muted-foreground">{rt.desc}</div>
@@ -240,7 +240,7 @@ export default function AdminReports() {
           </div>
 
           <Button onClick={handleGenerate} disabled={generating} className="w-full">
-            {generating ? copy.generating : `📥 ${copy.generate} ${reportTypes.find((type) => type.value === selectedType)?.label ?? ""}`}
+            {generating ? copy.generating : `${copy.generate} ${reportTypes.find((type) => type.value === selectedType)?.label ?? ""}`}
           </Button>
 
           <div className="space-y-1 rounded-lg border border-border/50 bg-muted/10 p-3 text-xs text-muted-foreground">

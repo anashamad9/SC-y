@@ -12,14 +12,26 @@ let dbInstance: DbInstance | null = null;
 
 export function getPool(): PoolInstance {
   if (!poolInstance) {
-    if (!process.env.DATABASE_URL) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
       throw new Error(
         "DATABASE_URL must be set. Add your Supabase Postgres connection string before using the API.",
       );
     }
 
+    try {
+      const parsed = new URL(connectionString);
+      if (!["postgres:", "postgresql:"].includes(parsed.protocol)) {
+        throw new Error("Invalid protocol");
+      }
+    } catch {
+      throw new Error(
+        "DATABASE_URL is not a valid Postgres connection string. Replace the placeholder in .env.local with your real Supabase Postgres URL.",
+      );
+    }
+
     poolInstance = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
       ssl:
         process.env.DATABASE_SSL === "false"
           ? false

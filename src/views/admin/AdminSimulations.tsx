@@ -20,7 +20,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const TYPE_ICONS: Record<string, string> = {
-  email: "✉️", sms: "📱", qr: "📷", login: "🔑", bec: "👔", invoice: "🧾", deepfake: "🎭",
+  email: "MAIL", sms: "SMS", qr: "QR", login: "LOGIN", bec: "BEC", invoice: "INV", deepfake: "AUDIO",
 };
 
 type Tab = "campaigns" | "templates" | "generator";
@@ -509,7 +509,7 @@ export default function AdminSimulations() {
                 </div>
               </div>
               <Button onClick={handleGenerate} disabled={generating} className="w-full">
-                {generating ? "Generating..." : "🤖 Generate Phishing Content"}
+                {generating ? "Generating..." : "Generate Phishing Content"}
               </Button>
             </div>
           </motion.div>
@@ -537,7 +537,7 @@ export default function AdminSimulations() {
               {genResult.attachmentDesc && (
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Attachment</div>
-                  <div className="bg-muted/30 rounded-lg p-3 text-sm">📎 {genResult.attachmentDesc}</div>
+                  <div className="bg-muted/30 rounded-lg p-3 text-sm">{genResult.attachmentDesc}</div>
                 </div>
               )}
               <div>
@@ -552,11 +552,10 @@ export default function AdminSimulations() {
               </div>
               <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => {
                 navigator.clipboard.writeText(genResult.body);
-              }}>📋 Copy Body</Button>
+              }}>Copy Body</Button>
             </motion.div>
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[300px] text-center text-muted-foreground bg-card/40 border border-border/50 rounded-xl">
-              <div className="text-4xl mb-3">🤖</div>
               <div className="font-medium">AI-Generated Preview</div>
               <div className="text-sm mt-1">Configure the options and click generate</div>
             </div>

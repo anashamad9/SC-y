@@ -4,9 +4,76 @@ import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
+const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
 
 async function getUserProgress(userId: number) {
   return db.select().from(userCourseProgressTable).where(eq(userCourseProgressTable.userId, userId));
+}
+
+function normalizeOptionalString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeOptionalNumber(value: unknown) {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildCourseWritePayload(
+  body: Record<string, unknown>,
+  existing?: typeof coursesTable.$inferSelect,
+): Partial<typeof coursesTable.$inferInsert> {
+  const videoFileName = normalizeOptionalString(body.videoFileName);
+  const videoMimeType = normalizeOptionalString(body.videoMimeType);
+  const videoSizeBytes = normalizeOptionalNumber(body.videoSizeBytes);
+  const markdownFileName = normalizeOptionalString(body.markdownFileName);
+  const markdownContent = normalizeOptionalString(body.markdownContent);
+  const markdownUrl = normalizeOptionalString(body.markdownUrl);
+  const markdownSizeBytes = normalizeOptionalNumber(body.markdownSizeBytes);
+  const videoTouched =
+    videoFileName !== (existing?.videoFileName ?? null) ||
+    videoMimeType !== (existing?.videoMimeType ?? null) ||
+    videoSizeBytes !== (existing?.videoSizeBytes ?? null) ||
+    normalizeOptionalString(body.videoUrl) !== (existing?.videoUrl ?? null);
+  const markdownTouched =
+    markdownFileName !== (existing?.markdownFileName ?? null) ||
+    markdownContent !== (existing?.markdownContent ?? null) ||
+    markdownUrl !== (existing?.markdownUrl ?? null) ||
+    markdownSizeBytes !== (existing?.markdownSizeBytes ?? null);
+
+  return {
+    title: String(body.title ?? existing?.title ?? ""),
+    category: String(body.category ?? existing?.category ?? ""),
+    description: String(body.description ?? existing?.description ?? ""),
+    videoUrl: normalizeOptionalString(body.videoUrl),
+    videoFileName,
+    videoMimeType,
+    videoSizeBytes,
+    videoUploadedAt: videoTouched && (videoFileName || videoMimeType || videoSizeBytes || normalizeOptionalString(body.videoUrl)) ? new Date() : (existing?.videoUploadedAt ?? null),
+    markdownUrl,
+    markdownFileName,
+    markdownContent,
+    markdownSizeBytes,
+    markdownUploadedAt: markdownTouched && (markdownFileName || markdownContent || markdownUrl || markdownSizeBytes) ? new Date() : (existing?.markdownUploadedAt ?? null),
+    minScore: normalizeOptionalNumber(body.minScore),
+    maxScore: normalizeOptionalNumber(body.maxScore),
+    thumbnailColor: String(body.thumbnailColor ?? existing?.thumbnailColor ?? "#dc143c"),
+    durationMinutes: Number(body.durationMinutes ?? existing?.durationMinutes ?? 30),
+    xpReward: Number(body.xpReward ?? existing?.xpReward ?? 100),
+    difficulty: String(body.difficulty ?? existing?.difficulty ?? "intermediate"),
+    lessonCount: Number(body.lessonCount ?? existing?.lessonCount ?? 0),
+  };
+}
+
+function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert>) {
+  if (payload.videoSizeBytes !== null && payload.videoSizeBytes !== undefined && payload.videoSizeBytes > MAX_VIDEO_SIZE_BYTES) {
+    return "Uploaded videos must be 2GB or smaller.";
+  }
+  if (payload.markdownFileName && !payload.markdownFileName.toLowerCase().endsWith(".md")) {
+    return "Only Markdown files ending in .md are supported.";
+  }
+  return null;
 }
 
 function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progress?: typeof userCourseProgressTable.$inferSelect | null) {
@@ -16,6 +83,15 @@ function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progr
     category: course.category,
     description: course.description,
     videoUrl: course.videoUrl,
+    videoFileName: course.videoFileName,
+    videoMimeType: course.videoMimeType,
+    videoSizeBytes: course.videoSizeBytes,
+    videoUploadedAt: course.videoUploadedAt?.toISOString() ?? null,
+    markdownUrl: course.markdownUrl,
+    markdownFileName: course.markdownFileName,
+    markdownContent: course.markdownContent,
+    markdownSizeBytes: course.markdownSizeBytes,
+    markdownUploadedAt: course.markdownUploadedAt?.toISOString() ?? null,
     minScore: course.minScore,
     maxScore: course.maxScore,
     thumbnailColor: course.thumbnailColor,
@@ -168,23 +244,17 @@ router.post("/courses", requireAuth, async (req, res): Promise<void> => {
   if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
     res.status(403).json({ error: "Forbidden" }); return;
   }
-  const { title, category, description, videoUrl, minScore, maxScore, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
+  const { title, category, difficulty } = req.body;
   if (!title || !category || !difficulty) {
     res.status(400).json({ error: "title, category, and difficulty are required" }); return;
   }
-  const [course] = await db.insert(coursesTable).values({
-    title,
-    category,
-    description: description ?? "",
-    videoUrl: videoUrl || null,
-    minScore: Number.isFinite(Number(minScore)) ? Number(minScore) : null,
-    maxScore: Number.isFinite(Number(maxScore)) ? Number(maxScore) : null,
-    thumbnailColor: thumbnailColor ?? "#dc143c",
-    durationMinutes: durationMinutes ?? 30,
-    xpReward: xpReward ?? 100,
-    difficulty,
-    lessonCount: lessonCount ?? 0,
-  }).returning();
+  const payload = buildCourseWritePayload(req.body);
+  const validationError = validateCoursePayload(payload);
+  if (validationError) {
+    res.status(400).json({ error: validationError });
+    return;
+  }
+  const [course] = await db.insert(coursesTable).values(payload as typeof coursesTable.$inferInsert).returning();
   res.status(201).json(course);
 });
 
@@ -195,21 +265,18 @@ router.patch("/courses/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(403).json({ error: "Forbidden" }); return;
   }
   const id = parseInt(req.params.id as string);
-  const { title, category, description, videoUrl, minScore, maxScore, thumbnailColor, durationMinutes, xpReward, difficulty, lessonCount } = req.body;
+  const [existing] = await db.select().from(coursesTable).where(eq(coursesTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Course not found" }); return;
+  }
+  const payload = buildCourseWritePayload(req.body, existing);
+  const validationError = validateCoursePayload(payload);
+  if (validationError) {
+    res.status(400).json({ error: validationError });
+    return;
+  }
   const [updated] = await db.update(coursesTable)
-    .set({
-      title,
-      category,
-      description,
-      videoUrl: videoUrl || null,
-      minScore: Number.isFinite(Number(minScore)) ? Number(minScore) : null,
-      maxScore: Number.isFinite(Number(maxScore)) ? Number(maxScore) : null,
-      thumbnailColor,
-      durationMinutes,
-      xpReward,
-      difficulty,
-      lessonCount,
-    })
+    .set(payload)
     .where(eq(coursesTable.id, id))
     .returning();
   if (!updated) { res.status(404).json({ error: "Course not found" }); return; }

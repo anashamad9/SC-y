@@ -25,6 +25,10 @@ function buildUserResponse(user: typeof usersTable.$inferSelect, deptName?: stri
     avatarUrl: user.avatarUrl,
     jobTitle: user.jobTitle,
     onboardingCompleted: user.onboardingCompleted,
+    approvalStatus: user.approvalStatus,
+    approvedBy: user.approvedBy,
+    approvedAt: user.approvedAt?.toISOString() ?? null,
+    rejectedAt: user.rejectedAt?.toISOString() ?? null,
     mfaEnabled: user.mfaEnabled,
     createdAt: user.createdAt.toISOString(),
   };
@@ -235,6 +239,10 @@ router.post("/users", requireAuth, requireRole("admin", "superadmin"), async (re
     departmentId: departmentId ? parseInt(departmentId) : null,
     jobTitle: jobTitle || null,
     passwordHash,
+    approvalStatus: "approved",
+    approvedBy: req.user!.userId,
+    approvedAt: new Date(),
+    rejectedAt: null,
   }).returning();
   res.status(201).json(buildUserResponse(user));
 });

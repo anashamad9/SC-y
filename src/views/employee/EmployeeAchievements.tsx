@@ -107,7 +107,7 @@ export default function EmployeeAchievements() {
                   </div>
                   {(gp?.streakDays ?? 0) > 0 && (
                     <div className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-orange-500 text-sm">
-                      🔥
+                      ST
                     </div>
                   )}
                 </div>
@@ -118,7 +118,7 @@ export default function EmployeeAchievements() {
                     <span className="text-sm text-muted-foreground">{copy.totalXp}</span>
                   </div>
                   <div className="mb-3 text-sm text-muted-foreground">
-                    {gp?.streakDays ?? 0} {copy.dayStreak} {(gp?.streakDays ?? 0) >= 7 ? "🔥" : ""}
+                    {gp?.streakDays ?? 0} {copy.dayStreak}
                   </div>
                   <div className="mb-1 flex justify-between text-xs">
                     <span className="text-muted-foreground">{copy.level} {gp?.level ?? 1}</span>
@@ -134,12 +134,12 @@ export default function EmployeeAchievements() {
 
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: copy.badgesEarned, value: badges?.length ?? 0, icon: "🏅", color: "text-yellow-400" },
-                { label: copy.streakDays, value: gp?.streakDays ?? 0, icon: "🔥", color: "text-orange-400" },
-                { label: copy.securityLevel, value: gp?.level ?? 1, icon: "⭐", color: "text-purple-400" },
+                { label: copy.badgesEarned, value: badges?.length ?? 0, icon: "BDG", color: "text-yellow-400" },
+                { label: copy.streakDays, value: gp?.streakDays ?? 0, icon: "STK", color: "text-orange-400" },
+                { label: copy.securityLevel, value: gp?.level ?? 1, icon: "LVL", color: "text-purple-400" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border border-border bg-card/80 p-4 text-center backdrop-blur-sm">
-                  <div className="mb-1 text-2xl">{s.icon}</div>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">{s.icon}</div>
                   <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.value}</div>
                   <div className="text-xs text-muted-foreground">{s.label}</div>
                 </div>
@@ -186,7 +186,6 @@ export default function EmployeeAchievements() {
             })}
             {(badges?.length ?? 0) === 0 && (
               <div className="py-16 text-center text-muted-foreground">
-                <div className="mb-3 text-4xl">🏅</div>
                 <div className="text-sm">{copy.noBadges}</div>
               </div>
             )}
@@ -231,7 +230,7 @@ export default function EmployeeAchievements() {
                     className={`grid grid-cols-[2rem_1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 ${entry.isCurrentUser ? "border-l-2 border-primary bg-primary/10" : "hover:bg-white/2"}`}
                   >
                     <div className={`text-sm font-bold font-mono ${entry.rank === 1 ? "text-yellow-400" : entry.rank === 2 ? "text-slate-300" : entry.rank === 3 ? "text-amber-600" : "text-muted-foreground"}`}>
-                      {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`}
+                      {entry.rank <= 3 ? `Top ${entry.rank}` : `#${entry.rank}`}
                     </div>
                     <div>
                       <div className={`text-sm font-medium ${entry.isCurrentUser ? "text-primary" : ""}`}>

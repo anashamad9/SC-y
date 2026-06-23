@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signAccessToken, verifyToken, generateRefreshToken, refreshTokenExpiresAt } from "../lib/jwt";
+import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/auth";
 import {
   LoginBody,
@@ -97,6 +98,10 @@ function buildUserResponse(user: typeof usersTable.$inferSelect, deptName?: stri
     avatarUrl: user.avatarUrl,
     jobTitle: user.jobTitle,
     onboardingCompleted: user.onboardingCompleted,
+    approvalStatus: user.approvalStatus,
+    approvedBy: user.approvedBy,
+    approvedAt: user.approvedAt?.toISOString() ?? null,
+    rejectedAt: user.rejectedAt?.toISOString() ?? null,
     mfaEnabled: user.mfaEnabled,
     createdAt: user.createdAt.toISOString(),
   };
@@ -224,6 +229,8 @@ async function getOrCreateTestUser(role: TestRole) {
       departmentId: department.id,
       jobTitle: names[role].jobTitle,
       onboardingCompleted: true,
+      approvalStatus: "approved",
+      approvedAt: new Date(),
     })
     .returning();
 
@@ -296,6 +303,24 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .set({ failedLoginAttempts: 0, lockedUntil: null })
     .where(eq(usersTable.id, user.id));
 
+  if (user.approvalStatus === "pending") {
+    await writeAudit(AUDIT_ACTIONS.LOGIN_PENDING_APPROVAL, user.id, req, { email });
+    res.status(403).json({
+      error: "Your account is waiting for super admin approval.",
+      approvalStatus: user.approvalStatus,
+    });
+    return;
+  }
+
+  if (user.approvalStatus === "rejected") {
+    await writeAudit(AUDIT_ACTIONS.LOGIN_REJECTED, user.id, req, { email });
+    res.status(403).json({
+      error: "Your access request has been rejected. Please contact the super admin.",
+      approvalStatus: user.approvalStatus,
+    });
+    return;
+  }
+
   const deptName = await getDeptName(user.departmentId);
   const { accessToken, refreshToken } = await issueTokens(user.id, user.email, user.role);
 
@@ -306,31 +331,45 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/temp-login", async (req, res): Promise<void> => {
-  if (!isTempLoginEnabled()) {
-    res.status(403).json({
-      error: "Temporary login is disabled. Set ENABLE_TEMP_LOGIN=true to enable it.",
-    });
-    return;
+  try {
+    if (!isTempLoginEnabled()) {
+      res.status(403).json({
+        error: "Temporary login is disabled. Set ENABLE_TEMP_LOGIN=true to enable it.",
+      });
+      return;
+    }
+
+    const role = req.body?.role;
+    if (!isTestRole(role)) {
+      res.status(400).json({ error: `Role must be one of: ${TEST_ROLES.join(", ")}` });
+      return;
+    }
+
+    const user = await getOrCreateTestUser(role);
+    const [updatedUser] = await db.update(usersTable)
+      .set({
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        rejectedAt: null,
+      })
+      .where(eq(usersTable.id, user.id))
+      .returning();
+
+    const activeUser = updatedUser ?? user;
+    const deptName = await getDeptName(activeUser.departmentId);
+    const { accessToken, refreshToken } = await issueTokens(activeUser.id, activeUser.email, activeUser.role);
+
+    setAuthCookies(res, accessToken, refreshToken);
+    await writeAudit(AUDIT_ACTIONS.LOGIN_SUCCESS, activeUser.id, req, { temporary: true, role });
+
+    res.json({ token: accessToken, refreshToken, user: buildUserResponse(activeUser, deptName) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Temporary login failed";
+    logger.error({ err }, "Temporary login failed");
+    res.status(500).json({ error: message });
   }
-
-  const role = req.body?.role;
-  if (!isTestRole(role)) {
-    res.status(400).json({ error: `Role must be one of: ${TEST_ROLES.join(", ")}` });
-    return;
-  }
-
-  const user = await getOrCreateTestUser(role);
-  await db.update(usersTable)
-    .set({ failedLoginAttempts: 0, lockedUntil: null })
-    .where(eq(usersTable.id, user.id));
-
-  const deptName = await getDeptName(user.departmentId);
-  const { accessToken, refreshToken } = await issueTokens(user.id, user.email, user.role);
-
-  setAuthCookies(res, accessToken, refreshToken);
-  await writeAudit(AUDIT_ACTIONS.LOGIN_SUCCESS, user.id, req, { temporary: true, role });
-
-  res.json({ token: accessToken, refreshToken, user: buildUserResponse(user, deptName) });
 });
 
 router.post("/auth/register", async (req, res): Promise<void> => {
@@ -360,14 +399,20 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     lastName,
     role: validRole,
     departmentId: departmentId ?? null,
+    approvalStatus: "pending",
   }).returning();
 
-  const { accessToken, refreshToken } = await issueTokens(user.id, user.email, user.role);
+  await writeAudit(AUDIT_ACTIONS.REGISTER_PENDING_APPROVAL, user.id, req, {
+    email: user.email,
+    role: user.role,
+    approvalStatus: user.approvalStatus,
+  });
 
-  setAuthCookies(res, accessToken, refreshToken);
-  await writeAudit(AUDIT_ACTIONS.REGISTER, user.id, req, { email: user.email, role: user.role });
-
-  res.status(201).json({ token: accessToken, refreshToken, user: buildUserResponse(user) });
+  res.status(201).json({
+    message: "Your account request has been submitted and is waiting for super admin approval.",
+    approvalStatus: user.approvalStatus,
+    user: buildUserResponse(user),
+  });
 });
 
 router.post("/auth/refresh", async (req, res): Promise<void> => {

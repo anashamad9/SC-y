@@ -23,6 +23,7 @@
     "notifications": "Notifications",
     "settings": "Settings",
     "tenants": "Tenants",
+    "requests": "Access Requests",
     "analytics": "Analytics",
     "systemConfig": "System Config",
     "aiConfig": "AI Config",
@@ -74,7 +75,7 @@
     "operativeStatus": "Operative Status",
     "yourLearningPath": "Your Learning Path",
     "completeAssessment": "Complete the Psychometric Assessment to unlock your profile",
-    "allCoursesComplete": "All recommended courses completed! 🏆",
+    "allCoursesComplete": "All recommended courses completed.",
     "completeForBadges": "Complete assessments to earn badges",
     "recentBadges": "Recent Badges",
     "historicalTrend": "Culture & Risk Index — Historical Trend",
@@ -92,9 +93,9 @@
     "decisionMaking": "Decision Making",
     "attentionToDetail": "Attention to Detail",
     "stressResponse": "Stress Response",
-    "riskTolerance": "Risk Tolerance ⚠",
-    "impulsiveness": "Impulsiveness ⚠",
-    "trustTendencies": "Trust Tendencies ⚠"
+    "riskTolerance": "Risk Tolerance",
+    "impulsiveness": "Impulsiveness",
+    "trustTendencies": "Trust Tendencies"
   },
   "executive": {
     "title": "Executive Intelligence",

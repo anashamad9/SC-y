@@ -20,14 +20,6 @@ const registerSchema = z.object({
   role: z.string().min(1, "Select your role"),
 });
 
-const roleMap: Record<string, string> = {
-  employee: "/portal",
-  executive: "/executive",
-  hr: "/hr",
-  admin: "/admin",
-  superadmin: "/superadmin",
-};
-
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -42,14 +34,17 @@ export default function Register() {
     registerMutation.mutate(
       { data: values },
       {
-        onSuccess: (data) => {
-          toast({ title: "Access Granted", description: "Welcome to CyberCultX" });
-          setLocation(roleMap[data.user.role] ?? "/portal");
+        onSuccess: (data: any) => {
+          toast({
+            title: "Request submitted",
+            description: data.message || "Your account is waiting for super admin approval.",
+          });
+          setLocation("/login");
         },
         onError: (err: any) => {
           toast({
             variant: "destructive",
-            title: "Registration Failed",
+            title: "Registration failed",
             description: err.data?.error || err.message || "Registration failed",
           });
         },
@@ -72,7 +67,7 @@ export default function Register() {
             <img src={logo} alt="The Harvesters Logo" className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Request Clearance</h1>
-          <p className="text-sm text-muted-foreground mt-2 text-center">Create your intelligence portal account</p>
+          <p className="text-sm text-muted-foreground mt-2 text-center">Submit your account request for super admin approval</p>
         </div>
 
         <Form {...form}>
@@ -164,7 +159,7 @@ export default function Register() {
               disabled={registerMutation.isPending}
               data-testid="button-register"
             >
-              {registerMutation.isPending ? "Processing..." : "Initiate Access"}
+              {registerMutation.isPending ? "Submitting..." : "Submit request"}
             </Button>
           </form>
         </Form>

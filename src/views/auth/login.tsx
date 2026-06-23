@@ -31,6 +31,21 @@ const testRoles = [
   { role: "superadmin", label: "Super Admin" },
 ];
 
+function decodeHtmlEntities(value: string) {
+  return value
+    .replaceAll("&quot;", "\"")
+    .replaceAll("&#39;", "'")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">");
+}
+
+function normalizeAuthErrorMessage(value?: string) {
+  const message = decodeHtmlEntities((value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  if (!message) return "Invalid credentials";
+  return message.length > 420 ? `${message.slice(0, 420)}...` : message;
+}
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -66,7 +81,7 @@ export default function Login() {
           toast({
             variant: "destructive",
             title: "Access Denied",
-            description: err.message || "Invalid credentials",
+            description: normalizeAuthErrorMessage(err.data?.error || err.message),
           });
         },
       }
@@ -117,11 +132,11 @@ export default function Login() {
       try {
         data = responseText ? JSON.parse(responseText) : {};
       } catch {
-        data = { error: responseText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+        data = { error: normalizeAuthErrorMessage(responseText) };
       }
 
       if (!response.ok) {
-        throw new Error(data?.error || "Temporary login failed");
+        throw new Error(normalizeAuthErrorMessage(data?.error || "Temporary login failed"));
       }
 
       localStorage.setItem("ccx_token", data.token);
@@ -131,7 +146,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Temporary Login Failed",
-        description: err.message || "Unable to start test session",
+        description: normalizeAuthErrorMessage(err.message || "Unable to start test session"),
       });
     } finally {
       setTempRole(null);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses, useGetCourse, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 
@@ -29,6 +30,8 @@ function useLearningCopy(lang: "en" | "ar") {
         lessons: "دروس",
         completePct: "مكتمل",
         courseDetail: "تفاصيل الدورة",
+        courseNotes: "ملاحظات الدورة",
+        assetDetails: "تفاصيل الفيديو",
         completionReward: "نقطة عند الإكمال",
         progress: "التقدم",
         lessonPlan: "خطة الدروس",
@@ -56,6 +59,8 @@ function useLearningCopy(lang: "en" | "ar") {
         lessons: "lessons",
         completePct: "complete",
         courseDetail: "Course Detail",
+        courseNotes: "Course Notes",
+        assetDetails: "Video Details",
         completionReward: "xp on completion",
         progress: "Progress",
         lessonPlan: "Lesson Plan",
@@ -76,6 +81,22 @@ function useLearningCopy(lang: "en" | "ar") {
         intermediate: "Intermediate",
         advanced: "Advanced",
       };
+}
+
+function formatBytes(bytes?: number | null) {
+  if (!bytes) return "Not available";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function isDirectVideo(url: string) {
+  return /^(data:video|blob:|https?:.*\.(mp4|webm|ogg)(\?.*)?$|\/)/i.test(url);
 }
 
 function CourseCard({ course, onClick, lang }: { course: any; onClick: () => void; lang: "en" | "ar" }) {
@@ -147,6 +168,8 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
   const status = course?.status ?? "not_started";
   const lessons = course?.lessons ?? [];
   const videoUrl = (course as any)?.videoUrl;
+  const markdownContent = (course as any)?.markdownContent;
+  const markdownUrl = (course as any)?.markdownUrl;
 
   function startLesson(lessonIndex: number) {
     const lessonCount = Math.max(lessons.length, 1);
@@ -197,14 +220,48 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
         {videoUrl && (
           <div className="mb-5 overflow-hidden rounded-lg border border-border bg-primary/5">
             <div className="aspect-video w-full bg-background">
-              <iframe
-                src={videoUrl}
-                title={course.title}
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
+              {isDirectVideo(videoUrl) ? (
+                <video src={videoUrl} controls className="h-full w-full bg-black" />
+              ) : (
+                <iframe
+                  src={videoUrl}
+                  title={course.title}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              )}
             </div>
+          </div>
+        )}
+
+        {((course as any)?.videoFileName || (course as any)?.videoSizeBytes || (course as any)?.videoMimeType) && (
+          <div className="mb-5 rounded-xl border border-border bg-background/60 p-4">
+            <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">{copy.assetDetails}</div>
+            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              <div>File name: <span className="text-foreground">{(course as any)?.videoFileName || "Not available"}</span></div>
+              <div>Type: <span className="text-foreground">{(course as any)?.videoMimeType || "Not available"}</span></div>
+              <div>Size: <span className="text-foreground">{formatBytes((course as any)?.videoSizeBytes)}</span></div>
+              <div>Uploaded: <span className="text-foreground">{(course as any)?.videoUploadedAt ? new Date((course as any).videoUploadedAt).toLocaleString() : "Not available"}</span></div>
+            </div>
+          </div>
+        )}
+
+        {(markdownContent || markdownUrl) && (
+          <div className="mb-5 rounded-xl border border-border bg-background/60 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
+              {(course as any)?.markdownFileName && <div className="text-xs text-muted-foreground">{(course as any).markdownFileName}</div>}
+            </div>
+            {markdownContent ? (
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <ReactMarkdown>{markdownContent}</ReactMarkdown>
+              </div>
+            ) : markdownUrl ? (
+              <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                Open Markdown file
+              </a>
+            ) : null}
           </div>
         )}
 
@@ -264,7 +321,7 @@ function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => 
 
         {currentPct >= 100 ? (
           <div className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-            <span>🏆</span>
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
             <span>{copy.courseCompleted} +{course.xpReward}xp {copy.earned}</span>
           </div>
         ) : (

@@ -2,7 +2,7 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Shield, Brain, Target, Activity, Users, FileLock, ChevronRight, Check, ChevronDown } from "lucide-react";
+import { Shield, Brain, Target, Activity, Users, FileLock, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 
@@ -39,58 +39,6 @@ export default function Landing() {
       name: "Dr. Layla Ibrahim",
       title: "Chief Risk Officer, Meridian Healthcare",
       initials: "LI",
-    },
-  ];
-
-  const plans = [
-    {
-      name: "Operative",
-      price: "$8",
-      period: "per user / month",
-      desc: "For teams beginning their security culture journey",
-      features: [
-        "Up to 250 employees",
-        "Phishing simulations (5/month)",
-        "Core psychometric assessments",
-        "Employee risk dashboard",
-        "Email support",
-      ],
-      cta: "Start Free Trial",
-      highlight: false,
-    },
-    {
-      name: "Command",
-      price: "$18",
-      period: "per user / month",
-      desc: "Full platform for growing enterprises",
-      features: [
-        "Up to 2,500 employees",
-        "Unlimited phishing simulations",
-        "Full assessment suite + AI scoring",
-        "Executive & HR dashboards",
-        "Department heatmaps",
-        "API access",
-        "Priority support",
-      ],
-      cta: "Book a Demo",
-      highlight: true,
-    },
-    {
-      name: "Intelligence",
-      price: "Custom",
-      period: "enterprise pricing",
-      desc: "For global organizations with complex needs",
-      features: [
-        "Unlimited employees",
-        "Custom AI model training",
-        "White-label deployment",
-        "SIEM & SOAR integrations",
-        "Dedicated customer success",
-        "SLA guarantees",
-        "Arabic / RTL support",
-      ],
-      cta: "Contact Sales",
-      highlight: false,
     },
   ];
 
@@ -267,68 +215,6 @@ export default function Landing() {
                     <div className="text-xs text-muted-foreground">{t.title}</div>
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 bg-background/50 border-y border-border/50 relative z-10">
-        <div className="container mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Intelligence, at Every Scale</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">Transparent pricing that scales with your organization.</p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {plans.map((plan, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={`p-8 rounded-2xl border flex flex-col relative ${
-                  plan.highlight
-                    ? "bg-card border-primary/60 shadow-[0_0_40px_rgba(204,0,0,0.15)]"
-                    : "bg-card/60 border-card-border"
-                }`}
-              >
-                {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary rounded-full text-xs font-bold text-white">
-                    Most Popular
-                  </div>
-                )}
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-2">
-                    <span className={`text-4xl font-black ${plan.highlight ? "text-primary" : "text-foreground"}`}>{plan.price}</span>
-                    <span className="text-xs text-muted-foreground">{plan.period}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{plan.desc}</p>
-                </div>
-                <ul className="space-y-3 flex-1 mb-8">
-                  {plan.features.map((f, fi) => (
-                    <li key={fi} className="flex items-start gap-3 text-sm">
-                      <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <span className="text-muted-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/register">
-                  <Button
-                    className={`w-full ${plan.highlight ? "bg-primary hover:bg-primary/90 text-white" : "variant-outline border-border"}`}
-                    variant={plan.highlight ? "default" : "outline"}
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
               </motion.div>
             ))}
           </div>
