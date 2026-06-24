@@ -1,22 +1,13 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useListCourses, useGetCourse, useUpdateCourseProgress } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import ReactMarkdown from "react-markdown";
-import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { useListCourses } from "@workspace/api-client-react";
+import { CourseProfilePage } from "@/components/course-profile-page";
 import { useI18n } from "@/lib/i18n";
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   beginner: "#22c55e",
   intermediate: "#f97316",
   advanced: "#ef4444",
-};
-
-const LESSON_ICONS: Record<string, string> = {
-  video: "▶",
-  slides: "◧",
-  quiz: "◈",
-  scenario: "◎",
 };
 
 type FilterDifficulty = "all" | "beginner" | "intermediate" | "advanced";
@@ -83,22 +74,6 @@ function useLearningCopy(lang: "en" | "ar") {
       };
 }
 
-function formatBytes(bytes?: number | null) {
-  if (!bytes) return "Not available";
-  const units = ["B", "KB", "MB", "GB"];
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function isDirectVideo(url: string) {
-  return /^(data:video|blob:|https?:.*\.(mp4|webm|ogg)(\?.*)?$|\/)/i.test(url);
-}
-
 function CourseCard({ course, onClick, lang }: { course: any; onClick: () => void; lang: "en" | "ar" }) {
   const status = course.status ?? "not_started";
   const pct = course.progressPct ?? 0;
@@ -125,7 +100,7 @@ function CourseCard({ course, onClick, lang }: { course: any; onClick: () => voi
                 ? "border-orange-500/30 bg-orange-500/10 text-orange-400"
                 : "border-white/10 bg-white/5 text-muted-foreground"
           }`}>
-            {status === "completed" ? `✓ ${copy.done}` : status === "in_progress" ? copy.inProgress : copy.newItem}
+            {status === "completed" ? copy.done : status === "in_progress" ? copy.inProgress : copy.newItem}
           </span>
         </div>
 
@@ -156,191 +131,6 @@ function CourseCard({ course, onClick, lang }: { course: any; onClick: () => voi
   );
 }
 
-function CourseDetail({ courseId, onClose }: { courseId: number; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const { data: course, isLoading } = useGetCourse(courseId);
-  const progressMutation = useUpdateCourseProgress();
-  const [localProgress, setLocalProgress] = useState<number | null>(null);
-  const { lang, isRTL } = useI18n();
-  const copy = useLearningCopy(lang);
-
-  const currentPct = localProgress ?? (course?.progressPct ?? 0);
-  const status = course?.status ?? "not_started";
-  const lessons = course?.lessons ?? [];
-  const videoUrl = (course as any)?.videoUrl;
-  const markdownContent = (course as any)?.markdownContent;
-  const markdownUrl = (course as any)?.markdownUrl;
-
-  function startLesson(lessonIndex: number) {
-    const lessonCount = Math.max(lessons.length, 1);
-    const pct = Math.round(((lessonIndex + 1) / lessonCount) * 100);
-    setLocalProgress(pct);
-    progressMutation.mutate(
-      { id: courseId, data: { progressPct: pct, lastLessonId: lessons[lessonIndex]?.id } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["listCourses"] });
-          queryClient.invalidateQueries({ queryKey: ["getLearningPath"] });
-          queryClient.invalidateQueries({ queryKey: ["getMyGamification"] });
-        },
-      },
-    );
-  }
-
-  if (isLoading) return <div className="h-64 animate-pulse rounded-xl border border-border bg-card/80 p-6" />;
-  if (!course) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      className="overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm"
-      dir={isRTL ? "rtl" : "ltr"}
-    >
-      <div className="h-1.5 w-full" style={{ backgroundColor: course.thumbnailColor ?? "#dc143c" }} />
-      <div className="p-6">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <div className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">{copy.courseDetail}</div>
-            <h2 className="text-lg font-bold">{course.title}</h2>
-            <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-              <span style={{ color: DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280" }}>{course.difficulty}</span>
-              <span>·</span>
-              <span>{course.durationMinutes}min</span>
-              <span>·</span>
-              <span className="text-purple-400">+{course.xpReward} {copy.completionReward}</span>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-xl leading-none text-muted-foreground hover:text-foreground">×</button>
-        </div>
-
-        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{course.description}</p>
-
-        {videoUrl && (
-          <div className="mb-5 overflow-hidden rounded-lg border border-border bg-primary/5">
-            <div className="aspect-video w-full bg-background">
-              {isDirectVideo(videoUrl) ? (
-                <video src={videoUrl} controls className="h-full w-full bg-black" />
-              ) : (
-                <iframe
-                  src={videoUrl}
-                  title={course.title}
-                  className="h-full w-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {((course as any)?.videoFileName || (course as any)?.videoSizeBytes || (course as any)?.videoMimeType) && (
-          <div className="mb-5 rounded-xl border border-border bg-background/60 p-4">
-            <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">{copy.assetDetails}</div>
-            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-              <div>File name: <span className="text-foreground">{(course as any)?.videoFileName || "Not available"}</span></div>
-              <div>Type: <span className="text-foreground">{(course as any)?.videoMimeType || "Not available"}</span></div>
-              <div>Size: <span className="text-foreground">{formatBytes((course as any)?.videoSizeBytes)}</span></div>
-              <div>Uploaded: <span className="text-foreground">{(course as any)?.videoUploadedAt ? new Date((course as any).videoUploadedAt).toLocaleString() : "Not available"}</span></div>
-            </div>
-          </div>
-        )}
-
-        {(markdownContent || markdownUrl) && (
-          <div className="mb-5 rounded-xl border border-border bg-background/60 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
-              {(course as any)?.markdownFileName && <div className="text-xs text-muted-foreground">{(course as any).markdownFileName}</div>}
-            </div>
-            {markdownContent ? (
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown>{markdownContent}</ReactMarkdown>
-              </div>
-            ) : markdownUrl ? (
-              <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                Open Markdown file
-              </a>
-            ) : null}
-          </div>
-        )}
-
-        <div className="mb-5">
-          <div className="mb-1.5 flex justify-between text-xs">
-            <span className="text-muted-foreground">{copy.progress}</span>
-            <span className={status === "completed" ? "text-emerald-400" : "text-primary"}>{Math.round(currentPct)}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/5">
-            <motion.div animate={{ width: `${currentPct}%` }} transition={{ duration: 0.4 }} className="h-full rounded-full" style={{ backgroundColor: status === "completed" ? "#22c55e" : "#dc143c" }} />
-          </div>
-        </div>
-
-        <div className="mb-5 space-y-2">
-          <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">{lessons.length > 0 ? copy.lessonPlan : copy.videoProgress}</div>
-          {lessons.length === 0 ? (
-            <button
-              onClick={() => startLesson(0)}
-              className={`w-full rounded-lg px-4 py-3 text-left text-sm transition-all ${
-                currentPct >= 100 ? "bg-emerald-500/10 text-emerald-400" : "bg-primary/10 text-primary hover:bg-primary/18"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-mono">
-                  {currentPct >= 100 ? "✓" : "▶"}
-                </span>
-                <div className="flex-1">
-                  <div>{currentPct >= 100 ? copy.videoCompleted : copy.markComplete}</div>
-                  <div className="text-xs text-muted-foreground">{copy.progressHelp}</div>
-                </div>
-              </div>
-            </button>
-          ) : lessons.map((lesson: any, i: number) => {
-            const lessonPct = ((i + 1) / lessons.length) * 100;
-            const isDone = currentPct >= lessonPct;
-            return (
-              <button
-                key={lesson.id}
-                onClick={() => startLesson(i)}
-                className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition-all ${
-                  isDone ? "border-emerald-500/30 bg-emerald-500/5 text-foreground" : "border-border bg-white/3 text-foreground hover:border-primary/30 hover:bg-white/5"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-mono ${isDone ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-muted-foreground"}`}>
-                    {isDone ? "✓" : LESSON_ICONS[lesson.type] ?? "○"}
-                  </span>
-                  <div className="flex-1">
-                    <div>{lesson.title}</div>
-                    <div className="text-xs capitalize text-muted-foreground">{lesson.type} · +{lesson.xpReward}xp</div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {currentPct >= 100 ? (
-          <div className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-            <span>{copy.courseCompleted} +{course.xpReward}xp {copy.earned}</span>
-          </div>
-        ) : (
-          <Button
-            onClick={() => {
-              const nextIdx = Math.min(Math.floor((currentPct / 100) * Math.max(lessons.length, 1)), Math.max(lessons.length - 1, 0));
-              startLesson(nextIdx);
-            }}
-            disabled={progressMutation.isPending}
-            className="w-full bg-primary text-white hover:bg-primary/80"
-          >
-            {currentPct > 0 ? (isRTL ? `← ${copy.continueLearning}` : `${copy.continueLearning} →`) : (isRTL ? `← ${copy.startCourse}` : `${copy.startCourse} →`)}
-          </Button>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
 export default function EmployeeLearning() {
   const [filter, setFilter] = useState<FilterDifficulty>("all");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
@@ -357,6 +147,10 @@ export default function EmployeeLearning() {
 
   const completedCount = (courses ?? []).filter((c: any) => c.status === "completed").length;
   const inProgressCount = (courses ?? []).filter((c: any) => c.status === "in_progress").length;
+
+  if (selectedCourse) {
+    return <CourseProfilePage courseId={selectedCourse} mode="learner" onBack={() => setSelectedCourse(null)} />;
+  }
 
   return (
     <div className="space-y-5" dir={isRTL ? "rtl" : "ltr"}>
@@ -394,24 +188,18 @@ export default function EmployeeLearning() {
         ))}
       </div>
 
-      <div className={selectedCourse ? "grid grid-cols-1 gap-5 lg:grid-cols-2" : "block"}>
-        <div>
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {[1, 2, 3, 4].map((i) => <div key={i} className="h-48 rounded-xl border border-border bg-card/50 animate-pulse" />)}
-            </div>
-          ) : (
-            <div className={`grid gap-4 ${selectedCourse ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
-              {(courses ?? []).map((course: any) => (
-                <CourseCard key={course.id} course={course} onClick={() => setSelectedCourse(selectedCourse === course.id ? null : course.id)} lang={lang} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <AnimatePresence>
-          {selectedCourse && <CourseDetail key={selectedCourse} courseId={selectedCourse} onClose={() => setSelectedCourse(null)} />}
-        </AnimatePresence>
+      <div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-48 rounded-xl border border-border bg-card/50 animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(courses ?? []).map((course: any) => (
+              <CourseCard key={course.id} course={course} onClick={() => setSelectedCourse(course.id)} lang={lang} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
+import { CourseProfilePage } from "@/components/course-profile-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -114,6 +115,7 @@ export default function AdminCourses() {
   const [videoMessage, setVideoMessage] = useState<string | null>(null);
   const [markdownMessage, setMarkdownMessage] = useState<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [previewCourseId, setPreviewCourseId] = useState<number | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -298,6 +300,10 @@ export default function AdminCourses() {
 
   const isPending = createCourse.isPending || updateCourse.isPending;
   const previewVideoSource = videoPreviewUrl ?? form.videoUrl;
+
+  if (previewCourseId !== null) {
+    return <CourseProfilePage courseId={previewCourseId} mode="preview" onBack={() => setPreviewCourseId(null)} />;
+  }
 
   return (
     <div className="space-y-5">
@@ -589,6 +595,9 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
+                    <Button size="sm" variant="secondary" onClick={() => setPreviewCourseId(currentCourse.id)}>
+                      View
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => openEdit(currentCourse)}>
                       Edit
                     </Button>
