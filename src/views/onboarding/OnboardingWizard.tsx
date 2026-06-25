@@ -96,7 +96,7 @@ function AssessmentStep({ assessmentId, onComplete }: { assessmentId: number; on
   const progress = questions.length > 0 ? (currentQ / questions.length) * 100 : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir="rtl">
       <div>
         <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
           <span>{assessment?.title}</span>
@@ -122,7 +122,7 @@ function AssessmentStep({ assessmentId, onComplete }: { assessmentId: number; on
                 <button
                   key={opt.value}
                   onClick={() => handleSelect(opt.value)}
-                  className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all ${
+                  className={`w-full text-right px-4 py-3 rounded-lg border text-sm transition-all ${
                     selectedValue === opt.value
                       ? "bg-primary/20 border-primary text-primary"
                       : "border-border bg-white/3 hover:bg-white/5 hover:border-white/30"
@@ -142,14 +142,14 @@ function AssessmentStep({ assessmentId, onComplete }: { assessmentId: number; on
           disabled={currentQ === 0}
           className="text-sm text-muted-foreground disabled:opacity-40 hover:text-foreground transition-colors"
         >
-          ← Back
+          السابق →
         </button>
         <Button
           onClick={handleNext}
           disabled={selectedValue === undefined || submitMutation.isPending}
           className="bg-primary text-white hover:bg-primary/80 disabled:opacity-40"
         >
-          {submitMutation.isPending ? "Processing…" : isLast ? "Submit →" : "Next →"}
+          {submitMutation.isPending ? "جارٍ المعالجة…" : isLast ? "إرسال ←" : "التالي ←"}
         </Button>
       </div>
     </div>
@@ -177,11 +177,11 @@ function RiskProfileStep({ onContinue }: { onContinue: () => void }) {
           </motion.div>
         </motion.div>
         <div>
-          <div className="text-lg font-semibold mb-1">Analyzing Your Readiness Profile</div>
-          <div className="text-sm text-muted-foreground">Computing your readiness score and training recommendations…</div>
+          <div className="text-lg font-semibold mb-1">جارٍ تحليل ملف الجاهزية لديك</div>
+          <div className="text-sm text-muted-foreground">نحسب درجة الجاهزية وتوصيات التدريب…</div>
         </div>
         <Button onClick={() => setRevealed(true)} className="bg-primary text-white hover:bg-primary/80">
-          {isLoading ? "Computing…" : "Reveal My Profile →"}
+          {isLoading ? "جارٍ الحساب…" : "عرض ملفي ←"}
         </Button>
       </div>
     );
@@ -196,8 +196,8 @@ function RiskProfileStep({ onContinue }: { onContinue: () => void }) {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "Assessment Points", value: readinessScore || 0, color: readinessColor, desc: "out of 32" },
-          { label: "Risk Band", value: riskScore || 0, color: riskColor, desc: scores?.riskCategory ?? "Pending" },
+          { label: "نقاط التقييم", value: readinessScore || 0, color: readinessColor, desc: "من 32" },
+          { label: "مستوى المخاطر", value: riskScore || 0, color: riskColor, desc: scores?.riskCategory ?? "قيد الانتظار" },
         ].map(s => (
           <div key={s.label} className="bg-card/80 border border-border rounded-xl p-5 text-center backdrop-blur-sm">
             <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{s.label}</div>
@@ -207,10 +207,10 @@ function RiskProfileStep({ onContinue }: { onContinue: () => void }) {
         ))}
       </div>
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm text-muted-foreground">
-        Your result is based on the CyberCultX Security Readiness Assessment. The recommended videos are matched to your total points.
+        تعتمد نتيجتك على تقييم الجاهزية الأمنية من CyberCultX. يتم اختيار الفيديوهات الموصى بها بناءً على مجموع نقاطك.
       </div>
       <Button onClick={onContinue} className="w-full bg-primary text-white hover:bg-primary/80">
-        View My Learning Path →
+        عرض مسار التعلم ←
       </Button>
     </motion.div>
   );
@@ -369,7 +369,7 @@ export default function OnboardingWizard({ user, onComplete }: Props) {
 
   const stepTitles: Record<number, string> = {
     1: "Set Up Your Operative Profile",
-    2: "Security Readiness Assessment",
+    2: "تقييم الجاهزية الأمنية",
     3: "Your Risk Profile",
     4: "Your Personalized Learning Path",
   };
@@ -378,7 +378,7 @@ export default function OnboardingWizard({ user, onComplete }: Props) {
     1: "Tell us about yourself to personalize your security journey",
     2: "Answer 8 scenarios to calculate your readiness profile",
     3: "Based on your answers, we've computed your risk band",
-    4: "Your recommended videos based on your assessment points",
+    4: "الفيديوهات الموصى بها بناءً على نقاط تقييمك",
   };
 
   return (

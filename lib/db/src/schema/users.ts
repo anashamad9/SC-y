@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: text("role").notNull().default("employee"),
+  tenantId: integer("tenant_id"),
   departmentId: integer("department_id").references(() => departmentsTable.id),
   avatarUrl: text("avatar_url"),
   jobTitle: text("job_title"),

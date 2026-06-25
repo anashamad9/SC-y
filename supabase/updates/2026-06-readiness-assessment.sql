@@ -23,8 +23,8 @@ begin
     insert into assessments (type, title, description, estimated_minutes)
     values (
       'psychometric',
-      'CyberCultX Security Readiness Assessment',
-      'Eight psychometric scenarios used to personalize security training recommendations.',
+      'تقييم الجاهزية الأمنية من CyberCultX',
+      'ثمانية سيناريوهات سلوكية تُستخدم لتخصيص توصيات التدريب الأمني.',
       8
     )
     returning id into readiness_id;
@@ -32,8 +32,8 @@ begin
 
   update assessments
   set
-    title = 'CyberCultX Security Readiness Assessment',
-    description = 'Eight psychometric scenarios used to personalize security training recommendations.',
+    title = 'تقييم الجاهزية الأمنية من CyberCultX',
+    description = 'ثمانية سيناريوهات سلوكية تُستخدم لتخصيص توصيات التدريب الأمني.',
     estimated_minutes = 8
   where id = readiness_id;
 
@@ -41,12 +41,12 @@ begin
 
   insert into assessment_questions (assessment_id, text, category, options, weight, display_order)
   values
-  (readiness_id, 'You receive an urgent email from your manager asking you to review an attached document immediately.', 'phishing_recognition', '[{"value":1,"label":"Open the attachment immediately."},{"value":3,"label":"Reply asking if it is legitimate before opening."},{"value":4,"label":"Verify the sender, inspect the email carefully, and confirm through another communication channel."},{"value":2,"label":"Forward it to a colleague and ask what they think."}]'::jsonb, 1, 1),
-  (readiness_id, 'You are asked to create a password for a new business application.', 'password_hygiene', '[{"value":1,"label":"Use the same password you use elsewhere."},{"value":2,"label":"Add numbers to your existing password."},{"value":3,"label":"Create a unique password with a memorable pattern."},{"value":4,"label":"Use a password manager to generate and store a strong unique password."}]'::jsonb, 1, 2),
-  (readiness_id, 'You receive a QR code from an unknown source claiming you have won a reward.', 'qr_safety', '[{"value":1,"label":"Scan it immediately."},{"value":2,"label":"Ignore it without reporting it."},{"value":3,"label":"Verify the source before scanning."},{"value":4,"label":"Report it as suspicious and avoid interacting with it."}]'::jsonb, 1, 3),
-  (readiness_id, 'While working remotely, you need internet access and only a public Wi-Fi network is available.', 'remote_work', '[{"value":1,"label":"Connect directly and continue working."},{"value":2,"label":"Avoid sensitive activities but continue browsing."},{"value":3,"label":"Use a VPN before connecting to company resources."},{"value":4,"label":"Use a trusted hotspot or VPN and follow company remote access policy."}]'::jsonb, 1, 4),
-  (readiness_id, 'You notice a colleague sharing sensitive company information in a public chat.', 'data_handling', '[{"value":1,"label":"Ignore it."},{"value":2,"label":"Mention it privately later."},{"value":3,"label":"Inform your manager immediately."},{"value":4,"label":"Follow company reporting procedures and ensure the risk is addressed."}]'::jsonb, 1, 5),
-  (readiness_id, 'You receive a login page that looks exactly like your company''s portal.', 'credential_safety', '[{"value":1,"label":"Enter credentials immediately."},{"value":2,"label":"Check only the company logo."},{"value":3,"label":"Verify the URL and security indicators first."},{"value":4,"label":"Verify the URL, certificate, domain legitimacy, and access through official channels."}]'::jsonb, 1, 6),
-  (readiness_id, 'A coworker asks to borrow your account credentials to complete an urgent task.', 'access_control', '[{"value":1,"label":"Share them temporarily."},{"value":2,"label":"Share only if they are a trusted colleague."},{"value":3,"label":"Refuse and suggest requesting proper access."},{"value":4,"label":"Refuse, explain policy requirements, and direct them to the approved access process."}]'::jsonb, 1, 7),
-  (readiness_id, 'You notice unusual activity on your corporate account.', 'incident_response', '[{"value":1,"label":"Ignore it and monitor later."},{"value":2,"label":"Change your password only."},{"value":3,"label":"Change your password and notify IT."},{"value":4,"label":"Immediately report the incident, secure the account, and follow the organization''s incident response process."}]'::jsonb, 1, 8);
+  (readiness_id, 'تتلقى بريداً إلكترونياً عاجلاً من مديرك يطلب منك مراجعة ملف مرفق فوراً.', 'phishing_recognition', '[{"value":1,"label":"افتح المرفق فوراً."},{"value":3,"label":"ارسل رداً تسأل فيه إن كان البريد حقيقياً قبل الفتح."},{"value":4,"label":"تحقق من المرسل، وافحص البريد بعناية، وأكد الطلب عبر قناة تواصل أخرى."},{"value":2,"label":"أعد توجيهه إلى زميل واسأله عن رأيه."}]'::jsonb, 1, 1),
+  (readiness_id, 'يُطلب منك إنشاء كلمة مرور لتطبيق عمل جديد.', 'password_hygiene', '[{"value":1,"label":"استخدم نفس كلمة المرور التي تستخدمها في أماكن أخرى."},{"value":2,"label":"أضف أرقاماً إلى كلمة مرورك الحالية."},{"value":3,"label":"أنشئ كلمة مرور فريدة بنمط يسهل تذكره."},{"value":4,"label":"استخدم مدير كلمات مرور لإنشاء وحفظ كلمة مرور قوية وفريدة."}]'::jsonb, 1, 2),
+  (readiness_id, 'تتلقى رمز QR من مصدر غير معروف يدّعي أنك فزت بمكافأة.', 'qr_safety', '[{"value":1,"label":"امسحه ضوئياً فوراً."},{"value":2,"label":"تجاهله دون الإبلاغ عنه."},{"value":3,"label":"تحقق من المصدر قبل مسحه."},{"value":4,"label":"أبلغ عنه كأمر مشبوه وتجنب التفاعل معه."}]'::jsonb, 1, 3),
+  (readiness_id, 'أثناء العمل عن بُعد، تحتاج إلى الإنترنت ولا يتوفر إلا اتصال Wi‑Fi عام.', 'remote_work', '[{"value":1,"label":"اتصل مباشرة وتابع العمل."},{"value":2,"label":"تجنب الأنشطة الحساسة لكن استمر في التصفح."},{"value":3,"label":"استخدم VPN قبل الاتصال بموارد الشركة."},{"value":4,"label":"استخدم نقطة اتصال موثوقة أو VPN واتبع سياسة الوصول عن بُعد في الشركة."}]'::jsonb, 1, 4),
+  (readiness_id, 'تلاحظ أن زميلاً يشارك معلومات حساسة للشركة في محادثة عامة.', 'data_handling', '[{"value":1,"label":"تجاهل الأمر."},{"value":2,"label":"اذكره له بشكل خاص لاحقاً."},{"value":3,"label":"أبلغ مديرك فوراً."},{"value":4,"label":"اتبع إجراءات الإبلاغ في الشركة وتأكد من معالجة الخطر."}]'::jsonb, 1, 5),
+  (readiness_id, 'تفتح صفحة تسجيل دخول تبدو مطابقة تماماً لبوابة شركتك.', 'credential_safety', '[{"value":1,"label":"أدخل بيانات الدخول فوراً."},{"value":2,"label":"تحقق من شعار الشركة فقط."},{"value":3,"label":"تحقق أولاً من الرابط ومؤشرات الأمان."},{"value":4,"label":"تحقق من الرابط والشهادة وصحة النطاق، وادخل عبر القنوات الرسمية."}]'::jsonb, 1, 6),
+  (readiness_id, 'يطلب منك زميل استخدام بيانات حسابك لإنجاز مهمة عاجلة.', 'access_control', '[{"value":1,"label":"شاركها معه مؤقتاً."},{"value":2,"label":"شاركها فقط إذا كان زميلاً موثوقاً."},{"value":3,"label":"ارفض واقترح طلب صلاحية مناسبة."},{"value":4,"label":"ارفض، واشرح متطلبات السياسة، ووجهه إلى إجراء طلب الصلاحيات المعتمد."}]'::jsonb, 1, 7),
+  (readiness_id, 'تلاحظ نشاطاً غير معتاد على حسابك المؤسسي.', 'incident_response', '[{"value":1,"label":"تجاهله وراقبه لاحقاً."},{"value":2,"label":"غيّر كلمة المرور فقط."},{"value":3,"label":"غيّر كلمة المرور وأبلغ قسم تقنية المعلومات."},{"value":4,"label":"أبلغ عن الحادث فوراً، وأمّن الحساب، واتبع إجراءات الاستجابة للحوادث في المؤسسة."}]'::jsonb, 1, 8);
 end $$;

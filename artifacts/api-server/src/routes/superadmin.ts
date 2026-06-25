@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { tenantsTable, systemConfigTable, auditLogsTable, usersTable, sessionsTable, AUDIT_ACTIONS } from "@workspace/db/schema";
-import { eq, desc, count, like, and, gte } from "drizzle-orm";
+import { eq, desc, count, like, and, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/auth";
 
@@ -80,6 +80,46 @@ router.patch("/tenants/:id", requireAuth, requireRole(...["superadmin"]), async 
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: "Failed to update tenant" });
+  }
+});
+
+router.delete("/tenants/:id", requireAuth, requireRole(...["superadmin"]), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id));
+    if (!tenant) return res.status(404).json({ error: "Tenant not found" });
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`
+        update users
+        set approved_by = null
+        where approved_by in (select id from users where tenant_id = ${id})
+      `);
+      await tx.execute(sql`delete from audit_logs where tenant_id = ${id}`);
+      await tx.execute(sql`delete from report_jobs where tenant_id = ${id}`);
+      await tx.execute(sql`
+        delete from phishing_results
+        where campaign_id in (select id from phishing_campaigns where tenant_id = ${id})
+           or user_id in (select id from users where tenant_id = ${id})
+      `);
+      await tx.execute(sql`delete from phishing_campaigns where tenant_id = ${id}`);
+      await tx.execute(sql`delete from phishing_templates where tenant_id = ${id}`);
+      await tx.execute(sql`delete from sessions where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from user_course_progress where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from assessment_results where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from psychometric_profiles where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from gamification_profiles where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from user_badges where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from cci_snapshots where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from telemetry_events where user_id in (select id from users where tenant_id = ${id})`);
+      await tx.execute(sql`delete from users where tenant_id = ${id}`);
+      await tx.execute(sql`delete from departments where tenant_id = ${id}`);
+      await tx.delete(tenantsTable).where(eq(tenantsTable.id, id));
+    });
+
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete tenant" });
   }
 });
 

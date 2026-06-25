@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import {
   db,
   usersTable,
+  tenantsTable,
   departmentsTable,
   sessionsTable,
   auditLogsTable,
@@ -89,6 +90,7 @@ async function writeAudit(
 function buildUserResponse(user: typeof usersTable.$inferSelect, deptName?: string | null) {
   return {
     id: user.id,
+    tenantId: user.tenantId,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -121,6 +123,41 @@ async function issueTokens(userId: number, email: string, role: string) {
   await db.insert(sessionsTable).values({ userId, token: refreshToken, expiresAt });
 
   return { accessToken, refreshToken };
+}
+
+function getEmailDomain(email: string) {
+  return email.split("@").at(1)?.trim().toLowerCase() ?? "";
+}
+
+async function getOrCreateFallbackTenant() {
+  const [existing] = await db.select().from(tenantsTable).limit(1);
+  if (existing) return existing;
+
+  const [created] = await db
+    .insert(tenantsTable)
+    .values({
+      name: "Default Tenant",
+      domain: "default.local",
+      plan: "starter",
+      status: "active",
+      employeeCount: 0,
+      adminEmail: "admin@default.local",
+      industry: "general",
+      country: "UAE",
+    })
+    .returning();
+
+  return created;
+}
+
+async function getTenantForEmail(email: string) {
+  const domain = getEmailDomain(email);
+  if (domain) {
+    const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.domain, domain)).limit(1);
+    if (tenant) return tenant;
+  }
+
+  return getOrCreateFallbackTenant();
 }
 
 function isTempLoginEnabled() {
@@ -187,6 +224,7 @@ function verifyTotp(secret: string, code: string) {
 }
 
 async function getOrCreateTestDepartment() {
+  const tenant = await getOrCreateFallbackTenant();
   const [existing] = await db
     .select()
     .from(departmentsTable)
@@ -197,7 +235,7 @@ async function getOrCreateTestDepartment() {
 
   const [created] = await db
     .insert(departmentsTable)
-    .values({ name: "Testing", description: "Temporary role login accounts" })
+    .values({ tenantId: tenant.id, name: "Testing", description: "Temporary role login accounts" })
     .returning();
 
   return created;
@@ -209,6 +247,7 @@ async function getOrCreateTestUser(role: TestRole) {
   if (existing) return existing;
 
   const department = await getOrCreateTestDepartment();
+  const tenant = await getOrCreateFallbackTenant();
   const passwordHash = await bcrypt.hash(`temporary-${role}-${Date.now()}`, 4);
   const names: Record<TestRole, { firstName: string; lastName: string; jobTitle: string }> = {
     employee: { firstName: "Test", lastName: "Employee", jobTitle: "Security Learner" },
@@ -226,6 +265,7 @@ async function getOrCreateTestUser(role: TestRole) {
       firstName: names[role].firstName,
       lastName: names[role].lastName,
       role,
+      tenantId: tenant.id,
       departmentId: department.id,
       jobTitle: names[role].jobTitle,
       onboardingCompleted: true,
@@ -373,46 +413,54 @@ router.post("/auth/temp-login", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const parsed = RegisterBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body" });
-    return;
+  try {
+    const parsed = RegisterBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+
+    const { email, password, firstName, lastName, role, departmentId } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
+
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
+    if (existing) {
+      res.status(409).json({ error: "Email already registered" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const validRole = ["employee", "executive", "hr", "admin", "superadmin"].includes(role ?? "")
+      ? (role ?? "employee")
+      : "employee";
+    const tenant = validRole === "superadmin" ? null : await getTenantForEmail(normalizedEmail);
+
+    const [user] = await db.insert(usersTable).values({
+      email: normalizedEmail,
+      passwordHash,
+      firstName,
+      lastName,
+      role: validRole,
+      tenantId: tenant?.id ?? null,
+      departmentId: departmentId ?? null,
+      approvalStatus: "pending",
+    }).returning();
+
+    await writeAudit(AUDIT_ACTIONS.REGISTER_PENDING_APPROVAL, user.id, req, {
+      email: user.email,
+      role: user.role,
+      approvalStatus: user.approvalStatus,
+    });
+
+    res.status(201).json({
+      message: "Your account request has been submitted and is waiting for super admin approval.",
+      approvalStatus: user.approvalStatus,
+      user: buildUserResponse(user),
+    });
+  } catch (err) {
+    logger.error({ err }, "Registration failed");
+    res.status(500).json({ error: "Registration failed. Please try again or contact support." });
   }
-
-  const { email, password, firstName, lastName, role, departmentId } = parsed.data;
-
-  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
-  if (existing) {
-    res.status(409).json({ error: "Email already registered" });
-    return;
-  }
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  const validRole = ["employee", "executive", "hr", "admin", "superadmin"].includes(role ?? "")
-    ? (role ?? "employee")
-    : "employee";
-
-  const [user] = await db.insert(usersTable).values({
-    email: email.toLowerCase(),
-    passwordHash,
-    firstName,
-    lastName,
-    role: validRole,
-    departmentId: departmentId ?? null,
-    approvalStatus: "pending",
-  }).returning();
-
-  await writeAudit(AUDIT_ACTIONS.REGISTER_PENDING_APPROVAL, user.id, req, {
-    email: user.email,
-    role: user.role,
-    approvalStatus: user.approvalStatus,
-  });
-
-  res.status(201).json({
-    message: "Your account request has been submitted and is waiting for super admin approval.",
-    approvalStatus: user.approvalStatus,
-    user: buildUserResponse(user),
-  });
 });
 
 router.post("/auth/refresh", async (req, res): Promise<void> => {

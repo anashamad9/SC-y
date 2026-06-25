@@ -40,8 +40,24 @@ begin
 end;
 $$;
 
+create table tenants (
+  id serial primary key,
+  name text not null,
+  domain text not null unique,
+  plan text not null default 'starter',
+  status text not null default 'trial',
+  employee_count integer not null default 0,
+  admin_email text not null,
+  industry text,
+  country text default 'UAE',
+  license_expiry timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table departments (
   id serial primary key,
+  tenant_id integer not null references tenants(id) on delete restrict,
   name text not null,
   description text,
   created_at timestamptz not null default now(),
@@ -56,6 +72,7 @@ create table users (
   last_name text not null,
   role text not null default 'employee'
     check (role in ('employee', 'executive', 'hr', 'admin', 'superadmin')),
+  tenant_id integer references tenants(id) on delete restrict,
   department_id integer references departments(id),
   avatar_url text,
   job_title text,
@@ -84,6 +101,7 @@ create table sessions (
 create table audit_logs (
   id serial primary key,
   user_id integer references users(id) on delete set null,
+  tenant_id integer references tenants(id) on delete set null,
   action text not null,
   ip_address text,
   user_agent text,
@@ -252,6 +270,7 @@ create table telemetry_events (
 
 create table phishing_templates (
   id serial primary key,
+  tenant_id integer not null references tenants(id) on delete restrict,
   name text not null,
   type text not null,
   subject text,
@@ -268,6 +287,7 @@ create table phishing_templates (
 
 create table phishing_campaigns (
   id serial primary key,
+  tenant_id integer not null references tenants(id) on delete restrict,
   name text not null,
   description text,
   status text not null default 'draft',
@@ -298,6 +318,7 @@ create table phishing_results (
 
 create table report_jobs (
   id serial primary key,
+  tenant_id integer not null references tenants(id) on delete restrict,
   type text not null,
   status text not null default 'pending',
   created_by integer references users(id) on delete set null,
@@ -307,21 +328,6 @@ create table report_jobs (
   error_message text,
   created_at timestamptz not null default now(),
   completed_at timestamptz
-);
-
-create table tenants (
-  id serial primary key,
-  name text not null,
-  domain text not null unique,
-  plan text not null default 'starter',
-  status text not null default 'trial',
-  employee_count integer not null default 0,
-  admin_email text not null,
-  industry text,
-  country text default 'UAE',
-  license_expiry timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
 );
 
 create table system_config (
@@ -334,12 +340,21 @@ create table system_config (
   updated_by integer references users(id) on delete set null
 );
 
+alter table users
+  add constraint users_non_superadmin_tenant_required
+  check (lower(role) = 'superadmin' or tenant_id is not null);
+
 create index users_department_id_idx on users(department_id);
+create index users_tenant_id_idx on users(tenant_id);
+create index users_tenant_role_idx on users(tenant_id, role);
 create index users_role_idx on users(role);
 create index users_approval_status_idx on users(approval_status);
+create unique index departments_tenant_name_unique on departments (tenant_id, lower(name));
+create index departments_tenant_id_idx on departments(tenant_id);
 create index sessions_user_id_idx on sessions(user_id);
 create index sessions_expires_at_idx on sessions(expires_at);
 create index audit_logs_user_id_idx on audit_logs(user_id);
+create index audit_logs_tenant_id_idx on audit_logs(tenant_id);
 create index audit_logs_created_at_idx on audit_logs(created_at desc);
 create index courses_is_active_idx on courses(is_active);
 create index courses_score_range_idx on courses(min_score, max_score);
@@ -354,11 +369,14 @@ create index cci_snapshots_user_id_idx on cci_snapshots(user_id);
 create index cci_snapshots_computed_at_idx on cci_snapshots(computed_at desc);
 create index telemetry_events_user_id_idx on telemetry_events(user_id);
 create index telemetry_events_created_at_idx on telemetry_events(created_at desc);
+create index phishing_templates_tenant_id_idx on phishing_templates(tenant_id);
 create index phishing_templates_language_idx on phishing_templates(language);
+create index phishing_campaigns_tenant_id_idx on phishing_campaigns(tenant_id);
 create index phishing_campaigns_status_idx on phishing_campaigns(status);
 create index phishing_results_campaign_id_idx on phishing_results(campaign_id);
 create index phishing_results_user_id_idx on phishing_results(user_id);
 create index report_jobs_created_by_idx on report_jobs(created_by);
+create index report_jobs_tenant_id_idx on report_jobs(tenant_id);
 create index tenants_status_idx on tenants(status);
 create index system_config_category_idx on system_config(category);
 

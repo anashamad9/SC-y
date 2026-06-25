@@ -3,6 +3,7 @@ import { usersTable } from "./users";
 
 export const reportJobsTable = pgTable("report_jobs", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
   type: text("type").notNull(), // employee | department | risk | compliance | executive
   status: text("status").notNull().default("pending"), // pending | completed | failed
   createdBy: integer("created_by").references(() => usersTable.id),

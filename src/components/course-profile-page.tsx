@@ -20,7 +20,6 @@ function profileCopy(lang: "en" | "ar") {
         back: "العودة إلى الدورات",
         courseDetail: "صفحة الدورة",
         courseNotes: "محتوى الدورة",
-        assetDetails: "تفاصيل الفيديو",
         completionReward: "نقطة عند الإكمال",
         progress: "التقدم",
         lessonPlan: "خطة الدروس",
@@ -32,11 +31,6 @@ function profileCopy(lang: "en" | "ar") {
         earned: "تم كسب",
         continueLearning: "متابعة التعلم",
         startCourse: "ابدأ الدورة",
-        fileName: "اسم الملف",
-        fileType: "النوع",
-        fileSize: "الحجم",
-        uploaded: "تاريخ الرفع",
-        unavailable: "غير متوفر",
         openMarkdown: "فتح ملف Markdown",
         previewMode: "معاينة المشرف",
       }
@@ -44,7 +38,6 @@ function profileCopy(lang: "en" | "ar") {
         back: "Back to courses",
         courseDetail: "Course Page",
         courseNotes: "Course Content",
-        assetDetails: "Video Details",
         completionReward: "XP on completion",
         progress: "Progress",
         lessonPlan: "Lesson Plan",
@@ -56,26 +49,9 @@ function profileCopy(lang: "en" | "ar") {
         earned: "earned",
         continueLearning: "Continue learning",
         startCourse: "Start course",
-        fileName: "File name",
-        fileType: "Type",
-        fileSize: "Size",
-        uploaded: "Uploaded",
-        unavailable: "Not available",
         openMarkdown: "Open Markdown file",
         previewMode: "Admin preview",
       };
-}
-
-function formatBytes(bytes?: number | null) {
-  if (!bytes) return "Not available";
-  const units = ["B", "KB", "MB", "GB"];
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 function isDirectVideo(url: string) {
@@ -177,7 +153,14 @@ export function CourseProfilePage({
               <div className="overflow-hidden rounded-xl border border-border bg-background">
                 <div className="aspect-video w-full bg-black">
                   {isDirectVideo(videoUrl) ? (
-                    <video src={videoUrl} controls className="h-full w-full bg-black" />
+                    <video
+                      src={videoUrl}
+                      controls
+                      controlsList="nodownload noremoteplayback"
+                      disablePictureInPicture
+                      onContextMenu={(event) => event.preventDefault()}
+                      className="h-full w-full bg-black"
+                    />
                   ) : (
                     <iframe
                       src={videoUrl}
@@ -195,7 +178,6 @@ export function CourseProfilePage({
               <div className="rounded-xl border border-border bg-background/70 p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
-                  {courseRecord.markdownFileName && <div className="text-xs text-muted-foreground">{courseRecord.markdownFileName}</div>}
                 </div>
                 {markdownContent ? (
                   <div
@@ -214,32 +196,6 @@ export function CourseProfilePage({
           </section>
 
           <aside className="space-y-5">
-            {(courseRecord.videoFileName || courseRecord.videoSizeBytes || courseRecord.videoMimeType) && (
-              <div className="rounded-xl border border-border bg-background/60 p-4">
-                <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">{copy.assetDetails}</div>
-                <dl className="space-y-3 text-sm">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{copy.fileName}</dt>
-                    <dd className="break-words text-foreground">{courseRecord.videoFileName || copy.unavailable}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{copy.fileType}</dt>
-                    <dd className="text-foreground">{courseRecord.videoMimeType || copy.unavailable}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{copy.fileSize}</dt>
-                    <dd className="text-foreground">{formatBytes(courseRecord.videoSizeBytes)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{copy.uploaded}</dt>
-                    <dd className="text-foreground">
-                      {courseRecord.videoUploadedAt ? new Date(courseRecord.videoUploadedAt).toLocaleString() : copy.unavailable}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            )}
-
             {canTrackProgress && (
               <div className="rounded-xl border border-border bg-background/60 p-4">
                 <div className="mb-2 flex justify-between text-xs">

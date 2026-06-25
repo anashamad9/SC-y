@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { db } from "@workspace/db";
 import { phishingTemplatesTable, phishingCampaignsTable, phishingResultsTable, usersTable } from "@workspace/db/schema";
 import { eq, desc, and, count, sql } from "drizzle-orm";
@@ -6,6 +6,17 @@ import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/auth";
 
 const router = Router();
+
+async function resolveRequestTenantId(req: Request): Promise<number | null> {
+  const requestedTenantId = Number((req.body as { tenantId?: unknown })?.tenantId);
+  if (req.user?.role.toLowerCase() === "superadmin" && Number.isInteger(requestedTenantId) && requestedTenantId > 0) {
+    return requestedTenantId;
+  }
+
+  if (!req.user?.userId) return null;
+  const [user] = await db.select({ tenantId: usersTable.tenantId }).from(usersTable).where(eq(usersTable.id, req.user.userId));
+  return user?.tenantId ?? null;
+}
 
 // ── Template Routes ──────────────────────────────────────────────────────────
 
@@ -86,8 +97,11 @@ router.delete("/phishing/templates/:id", requireAuth, requireRole(...["admin", "
 router.post("/phishing/templates", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
     const { name, type, subject, body, attachmentDesc, difficulty, language, industry, category, tags } = req.body;
+    const tenantId = await resolveRequestTenantId(req);
+    if (!tenantId) return res.status(400).json({ error: "A tenant is required to create a template" });
+
     const [template] = await db.insert(phishingTemplatesTable)
-      .values({ name, type: type ?? "email", subject, body, attachmentDesc, difficulty: difficulty ?? 3, language: language ?? "en", industry: industry ?? "general", category: category ?? "general", tags })
+      .values({ tenantId, name, type: type ?? "email", subject, body, attachmentDesc, difficulty: difficulty ?? 3, language: language ?? "en", industry: industry ?? "general", category: category ?? "general", tags })
       .returning();
     res.status(201).json(template);
   } catch (err) {
@@ -138,8 +152,12 @@ router.get("/phishing/campaigns", requireAuth, requireRole(...["admin", "superad
 router.post("/phishing/campaigns", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
   try {
     const { name, description, templateId, targetAudience, difficulty, scheduledAt } = req.body;
+    const tenantId = await resolveRequestTenantId(req);
+    if (!tenantId) return res.status(400).json({ error: "A tenant is required to create a campaign" });
+
     const [campaign] = await db.insert(phishingCampaignsTable)
       .values({
+        tenantId,
         name, description, templateId, targetAudience: targetAudience ?? { type: "all" },
         difficulty: difficulty ?? 3, scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         createdBy: req.user!.userId, status: "draft",

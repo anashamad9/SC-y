@@ -4,6 +4,7 @@ import { usersTable } from "./users";
 export const auditLogsTable = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => usersTable.id),
+  tenantId: integer("tenant_id"),
   action: text("action").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),

@@ -3,6 +3,7 @@ import { usersTable } from "./users";
 
 export const phishingTemplatesTable = pgTable("phishing_templates", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(), // email | sms | qr | login | bec | invoice | deepfake
   subject: text("subject"),
@@ -19,6 +20,7 @@ export const phishingTemplatesTable = pgTable("phishing_templates", {
 
 export const phishingCampaignsTable = pgTable("phishing_campaigns", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
   status: text("status").notNull().default("draft"), // draft | active | paused | completed | archived

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { db } from "@workspace/db";
 import {
   reportJobsTable,
@@ -15,6 +15,17 @@ import PDFDocument from "pdfkit";
 
 const router = Router();
 
+async function resolveRequestTenantId(req: Request): Promise<number | null> {
+  const requestedTenantId = Number((req.body as { tenantId?: unknown })?.tenantId);
+  if (req.user?.role.toLowerCase() === "superadmin" && Number.isInteger(requestedTenantId) && requestedTenantId > 0) {
+    return requestedTenantId;
+  }
+
+  if (!req.user?.userId) return null;
+  const [user] = await db.select({ tenantId: usersTable.tenantId }).from(usersTable).where(eq(usersTable.id, req.user.userId));
+  return user?.tenantId ?? null;
+}
+
 router.get("/reports", requireAuth, requireRole("admin", "superadmin", "executive", "hr"), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
@@ -29,7 +40,11 @@ router.get("/reports", requireAuth, requireRole("admin", "superadmin", "executiv
 router.post("/reports/generate", requireAuth, requireRole("admin", "superadmin", "executive", "hr"), async (req, res) => {
   try {
     const { type, format = "pdf", filters = {} } = req.body;
+    const tenantId = await resolveRequestTenantId(req);
+    if (!tenantId) return res.status(400).json({ error: "A tenant is required to generate a report" });
+
     const [inserted] = await db.insert(reportJobsTable).values({
+      tenantId,
       type: type ?? "employee",
       format,
       filters,
@@ -202,4 +217,3 @@ router.get(
 );
 
 export default router;
-

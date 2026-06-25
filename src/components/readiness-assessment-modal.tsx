@@ -74,12 +74,13 @@ export default function ReadinessAssessmentModal() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl"
+        dir="rtl"
       >
         <div className="border-b border-border px-6 py-5">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Required Assessment</div>
-          <h2 className="mt-2 text-2xl font-bold">Security Readiness Assessment</h2>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">تقييم مطلوب</div>
+          <h2 className="mt-2 text-2xl font-bold">تقييم الجاهزية الأمنية</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Your account has been approved. Complete this assessment to unlock the rest of the platform.
+            تمت الموافقة على حسابك. أكمل هذا التقييم لفتح بقية المنصة.
           </p>
         </div>
 
@@ -94,7 +95,7 @@ export default function ReadinessAssessmentModal() {
                 <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{assessment?.title}</span>
                   <span>
-                    Question {currentQuestion + 1} of {questions.length}
+                    السؤال {currentQuestion + 1} من {questions.length}
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -120,7 +121,7 @@ export default function ReadinessAssessmentModal() {
                       <button
                         key={option.value}
                         onClick={() => handleSelect(option.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
+                        className={`w-full rounded-xl border px-4 py-3 text-right text-sm transition-colors ${
                           selectedValue === option.value
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border bg-background hover:border-primary/40"
@@ -135,10 +136,10 @@ export default function ReadinessAssessmentModal() {
 
               <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={handlePrevious} disabled={currentQuestion === 0 || submitAssessment.isPending}>
-                  Previous
+                  السابق
                 </Button>
                 <Button onClick={handleNext} disabled={selectedValue === undefined || submitAssessment.isPending}>
-                  {submitAssessment.isPending ? "Submitting..." : isLastQuestion ? "Submit assessment" : "Next question"}
+                  {submitAssessment.isPending ? "جارٍ الإرسال..." : isLastQuestion ? "إرسال التقييم" : "السؤال التالي"}
                 </Button>
               </div>
             </div>

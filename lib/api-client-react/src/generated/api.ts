@@ -4343,6 +4343,75 @@ export const useUpdateTenant = <TError = ErrorType<unknown>,
       return useMutation(getUpdateTenantMutationOptions(options));
     }
 
+export const getDeleteTenantUrl = (id: number,) => {
+
+
+
+
+  return `/api/tenants/${id}`
+}
+
+/**
+ * @summary Delete tenant
+ */
+export const deleteTenant = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteTenantUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteTenantMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTenant>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTenant>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteTenant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTenant>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTenant(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTenantMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTenant>>>
+    export type DeleteTenantMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete tenant
+ */
+export const useDeleteTenant = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTenant>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTenant>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteTenantMutationOptions(options));
+    }
+
 export const getGetSystemConfigUrl = () => {
 
 
@@ -5764,7 +5833,6 @@ export function useGetArabicPdfReport<TData = Awaited<ReturnType<typeof getArabi
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
 
 
 

@@ -1,10 +1,21 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db, departmentsTable, usersTable } from "@workspace/db";
 import { eq, count } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { CreateDepartmentBody, GetDepartmentParams, UpdateDepartmentParams, UpdateDepartmentBody, DeleteDepartmentParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+async function resolveRequestTenantId(req: Request): Promise<number | null> {
+  const requestedTenantId = Number((req.body as { tenantId?: unknown })?.tenantId);
+  if (req.user?.role.toLowerCase() === "superadmin" && Number.isInteger(requestedTenantId) && requestedTenantId > 0) {
+    return requestedTenantId;
+  }
+
+  if (!req.user?.userId) return null;
+  const [user] = await db.select({ tenantId: usersTable.tenantId }).from(usersTable).where(eq(usersTable.id, req.user.userId));
+  return user?.tenantId ?? null;
+}
 
 async function withMemberCount(dept: typeof departmentsTable.$inferSelect) {
   const [{ value }] = await db.select({ value: count() }).from(usersTable).where(eq(usersTable.departmentId, dept.id));
@@ -30,7 +41,14 @@ router.post("/departments", requireAuth, requireRole("admin", "superadmin"), asy
     return;
   }
 
+  const tenantId = await resolveRequestTenantId(req);
+  if (!tenantId) {
+    res.status(400).json({ error: "A tenant is required to create a department" });
+    return;
+  }
+
   const [dept] = await db.insert(departmentsTable).values({
+    tenantId,
     name: parsed.data.name,
     description: parsed.data.description,
   }).returning();
