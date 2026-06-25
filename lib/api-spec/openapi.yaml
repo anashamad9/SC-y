@@ -1239,7 +1239,7 @@ paths:
     patch:
       operationId: updateCourse
       tags: [courses]
-      summary: Update a course (admin only)
+      summary: Update a course (superadmin only)
       parameters:
         - in: path
           name: id
@@ -1259,7 +1259,7 @@ paths:
     delete:
       operationId: deleteCourse
       tags: [courses]
-      summary: Delete a course (admin only)
+      summary: Delete a course (superadmin only)
       parameters:
         - in: path
           name: id

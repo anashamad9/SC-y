@@ -238,10 +238,10 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
   });
 });
 
-// POST /courses — create a new course (admin/superadmin)
+// POST /courses — create a new course (superadmin only)
 router.post("/courses", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
+  if (user.role?.toLowerCase() !== "superadmin") {
     res.status(403).json({ error: "Forbidden" }); return;
   }
   const { title, category, difficulty } = req.body;
@@ -258,10 +258,10 @@ router.post("/courses", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(course);
 });
 
-// PATCH /courses/:id — update a course (admin/superadmin)
+// PATCH /courses/:id — update a course (superadmin only)
 router.patch("/courses/:id", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
+  if (user.role?.toLowerCase() !== "superadmin") {
     res.status(403).json({ error: "Forbidden" }); return;
   }
   const id = parseInt(req.params.id as string);
@@ -283,10 +283,10 @@ router.patch("/courses/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(updated);
 });
 
-// DELETE /courses/:id — delete a course (admin/superadmin)
+// DELETE /courses/:id — delete a course (superadmin only)
 router.delete("/courses/:id", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  if (!["admin", "superadmin"].includes(user.role?.toLowerCase())) {
+  if (user.role?.toLowerCase() !== "superadmin") {
     res.status(403).json({ error: "Forbidden" }); return;
   }
   const id = parseInt(req.params.id as string);

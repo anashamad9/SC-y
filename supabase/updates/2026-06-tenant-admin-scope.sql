@@ -2,7 +2,8 @@
 --
 -- Run this in the Supabase SQL Editor after taking a backup.
 -- It adds tenant ownership columns needed for "admin" users to administer only
--- their tenant, while "superadmin" remains platform-wide.
+-- their tenant, while "superadmin" remains platform-wide. Courses are left
+-- global because only superadmins can create/manage video courses.
 --
 -- Important: after running this SQL, update the API/Drizzle schema and queries
 -- to filter tenant-scoped tables by the current user's tenant_id.
@@ -19,9 +20,6 @@ alter table departments
   add column if not exists tenant_id integer references tenants(id) on delete restrict;
 
 alter table users
-  add column if not exists tenant_id integer references tenants(id) on delete restrict;
-
-alter table courses
   add column if not exists tenant_id integer references tenants(id) on delete restrict;
 
 alter table phishing_templates
@@ -64,15 +62,8 @@ update departments
 set tenant_id = (select id from fallback)
 where tenant_id is null;
 
--- Backfill content and operational records from their creator/user where
+-- Backfill operational records from their creator/user where
 -- possible, otherwise use the fallback tenant.
-with fallback as (
-  select id from tenants order by id limit 1
-)
-update courses
-set tenant_id = (select id from fallback)
-where tenant_id is null;
-
 with fallback as (
   select id from tenants order by id limit 1
 )
@@ -125,9 +116,6 @@ where a.user_id = u.id
 alter table departments
   alter column tenant_id set not null;
 
-alter table courses
-  alter column tenant_id set not null;
-
 alter table phishing_templates
   alter column tenant_id set not null;
 
@@ -153,7 +141,6 @@ create unique index if not exists departments_tenant_name_unique
 create index if not exists users_tenant_id_idx on users(tenant_id);
 create index if not exists users_tenant_role_idx on users(tenant_id, role);
 create index if not exists departments_tenant_id_idx on departments(tenant_id);
-create index if not exists courses_tenant_id_idx on courses(tenant_id);
 create index if not exists phishing_templates_tenant_id_idx on phishing_templates(tenant_id);
 create index if not exists phishing_campaigns_tenant_id_idx on phishing_campaigns(tenant_id);
 create index if not exists report_jobs_tenant_id_idx on report_jobs(tenant_id);

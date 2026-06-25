@@ -547,7 +547,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
   if (role === "Admin") {
     if (activeKey === "users") return <AdminUsers />;
     if (activeKey === "departments") return <AdminDepartments />;
-    if (activeKey === "courses") return <AdminCourses />;
+    if (activeKey === "courses") return <AdminCourses canManage={false} />;
     if (activeKey === "simulations") return <AdminSimulations />;
     if (activeKey === "assessments") return <AdminAssessments />;
     if (activeKey === "reports") return <AdminReports />;
@@ -560,7 +560,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
     if (activeKey === "tenants") return <SuperAdminTenants />;
     if (activeKey === "config") return <SuperAdminConfig />;
     if (activeKey === "analytics") return <SuperAdminAnalytics />;
-    if (activeKey === "courses") return <AdminCourses />;
+    if (activeKey === "courses") return <AdminCourses canManage />;
     if (activeKey === "audit") return <SuperAdminAuditLogs />;
     if (activeKey === "monitoring") return <SuperAdminMonitoring />;
     if (activeKey === "licensing") return <SuperAdminTenants />;
