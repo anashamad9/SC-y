@@ -122,7 +122,7 @@ create table course_modules (
 
 create table courses (
   id serial primary key,
-  module_id integer references course_modules(id) on delete set null,
+  module_id integer references course_modules(id) on delete cascade,
   title text not null,
   category text not null,
   description text not null,

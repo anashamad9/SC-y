@@ -180,7 +180,7 @@ router.patch("/courses/modules/:id", requireAuth, async (req, res): Promise<void
   res.json(buildModule(module));
 });
 
-// DELETE /courses/modules/:id — archive module (superadmin only)
+// DELETE /courses/modules/:id — delete module and its courses (superadmin only)
 router.delete("/courses/modules/:id", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
   if (user.role?.toLowerCase() !== "superadmin") {
@@ -188,8 +188,7 @@ router.delete("/courses/modules/:id", requireAuth, async (req, res): Promise<voi
   }
 
   const id = Number(req.params.id);
-  const [module] = await db.update(courseModulesTable)
-    .set({ isActive: false })
+  const [module] = await db.delete(courseModulesTable)
     .where(eq(courseModulesTable.id, id))
     .returning();
 

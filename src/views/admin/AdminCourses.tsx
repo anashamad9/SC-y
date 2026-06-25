@@ -134,6 +134,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<CourseForm>(DEFAULT_FORM);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [confirmModuleDelete, setConfirmModuleDelete] = useState<number | null>(null);
   const [videoMessage, setVideoMessage] = useState<string | null>(null);
   const [markdownMessage, setMarkdownMessage] = useState<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
@@ -210,6 +211,18 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       setConfirmDelete(null);
     },
     onError: (error: Error) => toast({ title: error.message || "Failed to delete course", variant: "destructive" }),
+  });
+
+  const deleteModule = useMutation({
+    mutationFn: (id: number) => apiFetch(`/api/courses/modules/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses/modules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({ title: "Module deleted" });
+      setConfirmModuleDelete(null);
+      setActiveModuleId("all");
+    },
+    onError: (error: Error) => toast({ title: error.message || "Failed to delete module", variant: "destructive" }),
   });
 
   function resetPreview() {
@@ -858,6 +871,29 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {canManage && confirmModuleDelete !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span className="text-sm text-red-300">
+              Delete module "{moduleList.find((module) => module.id === confirmModuleDelete)?.title ?? "this module"}" and all courses inside it?
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="destructive" onClick={() => deleteModule.mutate(confirmModuleDelete)} disabled={deleteModule.isPending}>
+                {deleteModule.isPending ? "Deleting..." : "Delete module"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmModuleDelete(null)}>
+                Cancel
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {isLoading || modulesLoading ? (
         <div className="flex justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -885,9 +921,15 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   {module.description && <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>}
                 </div>
                 {canManage && (
-                  <Button size="sm" variant="outline" onClick={() => { setActiveModuleId(module.id); openCreate(); }}>
-                    Add course
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setActiveModuleId(module.id); openCreate(); }}>
+                      Add course
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmModuleDelete(module.id)} className="gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300">
+                      <Trash2 className="h-4 w-4" />
+                      Delete module
+                    </Button>
+                  </div>
                 )}
               </div>
               {moduleCourses.length === 0 ? (
