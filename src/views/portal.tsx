@@ -21,7 +21,6 @@ import {
   Languages,
   LayoutDashboard,
   LogOut,
-  Megaphone,
   Menu,
   Monitor,
   Network,
@@ -47,14 +46,13 @@ import AdminDepartments from "./admin/AdminDepartments";
 import AdminCourses from "./admin/AdminCourses";
 import AdminSimulations from "./admin/AdminSimulations";
 import AdminReports from "./admin/AdminReports";
-import AdminSettings from "./admin/AdminSettings";
 import SuperAdminTenants from "./superadmin/SuperAdminTenants";
 import SuperAdminAuditLogs from "./superadmin/SuperAdminAuditLogs";
 import SuperAdminMonitoring from "./superadmin/SuperAdminMonitoring";
 import AdminAssessments from "./admin/AdminAssessments";
-import AdminNotifications from "./admin/AdminNotifications";
 import SuperAdminAnalytics from "./superadmin/SuperAdminAnalytics";
 import SuperAdminRequests from "./superadmin/SuperAdminRequests";
+import SuperAdminConfig from "./superadmin/SuperAdminConfig";
 import ExecutiveDashboard from "./executive/ExecutiveDashboard";
 import HRDashboard from "./hr/HRDashboard";
 import AIChatWidget from "@/components/AIChatWidget";
@@ -98,14 +96,12 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "nav.simulations", icon: Target, key: "simulations" },
     { label: "nav.assessments", icon: ClipboardCheck, key: "assessments" },
     { label: "nav.reports", icon: FileText, key: "reports" },
-    { label: "nav.notifications", icon: Megaphone, key: "notifications" },
-    { label: "nav.settings", icon: Settings, key: "settings" },
-    { label: "nav.auditLogs", icon: ScrollText, key: "audit" },
     { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
   SuperAdmin: [
     { label: "nav.requests", icon: Users, key: "requests" },
     { label: "nav.tenants", icon: Building2, key: "tenants" },
+    { label: "nav.settings", icon: Settings, key: "config" },
     { label: "nav.analytics", icon: Activity, key: "analytics" },
     { label: "nav.courses", icon: BookOpen, key: "courses" },
     { label: "nav.licensing", icon: KeyRound, key: "licensing" },
@@ -555,9 +551,6 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
     if (activeKey === "simulations") return <AdminSimulations />;
     if (activeKey === "assessments") return <AdminAssessments />;
     if (activeKey === "reports") return <AdminReports />;
-    if (activeKey === "notifications") return <AdminNotifications />;
-    if (activeKey === "settings") return <AdminSettings />;
-    if (activeKey === "audit") return <SuperAdminAuditLogs />;
     return <AdminDashboard />;
   }
 
@@ -565,6 +558,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
   if (role === "SuperAdmin") {
     if (activeKey === "requests") return <SuperAdminRequests />;
     if (activeKey === "tenants") return <SuperAdminTenants />;
+    if (activeKey === "config") return <SuperAdminConfig />;
     if (activeKey === "analytics") return <SuperAdminAnalytics />;
     if (activeKey === "courses") return <AdminCourses />;
     if (activeKey === "audit") return <SuperAdminAuditLogs />;

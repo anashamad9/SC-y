@@ -64,7 +64,7 @@ router.get("/admin/stats", requireAuth, requireRole(...["admin", "superadmin"]),
 });
 
 // GET /admin/settings — read all platform settings (from system_config)
-router.get("/admin/settings", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
+router.get("/admin/settings", requireAuth, requireRole("superadmin"), async (req, res) => {
   try {
     const { systemConfigTable } = await import("@workspace/db/schema");
     const rows = await db.select().from(systemConfigTable);
@@ -78,7 +78,7 @@ router.get("/admin/settings", requireAuth, requireRole(...["admin", "superadmin"
 });
 
 // PUT /admin/settings/:key — persist a single setting
-router.put("/admin/settings/:key", requireAuth, requireRole("admin", "superadmin"), async (req, res) => {
+router.put("/admin/settings/:key", requireAuth, requireRole("superadmin"), async (req, res) => {
   try {
     const { systemConfigTable } = await import("@workspace/db/schema");
     const key = req.params.key as string;
@@ -99,7 +99,7 @@ router.put("/admin/settings/:key", requireAuth, requireRole("admin", "superadmin
 });
 
 // GET /admin/notifications — list announcements stored in system_config
-router.get("/admin/notifications", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
+router.get("/admin/notifications", requireAuth, requireRole("superadmin"), async (req, res) => {
   try {
     const { systemConfigTable } = await import("@workspace/db/schema");
     const [row] = await db.select().from(systemConfigTable).where(eq(systemConfigTable.key, "platform.announcements"));
@@ -112,7 +112,7 @@ router.get("/admin/notifications", requireAuth, requireRole(...["admin", "supera
 });
 
 // POST /admin/notifications — add an announcement
-router.post("/admin/notifications", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
+router.post("/admin/notifications", requireAuth, requireRole("superadmin"), async (req, res) => {
   try {
     const { systemConfigTable } = await import("@workspace/db/schema");
     const { title, body, type, audience } = req.body;
@@ -134,7 +134,7 @@ router.post("/admin/notifications", requireAuth, requireRole(...["admin", "super
 });
 
 // DELETE /admin/notifications/:id — remove an announcement by id
-router.delete("/admin/notifications/:id", requireAuth, requireRole(...["admin", "superadmin"]), async (req, res) => {
+router.delete("/admin/notifications/:id", requireAuth, requireRole("superadmin"), async (req, res) => {
   try {
     const { systemConfigTable } = await import("@workspace/db/schema");
     const id = req.params.id;

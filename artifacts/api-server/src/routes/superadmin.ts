@@ -239,7 +239,7 @@ router.patch("/superadmin/approval-requests/:id", requireAuth, requireRole("supe
 
 // ── Audit Logs ────────────────────────────────────────────────────────────────
 
-router.get("/audit-logs", requireAuth, requireRole(...["superadmin", "admin"]), async (req, res) => {
+router.get("/audit-logs", requireAuth, requireRole("superadmin"), async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);

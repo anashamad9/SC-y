@@ -1271,8 +1271,8 @@ paths:
   /admin/settings:
     get:
       operationId: getAdminSettings
-      tags: [admin]
-      summary: Get all admin settings from system config
+      tags: [superadmin]
+      summary: Get all platform settings from system config
       responses:
         "200":
           description: Map of setting key to value
@@ -1286,8 +1286,8 @@ paths:
   /admin/settings/{key}:
     put:
       operationId: updateAdminSetting
-      tags: [admin]
-      summary: Update a single admin setting
+      tags: [superadmin]
+      summary: Update a single platform setting
       parameters:
         - in: path
           name: key
@@ -1339,7 +1339,7 @@ paths:
   /admin/notifications:
     get:
       operationId: listAdminNotifications
-      tags: [admin]
+      tags: [superadmin]
       summary: List platform announcements
       responses:
         "200":
@@ -1360,7 +1360,7 @@ paths:
                     active: { type: boolean }
     post:
       operationId: createAdminNotification
-      tags: [admin]
+      tags: [superadmin]
       summary: Create a new announcement
       requestBody:
         required: true
@@ -1380,8 +1380,8 @@ paths:
   /admin/notifications/{id}:
     delete:
       operationId: deleteAdminNotification
-      tags: [admin]
-      summary: Remove an announcement
+      tags: [superadmin]
+      summary: Remove a platform announcement
       parameters:
         - in: path
           name: id
