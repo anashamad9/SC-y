@@ -51,7 +51,16 @@ type EditorStep = (typeof EDITOR_STEPS)[number]["key"];
 async function apiFetch(path: string, opts?: RequestInit) {
   const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
   const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    const cleanText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (response.status === 413) {
+      throw new Error("Video payload is too large for this deployment. Use a hosted video URL or choose a smaller video.");
+    }
+    throw new Error(cleanText || `Request failed with status ${response.status}`);
+  }
   if (!response.ok) throw new Error(data.error || "Request failed");
   return data;
 }

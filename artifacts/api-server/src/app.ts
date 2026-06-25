@@ -47,8 +47,8 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json({ limit: "6mb" }));
-app.use(express.urlencoded({ extended: true, limit: "6mb" }));
+app.use(express.json({ limit: "40mb" }));
+app.use(express.urlencoded({ extended: true, limit: "40mb" }));
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -69,5 +69,12 @@ const generalLimiter = rateLimit({
 app.use("/api/auth", authLimiter);
 app.use("/api", generalLimiter);
 app.use("/api", router);
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err?.type === "entity.too.large") {
+    res.status(413).json({ error: "Request body is too large. Use a hosted video URL or choose a smaller video." });
+    return;
+  }
+  next(err);
+});
 
 export default app;
