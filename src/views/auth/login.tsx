@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
+import { Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,23 +14,104 @@ import { useLogin, useVerifyMfa } from "@workspace/api-client-react";
 import logo from "@/assets/logo";
 import ThemeToggle from "@/components/theme-toggle";
 import { API_BASE } from "@/lib/runtime";
-
-const loginSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-const mfaSchema = z.object({
-  code: z.string().length(6, "Code must be 6 digits"),
-});
+import { useI18n, type Lang } from "@/lib/i18n";
 
 const testRoles = [
-  { role: "employee", label: "Employee" },
-  { role: "executive", label: "Executive" },
-  { role: "hr", label: "HR" },
-  { role: "admin", label: "Admin" },
-  { role: "superadmin", label: "Super Admin" },
+  { role: "employee" },
+  { role: "executive" },
+  { role: "hr" },
+  { role: "admin" },
+  { role: "superadmin" },
 ];
+
+type LoginFormValues = {
+  email: string;
+  password: string;
+};
+
+type MfaFormValues = {
+  code: string;
+};
+
+function loginCopy(lang: Lang) {
+  return lang === "ar"
+    ? {
+        identityTitle: "التحقق من الهوية",
+        identitySub: "سجّل الدخول للوصول إلى بوابة الاستخبارات",
+        email: "البريد الإلكتروني",
+        emailPlaceholder: "agent@harvesters.com",
+        password: "عبارة المرور",
+        forgotPassword: "نسيت الوصول؟",
+        authenticating: "جارٍ التحقق...",
+        authorize: "تسجيل الدخول",
+        tempAccess: "وصول تجريبي مؤقت",
+        signingIn: "جارٍ الدخول...",
+        mfaLabel: "رمز التحقق متعدد العوامل",
+        verifying: "جارٍ التحقق...",
+        verify: "تحقق من الهوية",
+        unregistered: "لا تملك حساباً؟",
+        requestClearance: "اطلب تصريحاً",
+        accessGranted: "تم السماح بالوصول",
+        welcome: "مرحباً بك في CyberCultX",
+        accessDenied: "تم رفض الوصول",
+        identityVerified: "تم التحقق من الهوية",
+        verificationFailed: "فشل التحقق",
+        invalidMfa: "رمز التحقق غير صحيح",
+        tempLoginFailed: "فشل الدخول المؤقت",
+        tempUnable: "تعذر بدء جلسة الاختبار",
+        tempSignedIn: "تم الدخول باسم",
+        invalidCredentials: "بيانات الدخول غير صحيحة",
+        emailError: "أدخل بريداً إلكترونياً صالحاً",
+        passwordError: "كلمة المرور مطلوبة",
+        codeError: "يجب أن يكون الرمز من 6 أرقام",
+        roles: {
+          employee: "موظف",
+          executive: "تنفيذي",
+          hr: "الموارد البشرية",
+          admin: "مسؤول",
+          superadmin: "مسؤول عام",
+        },
+        orbitLabels: ["إشارات التهديد", "درجة الجاهزية", "التحكم بالوصول", "تدريب مباشر"],
+      }
+    : {
+        identityTitle: "Identity Verification",
+        identitySub: "Authenticate to access the intelligence portal",
+        email: "Email Coordinate",
+        emailPlaceholder: "agent@harvesters.com",
+        password: "Passphrase",
+        forgotPassword: "Lost Access?",
+        authenticating: "Authenticating...",
+        authorize: "Authorize Access",
+        tempAccess: "Temporary test access",
+        signingIn: "Signing in...",
+        mfaLabel: "Multi-Factor Authorization Code",
+        verifying: "Verifying...",
+        verify: "Verify Identity",
+        unregistered: "Unregistered operative?",
+        requestClearance: "Request Clearance",
+        accessGranted: "Access Granted",
+        welcome: "Welcome to CyberCultX",
+        accessDenied: "Access Denied",
+        identityVerified: "Identity Verified",
+        verificationFailed: "Verification Failed",
+        invalidMfa: "Invalid MFA code",
+        tempLoginFailed: "Temporary Login Failed",
+        tempUnable: "Unable to start test session",
+        tempSignedIn: "Signed in as",
+        invalidCredentials: "Invalid credentials",
+        emailError: "Enter a valid email address",
+        passwordError: "Password is required",
+        codeError: "Code must be 6 digits",
+        roles: {
+          employee: "Employee",
+          executive: "Executive",
+          hr: "HR",
+          admin: "Admin",
+          superadmin: "Super Admin",
+        },
+        orbitLabels: ["Threat Signals", "Readiness Score", "Access Control", "Live Training"],
+      };
+}
 
 function decodeHtmlEntities(value: string) {
   return value
@@ -40,31 +122,50 @@ function decodeHtmlEntities(value: string) {
     .replaceAll("&gt;", ">");
 }
 
-function normalizeAuthErrorMessage(value?: string) {
+function normalizeAuthErrorMessage(value?: string, fallback = "Invalid credentials") {
   const message = decodeHtmlEntities((value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-  if (!message) return "Invalid credentials";
+  if (!message) return fallback;
   return message.length > 420 ? `${message.slice(0, 420)}...` : message;
 }
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { lang, setLang, isRTL } = useI18n();
+  const copy = useMemo(() => loginCopy(lang), [lang]);
   const loginMutation = useLogin();
   const verifyMfaMutation = useVerifyMfa();
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [tempRole, setTempRole] = useState<string | null>(null);
 
-  const loginForm = useForm<z.infer<typeof loginSchema>>({
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        email: z.string().email(copy.emailError),
+        password: z.string().min(1, copy.passwordError),
+      }),
+    [copy.emailError, copy.passwordError]
+  );
+
+  const mfaSchema = useMemo(
+    () =>
+      z.object({
+        code: z.string().length(6, copy.codeError),
+      }),
+    [copy.codeError]
+  );
+
+  const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  const mfaForm = useForm<z.infer<typeof mfaSchema>>({
+  const mfaForm = useForm<MfaFormValues>({
     resolver: zodResolver(mfaSchema),
     defaultValues: { code: "" },
   });
 
-  const onLoginSubmit = (values: z.infer<typeof loginSchema>) => {
+  const onLoginSubmit = (values: LoginFormValues) => {
     loginMutation.mutate(
       { data: values },
       {
@@ -73,34 +174,34 @@ export default function Login() {
             setRequiresMfa(true);
           } else {
             localStorage.setItem("ccx_token", data.token);
-            toast({ title: "Access Granted", description: "Welcome to CyberCultX" });
+            toast({ title: copy.accessGranted, description: copy.welcome });
             routeUser(data.user.role);
           }
         },
         onError: (err: any) => {
           toast({
             variant: "destructive",
-            title: "Access Denied",
-            description: normalizeAuthErrorMessage(err.data?.error || err.message),
+            title: copy.accessDenied,
+            description: normalizeAuthErrorMessage(err.data?.error || err.message, copy.invalidCredentials),
           });
         },
       }
     );
   };
 
-  const onMfaSubmit = (values: z.infer<typeof mfaSchema>) => {
+  const onMfaSubmit = (values: MfaFormValues) => {
     verifyMfaMutation.mutate(
       { data: values },
       {
         onSuccess: () => {
-          toast({ title: "Identity Verified", description: "Welcome to CyberCultX" });
+          toast({ title: copy.identityVerified, description: copy.welcome });
           setLocation("/portal");
         },
         onError: (err: any) => {
           toast({
             variant: "destructive",
-            title: "Verification Failed",
-            description: err.message || "Invalid MFA code",
+            title: copy.verificationFailed,
+            description: err.message || copy.invalidMfa,
           });
         },
       }
@@ -132,21 +233,21 @@ export default function Login() {
       try {
         data = responseText ? JSON.parse(responseText) : {};
       } catch {
-        data = { error: normalizeAuthErrorMessage(responseText) };
+        data = { error: normalizeAuthErrorMessage(responseText, copy.tempUnable) };
       }
 
       if (!response.ok) {
-        throw new Error(normalizeAuthErrorMessage(data?.error || "Temporary login failed"));
+        throw new Error(normalizeAuthErrorMessage(data?.error || copy.tempLoginFailed, copy.tempUnable));
       }
 
       localStorage.setItem("ccx_token", data.token);
-      toast({ title: "Access Granted", description: `Signed in as ${data.user.role}` });
+      toast({ title: copy.accessGranted, description: `${copy.tempSignedIn} ${data.user.role}` });
       routeUser(data.user.role);
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Temporary Login Failed",
-        description: normalizeAuthErrorMessage(err.message || "Unable to start test session"),
+        title: copy.tempLoginFailed,
+        description: normalizeAuthErrorMessage(err.message || copy.tempUnable, copy.tempUnable),
       });
     } finally {
       setTempRole(null);
@@ -154,8 +255,18 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background grid lg:grid-cols-[minmax(360px,0.9fr)_1.1fr] relative overflow-hidden">
-      <div className="absolute right-4 top-4 z-20">
+    <div className="min-h-screen bg-background grid lg:grid-cols-[minmax(360px,0.9fr)_1.1fr] relative overflow-hidden" dir={isRTL ? "rtl" : "ltr"}>
+      <div className={`absolute top-4 z-20 flex items-center gap-2 ${isRTL ? "left-4" : "right-4"}`}>
+        <button
+          type="button"
+          onClick={() => setLang(lang === "en" ? "ar" : "en")}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="Toggle language / تغيير اللغة"
+          aria-label="Toggle language / تغيير اللغة"
+        >
+          <Languages className="h-4 w-4" aria-hidden="true" />
+          <span className="font-mono">{lang === "en" ? "العربية" : "English"}</span>
+        </button>
         <ThemeToggle />
       </div>
       <div className="absolute inset-0 bg-background" />
@@ -171,8 +282,8 @@ export default function Login() {
             <Link href="/">
               <img src={logo} alt="The Harvesters Logo" className="h-16 w-12 object-contain mb-3 cursor-pointer hover:scale-105 transition-transform" />
             </Link>
-            <h1 className="text-xl font-bold tracking-tight text-center">Identity Verification</h1>
-            <p className="text-xs text-muted-foreground mt-1.5 text-center">Authenticate to access the intelligence portal</p>
+            <h1 className="text-xl font-bold tracking-tight text-center">{copy.identityTitle}</h1>
+            <p className="text-xs text-muted-foreground mt-1.5 text-center">{copy.identitySub}</p>
           </div>
 
           {!requiresMfa ? (
@@ -183,9 +294,9 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <Label className="text-xs">Email Coordinate</Label>
+                      <Label className="text-xs">{copy.email}</Label>
                       <FormControl>
-                        <Input placeholder="agent@harvesters.com" {...field} data-testid="input-email" />
+                        <Input placeholder={copy.emailPlaceholder} {...field} data-testid="input-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -197,9 +308,9 @@ export default function Login() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs">Passphrase</Label>
+                        <Label className="text-xs">{copy.password}</Label>
                         <Link href="/forgot-password" className="text-[11px] text-primary hover:underline" data-testid="link-forgot-password">
-                          Lost Access?
+                          {copy.forgotPassword}
                         </Link>
                       </div>
                       <FormControl>
@@ -210,12 +321,12 @@ export default function Login() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-submit">
-                  {loginMutation.isPending ? "Authenticating..." : "Authorize Access"}
+                  {loginMutation.isPending ? copy.authenticating : copy.authorize}
                 </Button>
 
                 <div className="space-y-2 bg-background rounded-lg p-3 border border-border">
                   <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Temporary test access
+                    {copy.tempAccess}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {testRoles.map((item) => (
@@ -229,7 +340,7 @@ export default function Login() {
                         className="text-[11px]"
                         data-testid={`button-temp-login-${item.role}`}
                       >
-                        {tempRole === item.role ? "Signing in..." : item.label}
+                        {tempRole === item.role ? copy.signingIn : copy.roles[item.role as keyof typeof copy.roles]}
                       </Button>
                     ))}
                   </div>
@@ -244,7 +355,7 @@ export default function Login() {
                   name="code"
                   render={({ field }) => (
                     <FormItem>
-                      <Label className="text-xs">Multi-Factor Authorization Code</Label>
+                      <Label className="text-xs">{copy.mfaLabel}</Label>
                       <FormControl>
                         <Input placeholder="000000" maxLength={6} {...field} className="text-center tracking-[0.5em] text-base font-mono" data-testid="input-mfa" />
                       </FormControl>
@@ -253,16 +364,16 @@ export default function Login() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={verifyMfaMutation.isPending} data-testid="button-verify-mfa">
-                  {verifyMfaMutation.isPending ? "Verifying..." : "Verify Identity"}
+                  {verifyMfaMutation.isPending ? copy.verifying : copy.verify}
                 </Button>
               </form>
             </Form>
           )}
 
           <div className="mt-5 text-center text-xs text-muted-foreground bg-background rounded-lg py-3 border border-border">
-            Unregistered operative?{" "}
+            {copy.unregistered}{" "}
             <Link href="/register" className="text-primary hover:underline font-medium" data-testid="link-register">
-              Request Clearance
+              {copy.requestClearance}
             </Link>
           </div>
         </div>
@@ -292,10 +403,10 @@ export default function Login() {
             <img src={logo} alt="The Harvesters Logo" className="h-24 w-16 object-contain" />
           </motion.div>
           {[
-            ["left-10 top-20", "Threat Signals"],
-            ["right-5 top-40", "Readiness Score"],
-            ["left-20 bottom-24", "Access Control"],
-            ["right-20 bottom-14", "Live Training"],
+            ["left-10 top-20", copy.orbitLabels[0]],
+            ["right-5 top-40", copy.orbitLabels[1]],
+            ["left-20 bottom-24", copy.orbitLabels[2]],
+            ["right-20 bottom-14", copy.orbitLabels[3]],
           ].map(([position, label], index) => (
             <motion.div
               key={label}

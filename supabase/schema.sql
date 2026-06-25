@@ -24,6 +24,7 @@ drop table if exists
   user_course_progress,
   lessons,
   courses,
+  course_modules,
   audit_logs,
   sessions,
   users,
@@ -109,8 +110,19 @@ create table audit_logs (
   created_at timestamptz not null default now()
 );
 
+create table course_modules (
+  id serial primary key,
+  title text not null,
+  description text,
+  difficulty text not null default 'beginner',
+  display_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
 create table courses (
   id serial primary key,
+  module_id integer references course_modules(id) on delete set null,
   title text not null,
   category text not null,
   description text not null,
@@ -356,6 +368,9 @@ create index sessions_expires_at_idx on sessions(expires_at);
 create index audit_logs_user_id_idx on audit_logs(user_id);
 create index audit_logs_tenant_id_idx on audit_logs(tenant_id);
 create index audit_logs_created_at_idx on audit_logs(created_at desc);
+create index course_modules_is_active_idx on course_modules(is_active);
+create index course_modules_display_order_idx on course_modules(display_order);
+create index courses_module_id_idx on courses(module_id);
 create index courses_is_active_idx on courses(is_active);
 create index courses_score_range_idx on courses(min_score, max_score);
 create index lessons_course_id_idx on lessons(course_id);

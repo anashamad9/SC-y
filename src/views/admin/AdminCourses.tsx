@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses } from "@workspace/api-client-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { CourseProfilePage } from "@/components/course-profile-page";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
 }
 
 interface CourseForm {
+  moduleId: number | "";
   title: string;
   category: string;
   description: string;
@@ -78,6 +79,7 @@ interface CourseForm {
 }
 
 const DEFAULT_FORM: CourseForm = {
+  moduleId: "",
   title: "",
   category: "email_security",
   description: "",
@@ -116,6 +118,9 @@ function isDirectVideo(url: string) {
 
 export default function AdminCourses({ canManage = false }: { canManage?: boolean }) {
   const [showModal, setShowModal] = useState(false);
+  const [moduleFormOpen, setModuleFormOpen] = useState(false);
+  const [moduleForm, setModuleForm] = useState({ title: "", description: "", difficulty: "beginner" });
+  const [activeModuleId, setActiveModuleId] = useState<number | "all">("all");
   const [editorStep, setEditorStep] = useState<EditorStep>("details");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<CourseForm>(DEFAULT_FORM);
@@ -128,6 +133,10 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: courses, isLoading } = useListCourses({});
+  const { data: modules = [], isLoading: modulesLoading } = useQuery({
+    queryKey: ["/api/courses/modules"],
+    queryFn: () => apiFetch("/api/courses/modules"),
+  });
 
   useEffect(() => {
     return () => {
@@ -150,6 +159,23 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       closeModal();
     },
     onError: (error: Error) => toast({ title: error.message || "Failed to create course", variant: "destructive" }),
+  });
+
+  const createModule = useMutation({
+    mutationFn: () =>
+      apiFetch("/api/courses/modules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(moduleForm),
+      }),
+    onSuccess: (module: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses/modules"] });
+      setActiveModuleId(module.id);
+      setModuleForm({ title: "", description: "", difficulty: "beginner" });
+      setModuleFormOpen(false);
+      toast({ title: "Module created" });
+    },
+    onError: (error: Error) => toast({ title: error.message || "Failed to create module", variant: "destructive" }),
   });
 
   const updateCourse = useMutation({
@@ -186,8 +212,14 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
 
   function openCreate() {
     if (!canManage) return;
+    const selectedModuleId = activeModuleId === "all" ? modules[0]?.id : activeModuleId;
+    if (!selectedModuleId) {
+      setModuleFormOpen(true);
+      toast({ title: "Create a module before adding courses", variant: "destructive" });
+      return;
+    }
     resetPreview();
-    setForm(DEFAULT_FORM);
+    setForm({ ...DEFAULT_FORM, moduleId: selectedModuleId });
     setEditingId(null);
     setEditorStep("details");
     setVideoMessage(null);
@@ -201,6 +233,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     setEditorStep("details");
     setForm({
       title: course.title,
+      moduleId: course.moduleId ?? "",
       category: course.category,
       description: course.description ?? "",
       difficulty: course.difficulty,
@@ -296,6 +329,10 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   function handleSubmit() {
     if (!canManage) return;
     if (!form.title.trim()) return;
+    if (!form.moduleId) {
+      toast({ title: "Choose a module before saving this course", variant: "destructive" });
+      return;
+    }
     if ((form.videoFileName || form.videoSizeBytes) && !form.videoUrl.trim()) {
       toast({
         title: "Video URL required",
@@ -320,6 +357,13 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const readinessRange = `${form.minScore || "Any"} - ${form.maxScore || "Any"}`;
   const hasVideo = Boolean(form.videoUrl || form.videoFileName || form.videoSizeBytes);
   const hasMarkdown = Boolean(form.markdownUrl || form.markdownFileName || form.markdownContent);
+  const moduleList = modules as any[];
+  const coursesByModule = moduleList
+  .filter((module) => activeModuleId === "all" || activeModuleId === module.id)
+  .map((module) => ({
+    module,
+    courses: (courses ?? []).filter((course: any) => course.moduleId === module.id),
+  }));
 
   function goToAdjacentStep(direction: 1 | -1) {
     const nextStep = EDITOR_STEPS[editorStepIndex + direction];
@@ -334,17 +378,71 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Course Library</h2>
+          <h2 className="text-xl font-bold">Course Modules</h2>
           <p className="text-sm text-muted-foreground">
-            {courses?.length ?? 0} courses with video, Markdown notes, and readiness-based recommendations
+            {moduleList.length} modules · {courses?.length ?? 0} courses with readiness-based recommendations
           </p>
         </div>
         {canManage && (
-          <Button size="sm" onClick={openCreate} className="gap-2 active:scale-[0.96] transition-transform">
-            <Plus className="h-4 w-4" />
-            Add course
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setModuleFormOpen((open) => !open)} className="gap-2 active:scale-[0.96] transition-transform">
+              <Plus className="h-4 w-4" />
+              Add module
+            </Button>
+            <Button size="sm" onClick={openCreate} className="gap-2 active:scale-[0.96] transition-transform" disabled={moduleList.length === 0}>
+              <Plus className="h-4 w-4" />
+              Add course
+            </Button>
+          </div>
         )}
+      </div>
+
+      {canManage && moduleFormOpen && (
+        <div className="rounded-xl border border-border bg-card/80 p-4">
+          <div className="mb-3 text-sm font-semibold">Create module</div>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
+            <Input
+              value={moduleForm.title}
+              onChange={(event) => setModuleForm((current) => ({ ...current, title: event.target.value }))}
+              placeholder="Module title"
+              className="bg-muted/30"
+            />
+            <Input
+              value={moduleForm.description}
+              onChange={(event) => setModuleForm((current) => ({ ...current, description: event.target.value }))}
+              placeholder="Short description"
+              className="bg-muted/30"
+            />
+            <select
+              value={moduleForm.difficulty}
+              onChange={(event) => setModuleForm((current) => ({ ...current, difficulty: event.target.value }))}
+              className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
+            >
+              {DIFFICULTIES.map((difficulty) => <option key={difficulty} value={difficulty}>{difficulty}</option>)}
+            </select>
+            <Button size="sm" onClick={() => createModule.mutate()} disabled={!moduleForm.title.trim() || createModule.isPending}>
+              {createModule.isPending ? "Saving..." : "Save module"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setActiveModuleId("all")}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${activeModuleId === "all" ? "border-primary/30 bg-primary/15 text-primary" : "border-border bg-card text-muted-foreground"}`}
+        >
+          All modules
+        </button>
+        {moduleList.map((module) => (
+          <button
+            key={module.id}
+            onClick={() => setActiveModuleId(module.id)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${activeModuleId === module.id ? "border-primary/30 bg-primary/15 text-primary" : "border-border bg-card text-muted-foreground"}`}
+          >
+            {module.title}
+          </button>
+        ))}
       </div>
 
       <AnimatePresence>
@@ -390,6 +488,20 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {editorStep === "details" && (
                   <>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs text-muted-foreground">Module *</label>
+                <select
+                  value={form.moduleId}
+                  onChange={(event) => setForm((current) => ({ ...current, moduleId: Number(event.target.value) }))}
+                  className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
+                >
+                  <option value="">Choose module</option>
+                  {moduleList.map((module) => (
+                    <option key={module.id} value={module.id}>{module.title}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs text-muted-foreground">Title *</label>
                 <Input
@@ -591,6 +703,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                       <div className="grid gap-2 text-sm sm:grid-cols-2">
                         {[
                           { label: "Title", value: form.title.trim() || "Missing", ready: Boolean(form.title.trim()) },
+                          { label: "Module", value: moduleList.find((module) => module.id === form.moduleId)?.title ?? "Missing", ready: Boolean(form.moduleId) },
                           { label: "Category", value: form.category.replace(/_/g, " "), ready: Boolean(form.category) },
                           { label: "Video", value: hasVideo ? "Attached" : "Not attached", ready: hasVideo },
                           { label: "Markdown notes", value: hasMarkdown ? "Attached" : "Optional", ready: true },
@@ -679,6 +792,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                       </div>
                       <div className="flex flex-wrap gap-2 text-[11px]">
                         <span className="rounded-md bg-muted/30 px-2 py-1 capitalize">{form.category.replace(/_/g, " ")}</span>
+                        <span className="rounded-md bg-muted/30 px-2 py-1">{moduleList.find((module) => module.id === form.moduleId)?.title ?? "No module"}</span>
                         <span className="rounded-md bg-muted/30 px-2 py-1">Range {readinessRange}</span>
                         {hasMarkdown && <span className="rounded-md bg-muted/30 px-2 py-1">Notes ready</span>}
                       </div>
@@ -735,74 +849,110 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
         )}
       </AnimatePresence>
 
-      {isLoading ? (
+      {isLoading || modulesLoading ? (
         <div className="flex justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
+      ) : moduleList.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card/80 p-8 text-center">
+          <div className="text-sm font-semibold">Create your first module</div>
+          <div className="mt-1 text-sm text-muted-foreground">Courses now live inside modules. Add a module before creating courses.</div>
+          {canManage && (
+            <Button size="sm" onClick={() => setModuleFormOpen(true)} className="mt-4">
+              Add module
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {courses?.map((course, index) => {
-            const currentCourse = course as any;
-            return (
-              <motion.div
-                key={currentCourse.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04 }}
-                className="overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_16px_48px_-32px_rgba(0,0,0,0.55)]"
-              >
-                <div
-                  className={`h-2 bg-gradient-to-r ${CATEGORY_COLORS[index % CATEGORY_COLORS.length]}`}
-                  style={{ background: `linear-gradient(to right, ${currentCourse.thumbnailColor}, ${currentCourse.thumbnailColor}99)` }}
-                />
-                <div className="space-y-3 p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold text-sm leading-tight">{currentCourse.title}</div>
-                    <span className={`shrink-0 text-xs ${DIFFICULTY_COLORS[currentCourse.difficulty] ?? "text-muted-foreground"}`}>
-                      {currentCourse.difficulty}
-                    </span>
+        <div className="space-y-6">
+          {coursesByModule.map(({ module, courses: moduleCourses }) => (
+            <section key={module.id} className="rounded-2xl border border-border bg-card/50 p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{module.title}</h3>
+                    <span className={`text-xs ${DIFFICULTY_COLORS[module.difficulty] ?? "text-muted-foreground"}`}>{module.difficulty}</span>
                   </div>
-
-                  <div className="line-clamp-2 text-xs text-muted-foreground">{currentCourse.description}</div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="capitalize">{currentCourse.category?.replace(/_/g, " ")}</span>
-                    <span>{currentCourse.durationMinutes}m</span>
-                    <span className="text-primary">+{currentCourse.xpReward} XP</span>
-                  </div>
-
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>Video: {currentCourse.videoFileName || (currentCourse.videoUrl ? "Attached" : "Not set")}</div>
-                    <div>Markdown: {currentCourse.markdownFileName || "Not set"}</div>
-                    {(currentCourse.minScore !== null || currentCourse.maxScore !== null) && (
-                      <div>
-                        Range: {currentCourse.minScore ?? "Any"} to {currentCourse.maxScore ?? "Any"}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button size="sm" variant="secondary" onClick={() => setPreviewCourseId(currentCourse.id)} className="gap-2 active:scale-[0.96] transition-transform">
-                      <Eye className="h-4 w-4" />
-                      View
-                    </Button>
-                    {canManage && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => openEdit(currentCourse)} className="gap-2 active:scale-[0.96] transition-transform">
-                          <Pencil className="h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(currentCourse.id)} className="gap-2 active:scale-[0.96] transition-transform">
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  {module.description && <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>}
                 </div>
-              </motion.div>
-            );
-          })}
+                {canManage && (
+                  <Button size="sm" variant="outline" onClick={() => { setActiveModuleId(module.id); openCreate(); }}>
+                    Add course
+                  </Button>
+                )}
+              </div>
+              {moduleCourses.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  No courses in this module yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {moduleCourses.map((course: any, index: number) => {
+                    const currentCourse = course as any;
+                    return (
+                      <motion.div
+                        key={currentCourse.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04 }}
+                        className="overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_16px_48px_-32px_rgba(0,0,0,0.55)]"
+                      >
+                        <div
+                          className={`h-2 bg-gradient-to-r ${CATEGORY_COLORS[index % CATEGORY_COLORS.length]}`}
+                          style={{ background: `linear-gradient(to right, ${currentCourse.thumbnailColor}, ${currentCourse.thumbnailColor}99)` }}
+                        />
+                        <div className="space-y-3 p-5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-semibold text-sm leading-tight">{currentCourse.title}</div>
+                            <span className={`shrink-0 text-xs ${DIFFICULTY_COLORS[currentCourse.difficulty] ?? "text-muted-foreground"}`}>
+                              {currentCourse.difficulty}
+                            </span>
+                          </div>
+
+                          <div className="line-clamp-2 text-xs text-muted-foreground">{currentCourse.description}</div>
+
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="capitalize">{currentCourse.category?.replace(/_/g, " ")}</span>
+                            <span>{currentCourse.durationMinutes}m</span>
+                            <span className="text-primary">+{currentCourse.xpReward} XP</span>
+                          </div>
+
+                          <div className="space-y-1 text-xs text-muted-foreground">
+                            <div>Video: {currentCourse.videoFileName || (currentCourse.videoUrl ? "Attached" : "Not set")}</div>
+                            <div>Markdown: {currentCourse.markdownFileName || "Not set"}</div>
+                            {(currentCourse.minScore !== null || currentCourse.maxScore !== null) && (
+                              <div>
+                                Range: {currentCourse.minScore ?? "Any"} to {currentCourse.maxScore ?? "Any"}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            <Button size="sm" variant="secondary" onClick={() => setPreviewCourseId(currentCourse.id)} className="gap-2 active:scale-[0.96] transition-transform">
+                              <Eye className="h-4 w-4" />
+                              View
+                            </Button>
+                            {canManage && (
+                              <>
+                                <Button size="sm" variant="outline" onClick={() => openEdit(currentCourse)} className="gap-2 active:scale-[0.96] transition-transform">
+                                  <Pencil className="h-4 w-4" />
+                                  Edit
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(currentCourse.id)} className="gap-2 active:scale-[0.96] transition-transform">
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          ))}
         </div>
       )}
     </div>

@@ -51,6 +51,13 @@ export default function AIChatWidget() {
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length !== 1 || prev[0]?.role !== "assistant") return prev;
+      return [{ role: "assistant", content: t("ai.greeting") }];
+    });
+  }, [i18n.language, t]);
+
   async function sendMessage(text?: string) {
     const msg = (text ?? input).trim();
     if (!msg || streaming) return;
@@ -136,7 +143,7 @@ export default function AIChatWidget() {
     <>
       <motion.button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center hover:scale-105 transition-transform"
+        className={`fixed bottom-6 ${isArabic ? "left-6" : "right-6"} z-50 w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center hover:scale-105 transition-transform`}
         whileTap={{ scale: 0.95 }}
         title={t("ai.title")}
       >
@@ -154,7 +161,7 @@ export default function AIChatWidget() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[560px] bg-card border border-border rounded-2xl flex flex-col overflow-hidden"
+            className={`fixed bottom-24 ${isArabic ? "left-6" : "right-6"} z-50 w-[380px] max-w-[calc(100vw-3rem)] max-h-[560px] bg-card border border-border rounded-2xl flex flex-col overflow-hidden`}
             dir={isArabic ? "rtl" : "ltr"}
           >
             {/* Header */}
@@ -171,7 +178,7 @@ export default function AIChatWidget() {
               </div>
               <button
                 onClick={() => setMessages([messages[0]])}
-                className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-white/10"
+                className={`${isArabic ? "mr-auto" : "ml-auto"} text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-white/10`}
               >
                 {t("ai.clear")}
               </button>

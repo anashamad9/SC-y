@@ -1,8 +1,19 @@
 import { pgTable, text, serial, timestamp, integer, boolean, real, bigint } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
+export const courseModulesTable = pgTable("course_modules", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  difficulty: text("difficulty").notNull().default("beginner"),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const coursesTable = pgTable("courses", {
   id: serial("id").primaryKey(),
+  moduleId: integer("module_id").references(() => courseModulesTable.id),
   title: text("title").notNull(),
   category: text("category").notNull(),
   description: text("description").notNull(),
@@ -52,5 +63,6 @@ export const userCourseProgressTable = pgTable("user_course_progress", {
 });
 
 export type Course = typeof coursesTable.$inferSelect;
+export type CourseModule = typeof courseModulesTable.$inferSelect;
 export type Lesson = typeof lessonsTable.$inferSelect;
 export type UserCourseProgress = typeof userCourseProgressTable.$inferSelect;

@@ -364,6 +364,10 @@ export default function Portal({ role }: { role: string }) {
     (user as any).approvalStatus === "approved" &&
     !(user as any).onboardingCompleted;
 
+  if (needsReadinessAssessment) {
+    return <ReadinessAssessmentModal />;
+  }
+
   return (
     <div className="min-h-screen bg-background flex" dir={isRTL ? "rtl" : "ltr"}>
       {/* Sidebar */}
@@ -483,7 +487,6 @@ export default function Portal({ role }: { role: string }) {
       {/* AI Chat Widget — available across all portals */}
       <AIChatWidget />
 
-      {needsReadinessAssessment && <ReadinessAssessmentModal />}
     </div>
   );
 }

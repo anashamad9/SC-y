@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useListCourses } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { CourseProfilePage } from "@/components/course-profile-page";
 import { useI18n } from "@/lib/i18n";
+import { API_BASE } from "@/lib/runtime";
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   beginner: "#22c55e",
@@ -39,9 +41,13 @@ function useLearningCopy(lang: "en" | "ar") {
         completedCount: "مكتمل",
         inProgressCount: "قيد التقدم",
         allCourses: "كل الدورات",
+        modules: "الوحدات",
+        emptyModule: "لا توجد دورات في هذه الوحدة حالياً.",
         beginner: "مبتدئ",
         intermediate: "متوسط",
         advanced: "متقدم",
+        level: "المستوى",
+        category: "التصنيف",
       }
     : {
         done: "Done",
@@ -68,9 +74,13 @@ function useLearningCopy(lang: "en" | "ar") {
         completedCount: "Completed",
         inProgressCount: "In Progress",
         allCourses: "All Courses",
+        modules: "Modules",
+        emptyModule: "No courses in this module yet.",
         beginner: "Beginner",
         intermediate: "Intermediate",
         advanced: "Advanced",
+        level: "Level",
+        category: "Category",
       };
 }
 
@@ -106,9 +116,22 @@ function CourseCard({ course, onClick, lang }: { course: any; onClick: () => voi
 
         <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{course.description}</p>
 
+        <div className="mb-3 flex flex-wrap gap-2">
+          <span className="rounded-full border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
+            {copy.category}: <span className="text-foreground">{course.category}</span>
+          </span>
+          <span
+            className="rounded-full border bg-background px-2 py-1 text-xs"
+            style={{
+              borderColor: `${DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280"}55`,
+              color: DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280",
+            }}
+          >
+            {copy.level}: {copy[course.difficulty as "beginner" | "intermediate" | "advanced"] ?? course.difficulty}
+          </span>
+        </div>
+
         <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
-          <span style={{ color: DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280" }}>{course.difficulty}</span>
-          <span>·</span>
           <span>{course.durationMinutes}min</span>
           <span>·</span>
           <span>{course.lessonCount} {copy.lessons}</span>
@@ -135,6 +158,14 @@ export default function EmployeeLearning() {
   const [filter, setFilter] = useState<FilterDifficulty>("all");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
   const { data: courses, isLoading } = useListCourses({ difficulty: filter === "all" ? undefined : filter });
+  const { data: modules = [], isLoading: modulesLoading } = useQuery({
+    queryKey: ["/api/courses/modules"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE}/api/courses/modules`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to load modules");
+      return response.json();
+    },
+  });
   const { lang, isRTL } = useI18n();
   const copy = useLearningCopy(lang);
 
@@ -147,6 +178,12 @@ export default function EmployeeLearning() {
 
   const completedCount = (courses ?? []).filter((c: any) => c.status === "completed").length;
   const inProgressCount = (courses ?? []).filter((c: any) => c.status === "in_progress").length;
+  const moduleSections = (modules as any[])
+    .map((module) => ({
+      module,
+      courses: (courses ?? []).filter((course: any) => course.moduleId === module.id),
+    }))
+    .filter((section) => filter === "all" || section.courses.length > 0);
 
   if (selectedCourse) {
     return <CourseProfilePage courseId={selectedCourse} mode="learner" onBack={() => setSelectedCourse(null)} />;
@@ -189,14 +226,39 @@ export default function EmployeeLearning() {
       </div>
 
       <div>
-        {isLoading ? (
+        {isLoading || modulesLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[1, 2, 3, 4].map((i) => <div key={i} className="h-48 rounded-xl border border-border bg-card/50 animate-pulse" />)}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(courses ?? []).map((course: any) => (
-              <CourseCard key={course.id} course={course} onClick={() => setSelectedCourse(course.id)} lang={lang} />
+          <div className="space-y-6">
+            {moduleSections.map(({ module, courses: moduleCourses }) => (
+              <section key={module.id} className="rounded-2xl border border-border bg-card/40 p-4">
+                <div className="mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{module.title}</h3>
+                    <span
+                      className="rounded-full border px-2 py-0.5 text-xs"
+                      style={{
+                        borderColor: `${DIFFICULTY_COLOR[module.difficulty] ?? "#6b7280"}55`,
+                        color: DIFFICULTY_COLOR[module.difficulty] ?? "#6b7280",
+                      }}
+                    >
+                      {copy[module.difficulty as "beginner" | "intermediate" | "advanced"] ?? module.difficulty}
+                    </span>
+                  </div>
+                  {module.description && <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>}
+                </div>
+                {moduleCourses.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">{copy.emptyModule}</div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {moduleCourses.map((course: any) => (
+                      <CourseCard key={course.id} course={course} onClick={() => setSelectedCourse(course.id)} lang={lang} />
+                    ))}
+                  </div>
+                )}
+              </section>
             ))}
           </div>
         )}

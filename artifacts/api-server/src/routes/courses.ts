@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable } from "@workspace/db";
+import { db, courseModulesTable, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
@@ -43,6 +43,7 @@ function buildCourseWritePayload(
     markdownSizeBytes !== (existing?.markdownSizeBytes ?? null);
 
   return {
+    moduleId: normalizeOptionalNumber(body.moduleId),
     title: String(body.title ?? existing?.title ?? ""),
     category: String(body.category ?? existing?.category ?? ""),
     description: String(body.description ?? existing?.description ?? ""),
@@ -79,6 +80,7 @@ function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert
 function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progress?: typeof userCourseProgressTable.$inferSelect | null) {
   return {
     id: course.id,
+    moduleId: course.moduleId,
     title: course.title,
     category: course.category,
     description: course.description,
@@ -106,6 +108,95 @@ function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progr
   };
 }
 
+function buildModule(module: typeof courseModulesTable.$inferSelect) {
+  return {
+    id: module.id,
+    title: module.title,
+    description: module.description,
+    difficulty: module.difficulty,
+    displayOrder: module.displayOrder,
+    isActive: module.isActive,
+    createdAt: module.createdAt.toISOString(),
+  };
+}
+
+function readinessLevelFromPoints(points: number | null | undefined) {
+  const value = Number(points ?? 0);
+  if (value <= 16) return "beginner";
+  if (value <= 24) return "intermediate";
+  return "advanced";
+}
+
+// GET /courses/modules — list course modules
+router.get("/courses/modules", requireAuth, async (_req, res): Promise<void> => {
+  const modules = await db
+    .select()
+    .from(courseModulesTable)
+    .where(eq(courseModulesTable.isActive, true))
+    .orderBy(courseModulesTable.displayOrder, courseModulesTable.id);
+
+  res.json(modules.map(buildModule));
+});
+
+// POST /courses/modules — create module (superadmin only)
+router.post("/courses/modules", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (user.role?.toLowerCase() !== "superadmin") {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+
+  const title = normalizeOptionalString(req.body?.title);
+  if (!title) {
+    res.status(400).json({ error: "Module title is required" }); return;
+  }
+
+  const [module] = await db.insert(courseModulesTable).values({
+    title,
+    description: normalizeOptionalString(req.body?.description),
+    difficulty: normalizeOptionalString(req.body?.difficulty) ?? "beginner",
+    displayOrder: normalizeOptionalNumber(req.body?.displayOrder) ?? 0,
+  }).returning();
+
+  res.status(201).json(buildModule(module));
+});
+
+// PATCH /courses/modules/:id — update module (superadmin only)
+router.patch("/courses/modules/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (user.role?.toLowerCase() !== "superadmin") {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+
+  const id = Number(req.params.id);
+  const [module] = await db.update(courseModulesTable).set({
+    title: normalizeOptionalString(req.body?.title) ?? undefined,
+    description: normalizeOptionalString(req.body?.description),
+    difficulty: normalizeOptionalString(req.body?.difficulty) ?? undefined,
+    displayOrder: normalizeOptionalNumber(req.body?.displayOrder) ?? undefined,
+    isActive: typeof req.body?.isActive === "boolean" ? req.body.isActive : undefined,
+  }).where(eq(courseModulesTable.id, id)).returning();
+
+  if (!module) { res.status(404).json({ error: "Module not found" }); return; }
+  res.json(buildModule(module));
+});
+
+// DELETE /courses/modules/:id — archive module (superadmin only)
+router.delete("/courses/modules/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (user.role?.toLowerCase() !== "superadmin") {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+
+  const id = Number(req.params.id);
+  const [module] = await db.update(courseModulesTable)
+    .set({ isActive: false })
+    .where(eq(courseModulesTable.id, id))
+    .returning();
+
+  if (!module) { res.status(404).json({ error: "Module not found" }); return; }
+  res.json({ success: true });
+});
+
 // GET /courses/learning-path — MUST be before /:id
 router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
@@ -123,12 +214,15 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
   let recommended = notStarted.slice(0, 5);
   if (profile) {
     const points = profile.securityReadinessScore;
+    const readinessLevel = readinessLevelFromPoints(points);
     const matchingRange = notStarted.filter(c =>
+      (c.minScore !== null || c.maxScore !== null) &&
       (c.minScore === null || points >= c.minScore) &&
       (c.maxScore === null || points <= c.maxScore)
     );
+    const matchingDifficulty = notStarted.filter(c => c.difficulty === readinessLevel);
     const unranged = notStarted.filter(c => c.minScore === null && c.maxScore === null);
-    recommended = (matchingRange.length > 0 ? matchingRange : unranged).slice(0, 5);
+    recommended = (matchingRange.length > 0 ? matchingRange : matchingDifficulty.length > 0 ? matchingDifficulty : unranged).slice(0, 5);
   }
 
   const totalXpEarned = progressRecords.reduce((sum, p) => sum + p.xpEarned, 0);
@@ -146,7 +240,7 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
 // GET /courses — list all with user progress
 router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
-  const { category, difficulty } = req.query as { category?: string; difficulty?: string };
+  const { category, difficulty, moduleId } = req.query as { category?: string; difficulty?: string; moduleId?: string };
 
   const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
   const progressRecords = await getUserProgress(userId);
@@ -155,6 +249,7 @@ router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   let filtered = allCourses;
   if (category) filtered = filtered.filter(c => c.category === category);
   if (difficulty) filtered = filtered.filter(c => c.difficulty === difficulty);
+  if (moduleId) filtered = filtered.filter(c => c.moduleId === Number(moduleId));
 
   res.json(filtered.map(c => buildCourseWithProgress(c, progressMap.get(c.id))));
 });
@@ -244,9 +339,9 @@ router.post("/courses", requireAuth, async (req, res): Promise<void> => {
   if (user.role?.toLowerCase() !== "superadmin") {
     res.status(403).json({ error: "Forbidden" }); return;
   }
-  const { title, category, difficulty } = req.body;
-  if (!title || !category || !difficulty) {
-    res.status(400).json({ error: "title, category, and difficulty are required" }); return;
+  const { title, category, difficulty, moduleId } = req.body;
+  if (!title || !category || !difficulty || !moduleId) {
+    res.status(400).json({ error: "title, category, difficulty, and moduleId are required" }); return;
   }
   const payload = buildCourseWritePayload(req.body);
   const validationError = validateCoursePayload(payload);

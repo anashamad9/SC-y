@@ -21,6 +21,11 @@ function profileCopy(lang: "en" | "ar") {
         courseDetail: "صفحة الدورة",
         courseNotes: "محتوى الدورة",
         completionReward: "نقطة عند الإكمال",
+        category: "التصنيف",
+        level: "المستوى",
+        beginner: "مبتدئ",
+        intermediate: "متوسط",
+        advanced: "متقدم",
         progress: "التقدم",
         lessonPlan: "خطة الدروس",
         videoProgress: "تقدم الفيديو",
@@ -39,6 +44,11 @@ function profileCopy(lang: "en" | "ar") {
         courseDetail: "Course Page",
         courseNotes: "Course Content",
         completionReward: "XP on completion",
+        category: "Category",
+        level: "Level",
+        beginner: "Beginner",
+        intermediate: "Intermediate",
+        advanced: "Advanced",
         progress: "Progress",
         lessonPlan: "Lesson Plan",
         videoProgress: "Video Progress",
@@ -141,7 +151,11 @@ export function CourseProfilePage({
               <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">{copy.courseDetail}</div>
               <h2 className="text-2xl font-bold leading-tight md:text-3xl">{courseRecord.title}</h2>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span style={{ color: DIFFICULTY_COLOR[courseRecord.difficulty] ?? "#6b7280" }}>{courseRecord.difficulty}</span>
+                <span>{copy.category}: <span className="text-foreground">{courseRecord.category}</span></span>
+                <span>·</span>
+                <span style={{ color: DIFFICULTY_COLOR[courseRecord.difficulty] ?? "#6b7280" }}>
+                  {copy.level}: {copy[courseRecord.difficulty as "beginner" | "intermediate" | "advanced"] ?? courseRecord.difficulty}
+                </span>
                 <span>{courseRecord.durationMinutes}min</span>
                 <span className="text-primary">+{courseRecord.xpReward} {copy.completionReward}</span>
               </div>

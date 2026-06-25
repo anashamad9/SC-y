@@ -100,10 +100,9 @@ const READINESS_QUESTIONS = [
 ];
 
 function readinessBand(totalPoints: number) {
-  if (totalPoints <= 14) return { riskCategory: "مخاطر عالية", behavioralType: "مستخدم مندفع" };
-  if (totalPoints <= 21) return { riskCategory: "مخاطر مرتفعة", behavioralType: "مستخدم تفاعلي" };
-  if (totalPoints <= 28) return { riskCategory: "مخاطر متوسطة", behavioralType: "مستخدم واعٍ أمنياً" };
-  return { riskCategory: "مخاطر منخفضة", behavioralType: "مرشح كبطل أمني" };
+  if (totalPoints <= 16) return { riskCategory: "مبتدئ", behavioralType: "مسار مبتدئ", readinessLevel: "beginner" };
+  if (totalPoints <= 24) return { riskCategory: "متوسط", behavioralType: "مسار متوسط", readinessLevel: "intermediate" };
+  return { riskCategory: "متقدم", behavioralType: "مسار متقدم", readinessLevel: "advanced" };
 }
 
 function readinessPercent(totalPoints: number) {
@@ -281,7 +280,7 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
       totalPoints += selectedVal;
     }
 
-    const { riskCategory, behavioralType } = readinessBand(totalPoints);
+    const { riskCategory, behavioralType, readinessLevel } = readinessBand(totalPoints);
     const normalizedReadiness = readinessPercent(totalPoints);
     const normalizedRisk = 100 - normalizedReadiness;
 
@@ -296,6 +295,7 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
         readiness_percent: normalizedReadiness,
         risk_category: riskCategory,
         behavioral_type: behavioralType,
+        readiness_level: readinessLevel,
       },
       overallScore: totalPoints,
       timeTakenSec: timeTakenSec ?? null,
@@ -311,7 +311,7 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
       stressResponse: normalizedReadiness,
       complianceBehavior: normalizedReadiness,
       behavioralType,
-      learningStyle: "Personalized Video Path",
+      learningStyle: readinessLevel,
       riskCategory,
       securityReadinessScore: totalPoints,
     };
@@ -350,6 +350,7 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
       maxPoints: 32,
       riskCategory,
       behavioralType,
+      readinessLevel,
       readinessPercent: normalizedReadiness,
       categoryScores: Object.entries(categoryScoresMap).map(([cat, score]) => ({
         category: cat,
