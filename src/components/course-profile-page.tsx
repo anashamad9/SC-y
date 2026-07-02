@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useGetCourse, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { API_BASE } from "@/lib/runtime";
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   beginner: "#22c55e",
@@ -37,6 +38,7 @@ function profileCopy(lang: "en" | "ar") {
         continueLearning: "متابعة التعلم",
         startCourse: "ابدأ الدورة",
         openMarkdown: "فتح ملف Markdown",
+        loadingVideo: "يتم تحميل الفيديو...",
         previewMode: "معاينة المشرف",
       }
     : {
@@ -60,6 +62,7 @@ function profileCopy(lang: "en" | "ar") {
         continueLearning: "Continue learning",
         startCourse: "Start course",
         openMarkdown: "Open Markdown file",
+        loadingVideo: "Loading video...",
         previewMode: "Admin preview",
       };
 }
@@ -88,6 +91,8 @@ export function CourseProfilePage({
   const { data: course, isLoading } = useGetCourse(courseId);
   const progressMutation = useUpdateCourseProgress();
   const [localProgress, setLocalProgress] = useState<number | null>(null);
+  const [deferredVideoUrl, setDeferredVideoUrl] = useState<string | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
   const { lang, isRTL } = useI18n();
   const copy = profileCopy(lang);
 
@@ -95,11 +100,52 @@ export function CourseProfilePage({
   const lessons = courseRecord?.lessons ?? [];
   const currentPct = localProgress ?? (courseRecord?.progressPct ?? 0);
   const status = courseRecord?.status ?? "not_started";
-  const videoUrl = courseRecord?.videoUrl;
+  const videoUrl = deferredVideoUrl ?? courseRecord?.videoUrl;
   const markdownContent = courseRecord?.markdownContent;
   const markdownUrl = courseRecord?.markdownUrl;
   const markdownIsRtl = isLikelyRtlMarkdown(markdownContent);
   const canTrackProgress = mode === "learner";
+
+  useEffect(() => {
+    if (!courseRecord?.id) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setDeferredVideoUrl(null);
+    setVideoLoading(Boolean(courseRecord.videoFileName || courseRecord.videoSizeBytes || courseRecord.videoUrl));
+
+    const loadVideo = () => {
+      fetch(`${API_BASE}/api/courses/${courseRecord.id}/video`, {
+        credentials: "include",
+        signal: controller.signal,
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          if (!cancelled) setDeferredVideoUrl(data?.videoUrl ?? courseRecord.videoUrl ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setDeferredVideoUrl(courseRecord.videoUrl ?? null);
+        })
+        .finally(() => {
+          if (!cancelled) setVideoLoading(false);
+        });
+    };
+
+    const scheduleVideoLoad =
+      "requestIdleCallback" in window
+        ? window.requestIdleCallback(loadVideo, { timeout: 1200 })
+        : globalThis.setTimeout(loadVideo, 250);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if ("cancelIdleCallback" in window && typeof scheduleVideoLoad === "number") {
+        window.cancelIdleCallback(scheduleVideoLoad);
+      } else {
+        globalThis.clearTimeout(scheduleVideoLoad);
+      }
+    };
+  }, [courseRecord?.id, courseRecord?.videoFileName, courseRecord?.videoSizeBytes, courseRecord?.videoUrl]);
 
   function startLesson(lessonIndex: number) {
     if (!canTrackProgress) return;
@@ -163,13 +209,14 @@ export function CourseProfilePage({
 
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground">{courseRecord.description}</p>
 
-            {videoUrl && (
+            {(videoUrl || videoLoading) && (
               <div className="overflow-hidden rounded-xl border border-border bg-background">
                 <div className="aspect-video w-full bg-black">
-                  {isDirectVideo(videoUrl) ? (
+                  {videoUrl ? isDirectVideo(videoUrl) ? (
                     <video
                       src={videoUrl}
                       controls
+                      preload="metadata"
                       controlsList="nodownload noremoteplayback"
                       disablePictureInPicture
                       onContextMenu={(event) => event.preventDefault()}
@@ -180,9 +227,14 @@ export function CourseProfilePage({
                       src={videoUrl}
                       title={courseRecord.title}
                       className="h-full w-full"
+                      loading="lazy"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
                     />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm text-white/70">
+                      {copy.loadingVideo}
+                    </div>
                   )}
                 </div>
               </div>

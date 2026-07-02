@@ -125,6 +125,10 @@ function isDirectVideo(url: string) {
   return /^(data:video|blob:|https?:.*\.(mp4|webm|ogg)(\?.*)?$|\/)/i.test(url);
 }
 
+function isSupportedMarkdownFile(fileName: string) {
+  return /\.(md|mdx)$/i.test(fileName);
+}
+
 export default function AdminCourses({ canManage = false }: { canManage?: boolean }) {
   const [showModal, setShowModal] = useState(false);
   const [moduleFormOpen, setModuleFormOpen] = useState(false);
@@ -329,8 +333,8 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   function handleMarkdownFile(file?: File) {
     setMarkdownMessage(null);
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".md")) {
-      setMarkdownMessage("Only Markdown files ending in .md are supported.");
+    if (!isSupportedMarkdownFile(file.name)) {
+      setMarkdownMessage("Only Markdown or MDX files ending in .md or .mdx are supported.");
       return;
     }
 
@@ -342,7 +346,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
         markdownContent: String(reader.result ?? ""),
         markdownSizeBytes: file.size,
       }));
-      setMarkdownMessage("Markdown file loaded and ready to save.");
+      setMarkdownMessage("Markdown/MDX file loaded and ready to save.");
     };
     reader.onerror = () => setMarkdownMessage("Could not read the Markdown file.");
     reader.readAsText(file);
@@ -689,15 +693,15 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
               </div>
 
               <div className="sm:col-span-2 rounded-xl border border-border bg-background/60 p-4">
-                <div className="mb-3 text-sm font-medium">Markdown notes</div>
+                <div className="mb-3 text-sm font-medium">Markdown / MDX notes</div>
                 <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
                   <Input
                     value={form.markdownUrl}
                     onChange={(event) => setForm((current) => ({ ...current, markdownUrl: event.target.value }))}
-                    placeholder="Optional public URL for the Markdown file"
+                    placeholder="Optional public URL for the Markdown or MDX file"
                     className="bg-muted/30"
                   />
-                  <Input type="file" accept=".md,text/markdown,text/plain" onChange={(event) => handleMarkdownFile(event.target.files?.[0])} className="bg-muted/30" />
+                  <Input type="file" accept=".md,.mdx,text/markdown,text/mdx,text/plain" onChange={(event) => handleMarkdownFile(event.target.files?.[0])} className="bg-muted/30" />
                 </div>
                 {markdownMessage && <div className="mt-2 text-xs text-muted-foreground">{markdownMessage}</div>}
                 {(form.markdownFileName || form.markdownSizeBytes) && (
@@ -751,7 +755,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                         </div>
                       ) : (
                         <div className="rounded-lg bg-muted/20 p-4 text-sm text-muted-foreground">
-                          Markdown notes are optional. Add a `.md` file or URL if this course needs learner notes.
+                          Markdown notes are optional. Add a `.md` or `.mdx` file or URL if this course needs learner notes.
                         </div>
                       )}
                     </div>

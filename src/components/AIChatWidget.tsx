@@ -192,11 +192,11 @@ export default function AIChatWidget() {
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                       msg.role === "user"
                         ? "bg-primary text-white rounded-br-sm whitespace-pre-wrap"
-                        : "bg-white/10 text-foreground rounded-bl-sm"
+                        : "bg-white/10 text-zinc-950 dark:text-foreground rounded-bl-sm"
                     }`}
                   >
                     {msg.role === "assistant" ? (
-                      <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-1">
+                      <div className="prose prose-sm max-w-none prose-zinc dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-1">
                         <ReactMarkdown>{msg.content || "\u200b"}</ReactMarkdown>
                       </div>
                     ) : (
@@ -236,7 +236,7 @@ export default function AIChatWidget() {
                 onKeyDown={handleKey}
                 placeholder={t("ai.placeholder")}
                 disabled={streaming}
-                className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                className="flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm text-zinc-950 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 dark:bg-white dark:text-zinc-950"
               />
               <button
                 onClick={() => sendMessage()}

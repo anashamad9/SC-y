@@ -1,348 +1,409 @@
 import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useGetMyScores, useGetMyGamification, useGetLearningPath, useGetMyBadges, useGetPsychometricProfile, useGetTelemetryTrends, useGetCciHistory } from "@workspace/api-client-react";
+import {
+  Award,
+  BookOpen,
+  CheckCircle2,
+  ChevronRight,
+  Flame,
+  Gauge,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Trophy,
+} from "lucide-react";
+import {
+  useGetLeaderboard,
+  useGetLearningPath,
+  useGetMe,
+  useGetMyBadges,
+  useGetMyGamification,
+  useGetMyScores,
+  useGetPsychometricProfile,
+} from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 
-function CircleGauge({ value, label, color }: { value: number; label: string; color: string }) {
-  const r = 58;
-  const total = 2 * Math.PI * r;
-  const arc = total * 0.75;
-  const filled = arc * (Math.min(100, Math.max(0, value)) / 100);
-  return (
-    <svg width="160" height="160" viewBox="0 0 160 160">
-      <circle cx="80" cy="80" r={r} fill="none" stroke="#1f2937" strokeWidth="12" strokeLinecap="round"
-        strokeDasharray={`${arc} ${total - arc}`} strokeDashoffset={-total * 0.125}
-        transform="rotate(0 80 80)" />
-      <circle cx="80" cy="80" r={r} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round"
-        strokeDasharray={`${filled} ${arc - filled} ${total - arc}`} strokeDashoffset={-total * 0.125}
-        style={{ transition: "stroke-dasharray 1s ease" }} />
-      <text x="80" y="76" textAnchor="middle" fill={color} fontSize="26" fontWeight="bold" fontFamily="monospace">{value}</text>
-      <text x="80" y="96" textAnchor="middle" fill="#6b7280" fontSize="10">{label}</text>
-    </svg>
-  );
-}
-
-function RadarBar({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="w-28 text-xs text-muted-foreground truncate shrink-0">{label}</div>
-      <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="h-full rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      </div>
-      <div className="text-xs font-mono w-8 text-right" style={{ color }}>{Math.round(value)}</div>
-    </div>
-  );
-}
-
-const RISKY_CATEGORIES = new Set(["riskTolerance", "impulsiveness", "trustTendencies"]);
-
-function profileColor(key: string, value: number) {
-  if (RISKY_CATEGORIES.has(key)) return value > 65 ? "#ef4444" : value > 45 ? "#f97316" : "#22c55e";
-  return value > 65 ? "#22c55e" : value > 45 ? "#f97316" : "#ef4444";
-}
-
-const PROFILE_LABELS: Record<string, string> = {
-  securityAwareness: "Security Awareness",
-  complianceBehavior: "Compliance",
-  decisionMaking: "Decision Making",
-  attentionToDetail: "Attention to Detail",
-  stressResponse: "Stress Response",
-  riskTolerance: "Risk Tolerance ⚠",
-  impulsiveness: "Impulsiveness ⚠",
-  trustTendencies: "Trust Tendencies ⚠",
-};
-
 const DIFFICULTY_COLOR: Record<string, string> = {
-  beginner: "#22c55e",
-  intermediate: "#f97316",
-  advanced: "#ef4444",
+  beginner: "text-emerald-400 border-emerald-500/25 bg-emerald-500/10",
+  intermediate: "text-amber-400 border-amber-500/25 bg-amber-500/10",
+  advanced: "text-red-400 border-red-500/25 bg-red-500/10",
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
+const BADGE_TONES = [
+  "bg-primary text-primary-foreground",
+  "bg-sky-500 text-white",
+  "bg-violet-500 text-white",
+  "bg-amber-500 text-black",
+  "bg-emerald-500 text-white",
+  "bg-fuchsia-500 text-white",
+];
+
+function formatNumber(value?: number | null) {
+  return Number(value ?? 0).toLocaleString();
+}
+
+function clampPct(value: number) {
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function initials(firstName?: string | null, lastName?: string | null) {
+  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.trim().toUpperCase() || "U";
+}
+
+function courseStatusLabel(status?: string) {
+  if (status === "completed") return "Completed";
+  if (status === "in_progress") return "In progress";
+  return "Recommended";
+}
+
+function panelDelay(index: number) {
+  return { delay: 0.08 * index, duration: 0.36, ease: "easeOut" as const };
+}
+
+function ProgressLine({ value, className = "" }: { value: number; className?: string }) {
   return (
-    <div className="bg-card border border-border rounded-lg p-2.5 text-xs shadow-xl">
-      <div className="text-muted-foreground mb-1.5">{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.name} style={{ color: p.color }} className="flex justify-between gap-4">
-          <span>{p.name}</span><span className="font-mono font-bold">{p.value?.toFixed?.(1) ?? p.value}</span>
-        </div>
-      ))}
+    <div className={`h-2 overflow-hidden rounded-full bg-white/8 ${className}`}>
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${clampPct(value)}%` }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="h-full rounded-full bg-gradient-to-r from-primary via-red-400 to-amber-300"
+      />
     </div>
   );
-};
+}
+
+function Section({
+  title,
+  action,
+  children,
+  delay = 0,
+}: {
+  title: string;
+  action?: string;
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={panelDelay(delay)}
+      className="rounded-lg border border-border bg-card/82 p-4 shadow-[0_20px_60px_-42px_rgba(0,0,0,0.7)] backdrop-blur-sm"
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        {action && <span className="text-xs font-medium text-primary">{action}</span>}
+      </div>
+      {children}
+    </motion.section>
+  );
+}
+
+function CourseRow({ course, featured = false }: { course: any; featured?: boolean }) {
+  const pct = clampPct(course?.progressPct ?? 0);
+  return (
+    <div className={`rounded-lg border border-border bg-background/55 p-4 ${featured ? "sm:p-5" : ""}`}>
+      <div className="flex items-start gap-3">
+        <div
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-white shadow-[0_14px_30px_-18px_rgba(0,0,0,0.75)]"
+          style={{ backgroundColor: course?.thumbnailColor ?? "#dc143c" }}
+        >
+          <BookOpen className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-sm font-semibold text-foreground">{course?.title ?? "Course"}</h3>
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${DIFFICULTY_COLOR[course?.difficulty] ?? "border-border bg-muted/40 text-muted-foreground"}`}>
+              {courseStatusLabel(course?.status)}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course?.description ?? "Security learning module"}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span>{course?.durationMinutes ?? 0}m</span>
+            <span>{course?.lessonCount ?? 0} lessons</span>
+            <span className="font-medium text-primary">+{course?.xpReward ?? 0} XP</span>
+          </div>
+          <div className="mt-3">
+            <ProgressLine value={pct} />
+            <div className="mt-1 text-xs text-muted-foreground">{pct}% complete</div>
+          </div>
+        </div>
+        {featured && <ChevronRight className="mt-3 h-5 w-5 shrink-0 text-primary" />}
+      </div>
+    </div>
+  );
+}
+
+function RecommendedCard({ course }: { course: any }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/55 p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <Target className="h-4 w-4" />
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize ${DIFFICULTY_COLOR[course?.difficulty] ?? "border-border bg-muted/40 text-muted-foreground"}`}>
+          {course?.difficulty ?? "course"}
+        </span>
+      </div>
+      <h3 className="text-sm font-semibold text-foreground">{course?.title}</h3>
+      <p className="mt-1 line-clamp-2 min-h-9 text-xs leading-relaxed text-muted-foreground">{course?.description}</p>
+      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+        <span>+{course?.xpReward ?? 0} XP</span>
+        <span>{course?.durationMinutes ?? 0}m</span>
+      </div>
+    </div>
+  );
+}
 
 export default function EmployeeDashboard() {
-  const { t, isRTL } = useI18n();
+  const { isRTL } = useI18n();
+  const { data: user } = useGetMe();
   const { data: scores, isLoading: scoresLoading } = useGetMyScores();
   const { data: gp, isLoading: gpLoading } = useGetMyGamification();
   const { data: path } = useGetLearningPath();
   const { data: badges } = useGetMyBadges();
   const { data: profile } = useGetPsychometricProfile();
-  const { data: telemetry } = useGetTelemetryTrends({ days: 30 });
-  const { data: cciHistory } = useGetCciHistory();
+  const { data: leaderboard } = useGetLeaderboard({ limit: 5 });
 
   const isLoading = scoresLoading || gpLoading;
-
-  const hrsColor = !scores ? "#6b7280" : scores.humanRiskScore > 70 ? "#ef4444" : scores.humanRiskScore > 50 ? "#f97316" : "#22c55e";
-  const cciColor = !scores ? "#6b7280" : scores.cciScore > 70 ? "#22c55e" : scores.cciScore > 50 ? "#f97316" : "#ef4444";
   const hasScores = !!scores && (scores as any).hasScores !== false && (scores.securityReadinessScore ?? 0) > 0;
+  const inProgress = path?.inProgress ?? [];
+  const recommended = path?.recommended ?? [];
+  const completed = path?.completed ?? [];
+  const continueCourse = inProgress[0] ?? recommended[0] ?? completed[0];
+  const courseProgress = continueCourse ? clampPct(continueCourse.progressPct ?? (continueCourse.status === "completed" ? 100 : 0)) : 0;
+  const xpCurrent = gp ? gp.xp - gp.currentLevelXp : 0;
+  const xpNeeded = gp ? Math.max(1, gp.nextLevelXp - gp.currentLevelXp) : 200;
+  const xpPct = clampPct((xpCurrent / xpNeeded) * 100);
+  const firstName = user?.firstName || "there";
+  const readiness = hasScores ? clampPct(scores?.securityReadinessScore ?? scores?.cciScore ?? 0) : path?.completionRate ?? 0;
+  const rank = leaderboard?.entries?.find((entry: any) => entry.isCurrentUser)?.rank ?? leaderboard?.currentUserRank;
+  const recentBadges = (badges ?? []).slice(0, 6);
+  const recentActivity = [
+    ...completed.slice(0, 3).map((course: any) => ({
+      id: `course-${course.id}`,
+      title: `Completed ${course.title}`,
+      meta: `${course.category?.replace(/_/g, " ") ?? "Learning"} · +${course.xpEarned ?? course.xpReward ?? 0} XP`,
+      when: course.completedAt ? new Date(course.completedAt).toLocaleDateString() : "Recently",
+      value: `+${course.xpEarned ?? course.xpReward ?? 0} XP`,
+    })),
+    ...recentBadges.slice(0, 3).map((badge: any) => ({
+      id: `badge-${badge.badgeId}`,
+      title: `Earned ${badge.name}`,
+      meta: badge.category,
+      when: new Date(badge.earnedAt).toLocaleDateString(),
+      value: "Badge",
+    })),
+  ].slice(0, 4);
 
-  const recommended = path?.recommended?.slice(0, 3) ?? [];
-  const recentBadges = badges?.slice(0, 4) ?? [];
-
-  const xpCurrent = gp ? (gp.xp - gp.currentLevelXp) : 0;
-  const xpNeeded = gp ? (gp.nextLevelXp - gp.currentLevelXp) : 200;
-  const xpPct = gp ? Math.round((xpCurrent / xpNeeded) * 100) : 0;
+  const priorityActions = [
+    !hasScores
+      ? { title: "Complete readiness assessment", detail: "Unlock personalized scores and course recommendations.", tone: "text-amber-400" }
+      : null,
+    continueCourse
+      ? { title: `Continue ${continueCourse.title}`, detail: `${courseProgress}% complete · ${continueCourse.durationMinutes ?? 0}m module`, tone: "text-primary" }
+      : null,
+    hasScores && (scores?.humanRiskScore ?? 0) > 60
+      ? { title: "Reduce human risk", detail: `${Math.round(scores?.humanRiskScore ?? 0)}/100 risk score needs attention.`, tone: "text-red-400" }
+      : null,
+    profile
+      ? { title: profile.behavioralType, detail: `${profile.learningStyle} learning style`, tone: "text-emerald-400" }
+      : null,
+  ].filter(Boolean) as { title: string; detail: string; tone: string }[];
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-32 rounded-xl bg-card/50 animate-pulse border border-border" />
-        ))}
+        <div className="h-44 animate-pulse rounded-lg border border-border bg-card/60" />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
+            <div className="h-36 animate-pulse rounded-lg border border-border bg-card/60" />
+            <div className="h-72 animate-pulse rounded-lg border border-border bg-card/60" />
+          </div>
+          <div className="h-80 animate-pulse rounded-lg border border-border bg-card/60" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5" dir={isRTL ? "rtl" : "ltr"}>
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: t.humanRiskScore, value: hasScores ? scores?.humanRiskScore ?? 0 : 0, unit: "/100", color: hrsColor, sub: hasScores ? scores?.riskCategory ?? "Not Assessed" : "Not Assessed" },
-          { label: t.cultureIndex, value: hasScores ? scores?.cciScore ?? 0 : 0, unit: "/100", color: cciColor, sub: hasScores ? scores?.trend ?? "stable" : "no data" },
-          { label: t.xpEarned, value: gp?.xp ?? 0, unit: ` ${t.xpUnit}`, color: "#a855f7", sub: `${t.level} ${gp?.level ?? 1}` },
-          { label: t.learningStreak, value: gp?.streakDays ?? 0, unit: ` ${t.days}`, color: "#f97316", sub: t.activeStreak },
-        ].map((card, i) => (
-          <motion.div
-            key={card.label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            className="bg-card/80 border border-border rounded-xl p-4 backdrop-blur-sm"
-          >
-            <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">{card.label}</div>
-            <div className="text-2xl font-bold font-mono mb-0.5" style={{ color: card.color }}>
-              {card.value}<span className="text-sm text-muted-foreground">{card.unit}</span>
-            </div>
-            <div className="text-xs text-muted-foreground capitalize">{card.sub}</div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Gauges + Profile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Gauges */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
-        >
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">{t.riskCultureGauges}</div>
-          <div className="flex items-center justify-around">
-            <div className="text-center">
-              <CircleGauge value={hasScores ? scores?.humanRiskScore ?? 0 : 0} label="Risk Score" color={hrsColor} />
-              <div className="text-xs mt-1 font-medium" style={{ color: hrsColor }}>
-                {hasScores ? scores?.riskCategory ?? "Not Assessed" : "Not Assessed"}
-              </div>
-            </div>
-            <div className="text-center">
-              <CircleGauge value={hasScores ? scores?.cciScore ?? 0 : 0} label="CCI Score" color={cciColor} />
-              <div className="text-xs mt-1 font-medium" style={{ color: cciColor }}>
-                {t.cultureIndex}
-              </div>
-            </div>
+    <div className="mx-auto max-w-7xl space-y-5" dir={isRTL ? "rtl" : "ltr"}>
+      <motion.section
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={panelDelay(0)}
+        className="relative overflow-hidden rounded-lg border border-border bg-card/90 p-5 shadow-[0_26px_90px_-52px_rgba(0,0,0,0.9)] sm:p-7"
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(220,20,60,0.18),transparent_42%,rgba(34,197,94,0.1))]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:72px_72px] opacity-35" />
+        <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+          <div>
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">Welcome back</div>
+            <h1 className="max-w-3xl text-2xl font-bold leading-tight text-foreground text-balance sm:text-4xl">
+              {firstName}, your security readiness is <span className="text-primary">{readiness}%</span>
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {continueCourse
+                ? `${Math.max(0, 100 - courseProgress)}% left on your current course. Keep your learning momentum moving.`
+                : "Your learning path is ready. Start the recommended course to build your security score."}
+            </p>
           </div>
-          {/* CCI sub-scores */}
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+
+          <div className="grid grid-cols-3 gap-2">
             {[
-              { label: t.behavioralStability, value: hasScores ? scores?.behavioralStabilityScore ?? 0 : 0 },
-              { label: t.decisionQuality, value: hasScores ? scores?.decisionQualityScore ?? 0 : 0 },
-              { label: t.compliance, value: hasScores ? scores?.complianceBehaviorScore ?? 0 : 0 },
-              { label: t.cultureContribution, value: hasScores ? scores?.cultureContributionScore ?? 0 : 0 },
-            ].map(s => (
-              <div key={s.label} className="flex justify-between">
-                <span className="text-muted-foreground">{s.label}</span>
-                <span className="font-mono font-medium">{Math.round(s.value)}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Behavioral Profile */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.25 }}
-          className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
-        >
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t.behavioralProfile}</div>
-          {profile ? (
-            <>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm font-semibold text-primary">{profile.behavioralType}</span>
-                <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">{profile.learningStyle}</span>
-              </div>
-              <div className="space-y-2.5">
-                {Object.entries(PROFILE_LABELS).map(([key, label]) => {
-                  const val = (profile as any)[key] ?? 50;
-                  return <RadarBar key={key} label={label} value={val} color={profileColor(key, val)} />;
-                })}
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-sm">
-              <div className="text-2xl mb-2">◈</div>
-              {t.completeAssessment}
-            </div>
-          )}
-        </motion.div>
-      </div>
-
-      {/* CCI Historical Trend */}
-      {cciHistory && cciHistory.history.length > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.26 }}
-          className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">{t.historicalTrend}</div>
-            <div className="text-xs text-muted-foreground">{cciHistory.history.length} {t.snapshots}</div>
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={cciHistory.history} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, 100]} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-              <Line type="monotone" dataKey="cciScore" name="CCI Score" stroke="#22c55e" strokeWidth={2} dot={{ r: 3, fill: "#22c55e" }} />
-              <Line type="monotone" dataKey="humanRiskScore" name="Risk Score" stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: "#ef4444" }} />
-              <Line type="monotone" dataKey="behavioralStabilityScore" name="Stability" stroke="#a855f7" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-      )}
-
-      {/* Behavioral Telemetry Trend */}
-      {telemetry && telemetry.trends.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.28 }}
-          className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">{t.telemetryTrend}</div>
-            <div className="text-xs text-muted-foreground">{telemetry.totalEvents} {t.eventsRecorded}</div>
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={telemetry.trends} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={(v: string) => v.slice(5)} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} domain={[0, 100]} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-              <Line type="monotone" dataKey="avgConfidence" name="Confidence" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="avgAttention" name="Attention" stroke="#22c55e" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-      )}
-
-      {/* Learning Path + Badges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Recommended Courses */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">{t.yourLearningPath}</div>
-            <div className="text-xs text-primary">{path?.completionRate ?? 0}% complete</div>
-          </div>
-          <div className="space-y-3">
-            {recommended.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">{t.allCoursesComplete}</div>
-            ) : recommended.map((course: any, i: number) => (
-              <div key={course.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/3 border border-border/50 hover:border-primary/30 transition-colors">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: course.thumbnailColor + "33", color: course.thumbnailColor }}>
-                  {i + 1}
+              { label: "XP", value: formatNumber(gp?.xp), sub: `${formatNumber(gp?.nextLevelXp)} next`, icon: Sparkles },
+              { label: "Level", value: gp?.level ?? 1, sub: rank ? `Rank #${rank}` : "Keep climbing", icon: Trophy },
+              { label: "Streak", value: `${gp?.streakDays ?? 0}d`, sub: gp?.streakDays ? "active" : "restart", icon: Flame },
+            ].map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="rounded-lg border border-border/80 bg-background/48 p-3 text-center">
+                  <Icon className="mx-auto mb-2 h-4 w-4 text-primary" />
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{stat.label}</div>
+                  <div className="mt-1 text-xl font-bold tabular-nums text-primary">{stat.value}</div>
+                  <div className="text-[10px] text-muted-foreground">{stat.sub}</div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{course.title}</div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs" style={{ color: DIFFICULTY_COLOR[course.difficulty] ?? "#6b7280" }}>{course.difficulty}</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-muted-foreground">{course.durationMinutes}min</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-purple-400">+{course.xpReward}xp</span>
-                  </div>
-                </div>
-                {course.progressPct > 0 && (
-                  <div className="text-xs text-primary shrink-0">{Math.round(course.progressPct)}%</div>
-                )}
+              );
+            })}
+          </div>
+        </div>
+        <div className="relative mt-6">
+          <ProgressLine value={xpPct} />
+          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Level {gp?.level ?? 1}</span>
+            <span>{formatNumber(Math.max(0, xpNeeded - xpCurrent))} XP to next level</span>
+          </div>
+        </div>
+      </motion.section>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <main className="space-y-5">
+          <Section title="Continue learning" action="Learning path" delay={1}>
+            {continueCourse ? (
+              <CourseRow course={continueCourse} featured />
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+                No active courses yet. Complete the assessment to generate recommendations.
               </div>
-            ))}
-          </div>
-        </motion.div>
+            )}
+          </Section>
 
-        {/* XP + Badges */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="bg-card/80 border border-border rounded-xl p-5 backdrop-blur-sm"
-        >
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">{t.operativeStatus}</div>
-          {/* XP Bar */}
-          <div className="mb-5">
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-purple-400 font-medium">{t.level} {gp?.level ?? 1}</span>
-              <span className="text-muted-foreground">{gp?.xp ?? 0} / {gp?.nextLevelXp ?? 200} {t.xpUnit}</span>
-            </div>
-            <div className="h-3 rounded-full bg-white/5 overflow-hidden border border-border/50">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${xpPct}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full rounded-full bg-gradient-to-r from-purple-600 to-primary"
-              />
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">{xpNeeded - xpCurrent} {t.xpToLevel.replace("{{level}}", String((gp?.level ?? 1) + 1))}</div>
-          </div>
+          <Section title="Recommended courses" action={`${recommended.length} ready`} delay={2}>
+            {recommended.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {recommended.slice(0, 4).map((course: any) => <RecommendedCard key={course.id} course={course} />)}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+                You are caught up on current recommendations.
+              </div>
+            )}
+          </Section>
 
-          {/* Badge shelf */}
-          <div className="text-xs text-muted-foreground mb-3">{t.recentBadges} ({badges?.length ?? 0})</div>
-          {recentBadges.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-4">{t.completeForBadges}</div>
-          ) : (
-            <div className="grid grid-cols-4 gap-2">
-              {recentBadges.map((badge: any) => (
-                <div key={badge.badgeId} className="group relative">
-                  <div className="w-full aspect-square rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl hover:border-primary/50 transition-colors cursor-default">
-                    {badge.iconName}
+          <Section title="Recent activity" delay={3}>
+            {recentActivity.length > 0 ? (
+              <div className="space-y-3">
+                {recentActivity.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/55 p-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-foreground">{item.title}</div>
+                      <div className="truncate text-xs capitalize text-muted-foreground">{item.meta}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold text-primary">{item.value}</div>
+                      <div className="text-[10px] text-muted-foreground">{item.when}</div>
+                    </div>
                   </div>
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-card border border-border rounded-lg p-2 text-xs text-center whitespace-nowrap shadow-xl pointer-events-none">
-                    <div className="font-medium">{badge.name}</div>
-                    <div className="text-muted-foreground">{badge.description}</div>
-                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+                Course completions and earned badges will appear here.
+              </div>
+            )}
+          </Section>
+        </main>
+
+        <aside className="space-y-5">
+          <Section title="Priority actions" action={hasScores ? "Live" : "Setup"} delay={2}>
+            <div className="space-y-3">
+              {priorityActions.slice(0, 4).map((item) => (
+                <div key={item.title} className="rounded-lg border border-border bg-background/55 p-4">
+                  <div className={`mb-1 text-xs font-semibold uppercase tracking-wider ${item.tone}`}>{item.title}</div>
+                  <p className="text-sm leading-5 text-muted-foreground">{item.detail}</p>
                 </div>
               ))}
             </div>
-          )}
-        </motion.div>
+          </Section>
+
+          <Section title="Risk snapshot" action={hasScores ? scores?.riskCategory ?? "Scored" : "Pending"} delay={3}>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Human risk", value: hasScores ? scores?.humanRiskScore ?? 0 : 0, icon: Gauge, color: "text-red-400" },
+                { label: "CCI", value: hasScores ? scores?.cciScore ?? 0 : 0, icon: ShieldCheck, color: "text-emerald-400" },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="rounded-lg border border-border bg-background/55 p-4">
+                    <Icon className={`mb-3 h-4 w-4 ${item.color}`} />
+                    <div className={`text-2xl font-bold tabular-nums ${item.color}`}>{Math.round(item.value)}</div>
+                    <div className="text-xs text-muted-foreground">{item.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+
+          <Section title="Recent badges" action={`${badges?.length ?? 0} total`} delay={4}>
+            {recentBadges.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {recentBadges.map((badge: any, index: number) => (
+                  <div key={badge.badgeId} className="rounded-lg border border-border bg-background/55 p-3 text-center">
+                    <div className={`mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-lg ${BADGE_TONES[index % BADGE_TONES.length]}`}>
+                      <Award className="h-5 w-5" />
+                    </div>
+                    <div className="truncate text-[11px] font-semibold text-foreground">{badge.name}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+                Complete courses and assessments to earn badges.
+              </div>
+            )}
+          </Section>
+
+          <Section title="Leaderboard" action={rank ? `You #${rank}` : "Top 5"} delay={5}>
+            <div className="space-y-3">
+              {(leaderboard?.entries ?? []).slice(0, 5).map((entry: any) => (
+                <div
+                  key={entry.userId}
+                  className={`flex items-center gap-3 rounded-lg border p-3 ${
+                    entry.isCurrentUser ? "border-primary/35 bg-primary/10" : "border-border bg-background/55"
+                  }`}
+                >
+                  <div className="w-7 text-xs font-semibold tabular-nums text-muted-foreground">#{entry.rank}</div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                    {initials(entry.firstName, entry.lastName)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">{entry.firstName} {entry.lastName}</div>
+                    <div className="truncate text-xs text-muted-foreground">{entry.departmentName ?? `Level ${entry.level}`}</div>
+                  </div>
+                  <div className="text-sm font-bold tabular-nums text-primary">{formatNumber(entry.xp)}</div>
+                </div>
+              ))}
+              {(leaderboard?.entries ?? []).length === 0 && (
+                <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+                  Leaderboard data will appear after employees earn XP.
+                </div>
+              )}
+            </div>
+          </Section>
+        </aside>
       </div>
     </div>
   );

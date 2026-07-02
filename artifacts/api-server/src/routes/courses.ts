@@ -67,24 +67,33 @@ function buildCourseWritePayload(
   };
 }
 
+function isSupportedMarkdownFile(fileName: string) {
+  return /\.(md|mdx)$/i.test(fileName);
+}
+
 function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert>) {
   if (payload.videoSizeBytes !== null && payload.videoSizeBytes !== undefined && payload.videoSizeBytes > MAX_VIDEO_SIZE_BYTES) {
     return "Uploaded videos must be 2GB or smaller.";
   }
-  if (payload.markdownFileName && !payload.markdownFileName.toLowerCase().endsWith(".md")) {
-    return "Only Markdown files ending in .md are supported.";
+  if (payload.markdownFileName && !isSupportedMarkdownFile(payload.markdownFileName)) {
+    return "Only Markdown or MDX files ending in .md or .mdx are supported.";
   }
   return null;
 }
 
-function buildCourseWithProgress(course: typeof coursesTable.$inferSelect, progress?: typeof userCourseProgressTable.$inferSelect | null) {
+function buildCourseWithProgress(
+  course: typeof coursesTable.$inferSelect,
+  progress?: typeof userCourseProgressTable.$inferSelect | null,
+  options: { includeVideoUrl?: boolean } = {},
+) {
+  const { includeVideoUrl = true } = options;
   return {
     id: course.id,
     moduleId: course.moduleId,
     title: course.title,
     category: course.category,
     description: course.description,
-    videoUrl: course.videoUrl,
+    videoUrl: includeVideoUrl ? course.videoUrl : null,
     videoFileName: course.videoFileName,
     videoMimeType: course.videoMimeType,
     videoSizeBytes: course.videoSizeBytes,
@@ -265,7 +274,7 @@ router.get("/courses/:id", requireAuth, async (req, res): Promise<void> => {
   const [progress] = await db.select().from(userCourseProgressTable).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId)));
 
   res.json({
-    ...buildCourseWithProgress(course, progress),
+    ...buildCourseWithProgress(course, progress, { includeVideoUrl: false }),
     lessons: lessons.map(l => ({
       id: l.id,
       title: l.title,
@@ -275,6 +284,19 @@ router.get("/courses/:id", requireAuth, async (req, res): Promise<void> => {
       displayOrder: l.displayOrder,
     })),
   });
+});
+
+// GET /courses/:id/video — deferred video URL for faster course page rendering
+router.get("/courses/:id/video", requireAuth, async (req, res): Promise<void> => {
+  const courseId = Number(req.params.id);
+
+  const [course] = await db
+    .select({ videoUrl: coursesTable.videoUrl })
+    .from(coursesTable)
+    .where(eq(coursesTable.id, courseId));
+
+  if (!course) { res.status(404).json({ message: "Not found" }); return; }
+  res.json({ videoUrl: course.videoUrl });
 });
 
 // PATCH /courses/:id/progress
