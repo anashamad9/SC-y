@@ -213,9 +213,10 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
   const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
   const progressRecords = await getUserProgress(userId);
   const progressMap = new Map(progressRecords.map(p => [p.courseId, p]));
+  const lightweightCourse = { includeVideoUrl: false };
 
-  const completed = allCourses.filter(c => progressMap.get(c.id)?.status === "completed").map(c => buildCourseWithProgress(c, progressMap.get(c.id)));
-  const inProgress = allCourses.filter(c => progressMap.get(c.id)?.status === "in_progress").map(c => buildCourseWithProgress(c, progressMap.get(c.id)));
+  const completed = allCourses.filter(c => progressMap.get(c.id)?.status === "completed").map(c => buildCourseWithProgress(c, progressMap.get(c.id), lightweightCourse));
+  const inProgress = allCourses.filter(c => progressMap.get(c.id)?.status === "in_progress").map(c => buildCourseWithProgress(c, progressMap.get(c.id), lightweightCourse));
   const notStarted = allCourses.filter(c => !progressMap.has(c.id) || progressMap.get(c.id)?.status === "not_started");
 
   // Recommend videos based on the user's readiness assessment points.
@@ -237,7 +238,7 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
   const completionRate = allCourses.length > 0 ? Math.round((completed.length / allCourses.length) * 100) : 0;
 
   res.json({
-    recommended: recommended.map(c => buildCourseWithProgress(c, progressMap.get(c.id))),
+    recommended: recommended.map(c => buildCourseWithProgress(c, progressMap.get(c.id), lightweightCourse)),
     inProgress,
     completed,
     totalXpEarned,
@@ -249,6 +250,8 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
 router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
   const { category, difficulty, moduleId } = req.query as { category?: string; difficulty?: string; moduleId?: string };
+  const role = req.user!.role?.toLowerCase();
+  const includeVideoUrl = role === "admin" || role === "superadmin";
 
   const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
   const progressRecords = await getUserProgress(userId);
@@ -259,7 +262,7 @@ router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   if (difficulty) filtered = filtered.filter(c => c.difficulty === difficulty);
   if (moduleId) filtered = filtered.filter(c => c.moduleId === Number(moduleId));
 
-  res.json(filtered.map(c => buildCourseWithProgress(c, progressMap.get(c.id))));
+  res.json(filtered.map(c => buildCourseWithProgress(c, progressMap.get(c.id), { includeVideoUrl })));
 });
 
 // GET /courses/:id — course detail with lessons
