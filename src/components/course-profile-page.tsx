@@ -37,6 +37,7 @@ function profileCopy(lang: "en" | "ar") {
         earned: "تم كسب",
         continueLearning: "متابعة التعلم",
         startCourse: "ابدأ الدورة",
+        finishCourse: "أنهيت المحتوى - تسجيل الدورة كمكتملة",
         openMarkdown: "فتح ملف Markdown",
         loadingVideo: "يتم تحميل الفيديو...",
         previewMode: "معاينة المشرف",
@@ -61,6 +62,7 @@ function profileCopy(lang: "en" | "ar") {
         earned: "earned",
         continueLearning: "Continue learning",
         startCourse: "Start course",
+        finishCourse: "I finished the content - mark course complete",
         openMarkdown: "Open Markdown file",
         loadingVideo: "Loading video...",
         previewMode: "Admin preview",
@@ -99,7 +101,6 @@ export function CourseProfilePage({
   const courseRecord = course as any;
   const lessons = courseRecord?.lessons ?? [];
   const currentPct = localProgress ?? (courseRecord?.progressPct ?? 0);
-  const status = courseRecord?.status ?? "not_started";
   const videoUrl = deferredVideoUrl ?? courseRecord?.videoUrl;
   const markdownContent = courseRecord?.markdownContent;
   const markdownUrl = courseRecord?.markdownUrl;
@@ -152,17 +153,32 @@ export function CourseProfilePage({
 
     const lessonCount = Math.max(lessons.length, 1);
     const pct = Math.round(((lessonIndex + 1) / lessonCount) * 100);
-    setLocalProgress(pct);
+    updateProgress(pct, lessons[lessonIndex]?.id);
+  }
+
+  function updateProgress(pct: number, lastLessonId?: number) {
+    if (!canTrackProgress) return;
+
+    const nextPct = Math.min(100, Math.max(0, Math.round(pct)));
+    setLocalProgress(nextPct);
     progressMutation.mutate(
-      { id: courseId, data: { progressPct: pct, lastLessonId: lessons[lessonIndex]?.id } },
+      { id: courseId, data: { progressPct: nextPct, lastLessonId } },
       {
         onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}`] });
+          queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/courses/learning-path"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/gamification/me"] });
           queryClient.invalidateQueries({ queryKey: ["listCourses"] });
           queryClient.invalidateQueries({ queryKey: ["getLearningPath"] });
           queryClient.invalidateQueries({ queryKey: ["getMyGamification"] });
         },
       },
     );
+  }
+
+  function completeCourse() {
+    updateProgress(100, lessons.at(-1)?.id);
   }
 
   if (isLoading) {
@@ -248,15 +264,28 @@ export function CourseProfilePage({
                 {markdownContent ? (
                   <div
                     dir={markdownIsRtl ? "rtl" : "ltr"}
-                    className={`prose prose-sm max-w-none dark:prose-invert ${markdownIsRtl ? "text-right" : "text-left"}`}
+                    className={`prose prose-zinc prose-sm mx-auto max-w-3xl text-zinc-900 dark:prose-invert dark:text-zinc-100 prose-headings:text-zinc-950 prose-p:text-zinc-800 prose-li:text-zinc-800 prose-strong:text-zinc-950 dark:prose-headings:text-zinc-50 dark:prose-p:text-zinc-200 dark:prose-li:text-zinc-200 dark:prose-strong:text-zinc-50 ${markdownIsRtl ? "text-right" : "text-left"}`}
                   >
                     <ReactMarkdown>{markdownContent}</ReactMarkdown>
                   </div>
                 ) : markdownUrl ? (
-                  <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                    {copy.openMarkdown}
-                  </a>
+                  <div className="mx-auto max-w-3xl">
+                    <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                      {copy.openMarkdown}
+                    </a>
+                  </div>
                 ) : null}
+                {canTrackProgress && (
+                  <div className="mx-auto mt-6 flex max-w-3xl justify-center border-t border-border pt-5">
+                    <Button
+                      onClick={completeCourse}
+                      disabled={progressMutation.isPending || currentPct >= 100}
+                      className="min-h-10 bg-primary px-5 text-white hover:bg-primary/85 active:scale-[0.96] transition-transform"
+                    >
+                      {currentPct >= 100 ? copy.courseCompleted : copy.finishCourse}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -266,14 +295,14 @@ export function CourseProfilePage({
               <div className="rounded-xl border border-border bg-background/60 p-4">
                 <div className="mb-2 flex justify-between text-xs">
                   <span className="text-muted-foreground">{copy.progress}</span>
-                  <span className={status === "completed" ? "text-emerald-400" : "text-primary"}>{Math.round(currentPct)}%</span>
+                  <span className={currentPct >= 100 ? "text-emerald-400" : "text-primary"}>{Math.round(currentPct)}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/5">
                   <motion.div
                     animate={{ width: `${currentPct}%` }}
                     transition={{ duration: 0.4 }}
                     className="h-full rounded-full"
-                    style={{ backgroundColor: status === "completed" ? "#22c55e" : "#dc143c" }}
+                    style={{ backgroundColor: currentPct >= 100 ? "#22c55e" : "#dc143c" }}
                   />
                 </div>
               </div>

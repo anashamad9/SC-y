@@ -10,6 +10,7 @@
     "serve": "next start -H 0.0.0.0",
     "start": "next start -H 0.0.0.0",
     "dev:api": "PORT=5000 pnpm --filter @workspace/api-server dev",
+    "db:ensure-employee-home": "node --env-file=.env.local scripts/ensure-employee-home-data.mjs",
     "build:all": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "tsc -p tsconfig.json --noEmit"

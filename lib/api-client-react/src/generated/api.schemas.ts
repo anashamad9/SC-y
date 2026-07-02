@@ -323,6 +323,7 @@ export interface LeaderboardEntry {
   departmentName?: string | null;
   xp: number;
   level: number;
+  streakDays: number;
   cciScore: number;
   isCurrentUser?: boolean;
 }
@@ -1053,4 +1054,3 @@ export type CreateAdminNotificationBody = {
   type?: CreateAdminNotificationBodyType;
   audience?: CreateAdminNotificationBodyAudience;
 };
-

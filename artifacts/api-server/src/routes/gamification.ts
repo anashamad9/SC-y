@@ -66,12 +66,23 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
   const currentUserId = req.user!.userId;
   const limit = Math.min(Number(req.query.limit) || 20, 50);
   const departmentId = req.query.departmentId ? Number(req.query.departmentId) : null;
+  const [currentUser] = await db
+    .select({ tenantId: usersTable.tenantId })
+    .from(usersTable)
+    .where(eq(usersTable.id, currentUserId))
+    .limit(1);
+
+  if (!currentUser?.tenantId) {
+    res.json({ entries: [], currentUserRank: null });
+    return;
+  }
 
   const baseJoin = db
     .select({
       userId: gamificationProfilesTable.userId,
       xp: gamificationProfilesTable.xp,
       level: gamificationProfilesTable.level,
+      streakDays: gamificationProfilesTable.streakDays,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       departmentId: usersTable.departmentId,
@@ -79,10 +90,15 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
     .from(gamificationProfilesTable)
     .innerJoin(usersTable, eq(gamificationProfilesTable.userId, usersTable.id));
 
-  // Apply department filter at SQL level — not post-fetch
+  // Compare only members from the authenticated user's tenant.
+  const sameTenantCondition = eq(usersTable.tenantId, currentUser.tenantId);
+  const leaderboardCondition = departmentId
+    ? and(sameTenantCondition, eq(usersTable.departmentId, departmentId))
+    : sameTenantCondition;
+
   const entries = departmentId
-    ? await baseJoin.where(eq(usersTable.departmentId, departmentId)).orderBy(desc(gamificationProfilesTable.xp)).limit(limit)
-    : await baseJoin.orderBy(desc(gamificationProfilesTable.xp)).limit(limit);
+    ? await baseJoin.where(leaderboardCondition).orderBy(desc(gamificationProfilesTable.xp)).limit(limit)
+    : await baseJoin.where(leaderboardCondition).orderBy(desc(gamificationProfilesTable.xp)).limit(limit);
 
   const deptIds = [...new Set(entries.map(e => e.departmentId).filter(Boolean))] as number[];
   const depts = deptIds.length > 0
@@ -90,9 +106,13 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
     : [];
   const deptMap = new Map(depts.map(d => [d.id, d.name]));
 
-  const cciSnapshots = await db.select({ userId: cciSnapshotsTable.userId, cciScore: cciSnapshotsTable.cciScore })
-    .from(cciSnapshotsTable)
-    .orderBy(desc(cciSnapshotsTable.computedAt));
+  const entryUserIds = entries.map(e => e.userId);
+  const cciSnapshots = entryUserIds.length > 0
+    ? await db.select({ userId: cciSnapshotsTable.userId, cciScore: cciSnapshotsTable.cciScore })
+      .from(cciSnapshotsTable)
+      .where(inArray(cciSnapshotsTable.userId, entryUserIds))
+      .orderBy(desc(cciSnapshotsTable.computedAt))
+    : [];
   const cciMap = new Map<number, number>();
   for (const s of cciSnapshots) if (!cciMap.has(s.userId)) cciMap.set(s.userId, s.cciScore);
 
@@ -104,6 +124,7 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
     departmentName: e.departmentId ? (deptMap.get(e.departmentId) ?? null) : null,
     xp: e.xp,
     level: e.level,
+    streakDays: e.streakDays,
     cciScore: cciMap.get(e.userId) ?? 50,
     isCurrentUser: e.userId === currentUserId,
   }));
@@ -120,8 +141,8 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
 
     if (userGp) {
       const aboveCondition = departmentId
-        ? and(eq(usersTable.departmentId, departmentId), gt(gamificationProfilesTable.xp, userGp.xp))
-        : gt(gamificationProfilesTable.xp, userGp.xp);
+        ? and(sameTenantCondition, eq(usersTable.departmentId, departmentId), gt(gamificationProfilesTable.xp, userGp.xp))
+        : and(sameTenantCondition, gt(gamificationProfilesTable.xp, userGp.xp));
 
       const [rankRow] = await db
         .select({ cnt: sql<number>`cast(count(*) as int)` })

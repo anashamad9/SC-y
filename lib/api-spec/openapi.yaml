@@ -2072,6 +2072,8 @@ components:
           type: integer
         level:
           type: integer
+        streakDays:
+          type: integer
         cciScore:
           type: number
         isCurrentUser:

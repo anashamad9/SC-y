@@ -1,262 +1,330 @@
+import { motion } from "framer-motion";
+import {
+  Award,
+  BadgeCheck,
+  Flame,
+  Medal,
+  Shield,
+  Sparkles,
+  Trophy,
+} from "lucide-react";
+import {
+  useGetLeaderboard,
+  useGetMe,
+  useGetMyBadges,
+  useGetMyGamification,
+  useListDepartments,
+} from "@workspace/api-client-react";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useGetMyGamification, useGetMyBadges, useGetLeaderboard, useListDepartments } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 
-type Tab = "overview" | "badges" | "leaderboard";
-
 const BADGE_CATEGORIES = ["achievement", "learning", "assessment", "streak"];
+const AVATAR_TONES = ["bg-sky-500", "bg-fuchsia-500", "bg-amber-500", "bg-emerald-500", "bg-violet-500", "bg-primary"];
+
+function formatNumber(value?: number | null) {
+  return Number(value ?? 0).toLocaleString();
+}
+
+function initials(firstName?: string | null, lastName?: string | null) {
+  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.trim().toUpperCase() || "U";
+}
+
+function xpProgress(profile: any) {
+  if (!profile) return 0;
+  const current = profile.xp - profile.currentLevelXp;
+  const needed = Math.max(1, profile.nextLevelXp - profile.currentLevelXp);
+  return Math.min(100, Math.max(0, Math.round((current / needed) * 100)));
+}
+
+function entryName(entry: any) {
+  return `${entry?.firstName ?? ""} ${entry?.lastName ?? ""}`.trim() || "Member";
+}
+
+function avatarTone(index: number) {
+  return AVATAR_TONES[index % AVATAR_TONES.length];
+}
+
+function PodiumCard({ entry, place, lifted = false }: { entry: any; place: 1 | 2 | 3; lifted?: boolean }) {
+  const tone = place === 1 ? "bg-primary" : place === 2 ? "bg-fuchsia-500" : "bg-amber-500";
+  const ring = place === 1 ? "border-primary/45 shadow-primary/12" : "border-border shadow-black/20";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: lifted ? -18 : 0 }}
+      transition={{ duration: 0.38, ease: "easeOut" }}
+      className={`relative rounded-lg border ${ring} bg-card/88 p-5 text-center shadow-2xl`}
+    >
+      {place === 1 && <Trophy className="absolute left-1/2 top-3 h-5 w-5 -translate-x-1/2 text-amber-300" />}
+      <div className={`mx-auto mb-4 mt-3 flex h-16 w-16 items-center justify-center rounded-full ${tone} text-lg font-bold text-white`}>
+        {initials(entry?.firstName, entry?.lastName)}
+      </div>
+      <div className="mx-auto mb-3 flex h-7 w-7 items-center justify-center rounded-full bg-background text-xs font-bold tabular-nums text-primary">
+        {place}
+      </div>
+      <div className="truncate text-base font-semibold text-foreground">{entryName(entry)}</div>
+      <div className="mt-1 truncate text-xs text-muted-foreground">{entry?.departmentName ?? "Tenant member"}</div>
+      <div className="mt-4 text-2xl font-bold tabular-nums text-primary">{formatNumber(entry?.xp)}</div>
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">XP</div>
+    </motion.div>
+  );
+}
+
+function BadgeTile({ badge, index }: { badge: any; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.035, duration: 0.25 }}
+      className="rounded-lg border border-border bg-card/78 p-4"
+    >
+      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-lg ${avatarTone(index)} text-white`}>
+        <Award className="h-5 w-5" />
+      </div>
+      <div className="text-sm font-semibold text-foreground">{badge.name}</div>
+      <p className="mt-1 line-clamp-2 min-h-9 text-xs leading-relaxed text-muted-foreground">{badge.description}</p>
+      <div className="mt-3 text-xs text-primary">{new Date(badge.earnedAt).toLocaleDateString()}</div>
+    </motion.div>
+  );
+}
 
 export default function EmployeeAchievements() {
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [deptFilter, setDeptFilter] = useState<number | undefined>(undefined);
   const { lang, isRTL } = useI18n();
 
+  const { data: user } = useGetMe();
   const { data: gp } = useGetMyGamification();
   const { data: badges } = useGetMyBadges();
-  const { data: leaderboard } = useGetLeaderboard({ departmentId: deptFilter, limit: 20 });
   const { data: departments } = useListDepartments();
+  const { data: leaderboard, isLoading } = useGetLeaderboard({ departmentId: deptFilter, limit: 50 });
 
-  const xpCurrent = gp ? gp.xp - gp.currentLevelXp : 0;
-  const xpNeeded = gp ? gp.nextLevelXp - gp.currentLevelXp : 200;
-  const xpPct = gp ? Math.min(100, Math.round((xpCurrent / Math.max(1, xpNeeded)) * 100)) : 0;
+  const entries = (leaderboard?.entries ?? []) as any[];
+  const podium = entries.slice(0, 3);
+  const tableRows = entries.slice(3);
+  const currentEntry = entries.find((entry) => entry.isCurrentUser);
+  const progressPct = xpProgress(gp);
 
   const copy = lang === "ar"
     ? {
-        overview: "نظرة عامة",
-        badges: "الشارات",
-        leaderboard: "لوحة الصدارة",
-        title: "الإنجازات والتحفيز",
-        sub: "رتبتك وشاراتك وموقعك في لوحة الصدارة",
+        compete: "تنافس",
+        title: "لوحة الصدارة",
+        sub: "ترتيبك مقارنة بأعضاء نفس المؤسسة فقط",
+        tenant: "المؤسسة",
+        allDepartments: "كل الأقسام",
+        department: "القسم",
+        rank: "الترتيب",
+        defender: "الموظف",
+        streak: "السلسلة",
         level: "المستوى",
-        totalXp: "إجمالي النقاط",
-        dayStreak: "سلسلة الأيام",
+        badges: "الشارات",
+        earnedBadges: "الشارات المكتسبة",
+        noBadges: "لا توجد شارات مكتسبة من قاعدة البيانات لهذا المستخدم.",
         xpToNext: "نقطة للمستوى التالي",
-        badgesEarned: "الشارات المكتسبة",
-        streakDays: "أيام السلسلة",
-        securityLevel: "المستوى الأمني",
-        recentBadges: "أحدث الشارات",
-        noBadges: "لا توجد شارات بعد — أكمل التقييمات والدورات لكسبها.",
-        global: "عام",
-        operative: "الموظف",
-        you: "أنت",
         yourRank: "ترتيبك",
-        keepGoing: "استمر للوصول إلى القمة",
+        sameTenant: "نفس المؤسسة",
+        noRows: "لا توجد سجلات لوحة صدارة في قاعدة البيانات لهذه المؤسسة.",
+        you: "أنت",
+        cci: "CCI",
       }
     : {
-        overview: "Overview",
-        badges: "Badges",
-        leaderboard: "Leaderboard",
-        title: "Achievements & Gamification",
-        sub: "Your Security Champion rank, badges, and leaderboard standing",
+        compete: "Compete",
+        title: "Leaderboard",
+        sub: "Your rank compared with members of the same tenant only",
+        tenant: "Tenant",
+        allDepartments: "All departments",
+        department: "Department",
+        rank: "Rank",
+        defender: "Member",
+        streak: "Streak",
         level: "Level",
-        totalXp: "total XP",
-        dayStreak: "day streak",
+        badges: "Badges",
+        earnedBadges: "Earned badges",
+        noBadges: "No earned badge records were returned from the database for this user.",
         xpToNext: "XP to next level",
-        badgesEarned: "Badges Earned",
-        streakDays: "Streak Days",
-        securityLevel: "Security Level",
-        recentBadges: "Recent Badges",
-        noBadges: "No badges yet — complete assessments and courses to earn them.",
-        global: "Global",
-        operative: "Operative",
-        you: "You",
         yourRank: "Your rank",
-        keepGoing: "keep going to reach the top",
+        sameTenant: "Same tenant",
+        noRows: "No leaderboard rows were returned from the database for this tenant.",
+        you: "You",
+        cci: "CCI",
       };
 
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: "overview", label: copy.overview, icon: "⬡" },
-    { key: "badges", label: `${copy.badges} (${badges?.length ?? 0})`, icon: "◆" },
-    { key: "leaderboard", label: copy.leaderboard, icon: "◈" },
-  ];
+  const groupedBadges = BADGE_CATEGORIES
+    .map((category) => ({
+      category,
+      badges: (badges ?? []).filter((badge: any) => badge.category === category),
+    }))
+    .filter((group) => group.badges.length > 0);
 
   return (
-    <div className="space-y-5" dir={isRTL ? "rtl" : "ltr"}>
-      <div>
-        <h2 className="mb-1 text-lg font-bold">{copy.title}</h2>
-        <p className="text-sm text-muted-foreground">{copy.sub}</p>
-      </div>
-
-      <div className="flex gap-2 border-b border-border pb-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-sm font-medium transition-all ${
-              activeTab === tab.key ? "-mb-px border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <span className="font-mono text-xs">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <AnimatePresence mode="wait">
-        {activeTab === "overview" && (
-          <motion.div key="overview" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-            <div className="rounded-xl border border-border bg-card/80 p-6 backdrop-blur-sm">
-              <div className="flex items-center gap-6">
-                <div className="relative shrink-0">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-primary/30 bg-gradient-to-br from-purple-600 to-primary">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-white">{gp?.level ?? 1}</div>
-                      <div className="text-xs text-white/70">{copy.level}</div>
-                    </div>
-                  </div>
-                  {(gp?.streakDays ?? 0) > 0 && (
-                    <div className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-orange-500 text-sm">
-                      ST
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <div className="mb-2 flex items-baseline gap-2">
-                    <span className="text-2xl font-bold font-mono text-purple-400">{gp?.xp ?? 0}</span>
-                    <span className="text-sm text-muted-foreground">{copy.totalXp}</span>
-                  </div>
-                  <div className="mb-3 text-sm text-muted-foreground">
-                    {gp?.streakDays ?? 0} {copy.dayStreak}
-                  </div>
-                  <div className="mb-1 flex justify-between text-xs">
-                    <span className="text-muted-foreground">{copy.level} {gp?.level ?? 1}</span>
-                    <span className="text-muted-foreground">{copy.level} {(gp?.level ?? 1) + 1}</span>
-                  </div>
-                  <div className="h-3 overflow-hidden rounded-full border border-border/50 bg-white/5">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${xpPct}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full rounded-full bg-gradient-to-r from-purple-600 to-primary" />
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{xpNeeded - xpCurrent} {copy.xpToNext}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: copy.badgesEarned, value: badges?.length ?? 0, icon: "BDG", color: "text-yellow-400" },
-                { label: copy.streakDays, value: gp?.streakDays ?? 0, icon: "STK", color: "text-orange-400" },
-                { label: copy.securityLevel, value: gp?.level ?? 1, icon: "LVL", color: "text-purple-400" },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-border bg-card/80 p-4 text-center backdrop-blur-sm">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">{s.icon}</div>
-                  <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.value}</div>
-                  <div className="text-xs text-muted-foreground">{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {(badges?.length ?? 0) > 0 && (
-              <div className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur-sm">
-                <div className="mb-4 text-xs uppercase tracking-wider text-muted-foreground">{copy.recentBadges}</div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {badges?.slice(0, 4).map((badge: any) => (
-                    <div key={badge.badgeId} className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-center">
-                      <div className="mb-2 text-3xl">{badge.iconName}</div>
-                      <div className="text-xs font-medium">{badge.name}</div>
-                      <div className="text-xs text-muted-foreground">{new Date(badge.earnedAt).toLocaleDateString()}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {activeTab === "badges" && (
-          <motion.div key="badges" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-            {BADGE_CATEGORIES.map((cat) => {
-              const catBadges = badges?.filter((b: any) => b.category === cat) ?? [];
-              if (catBadges.length === 0) return null;
+    <div className="mx-auto max-w-7xl space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+      <header className="space-y-3">
+        <div className="text-xs font-bold uppercase tracking-[0.25em] text-primary">{copy.compete}</div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{copy.title}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{copy.sub}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[420px]">
+            {[
+              { label: "XP", value: formatNumber(gp?.xp), icon: Sparkles },
+              { label: copy.level, value: gp?.level ?? 1, icon: Shield },
+              { label: copy.yourRank, value: leaderboard?.currentUserRank ? `#${leaderboard.currentUserRank}` : "-", icon: Medal },
+            ].map((item) => {
+              const Icon = item.icon;
               return (
-                <div key={cat} className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur-sm">
-                  <div className="mb-4 text-xs uppercase tracking-wider capitalize text-muted-foreground">{cat} {copy.badges}</div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                    {catBadges.map((badge: any) => (
-                      <motion.div key={badge.badgeId} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center transition-colors hover:border-primary/40">
-                        <div className="mb-2 text-4xl">{badge.iconName}</div>
-                        <div className="mb-1 text-xs font-semibold">{badge.name}</div>
-                        <div className="text-xs leading-snug text-muted-foreground">{badge.description}</div>
-                        <div className="mt-2 text-xs text-primary">{new Date(badge.earnedAt).toLocaleDateString()}</div>
-                      </motion.div>
-                    ))}
-                  </div>
+                <div key={item.label} className="rounded-lg border border-border bg-card/82 p-3 text-center">
+                  <Icon className="mx-auto mb-2 h-4 w-4 text-primary" />
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</div>
+                  <div className="mt-1 text-lg font-bold tabular-nums text-primary">{item.value}</div>
                 </div>
               );
             })}
-            {(badges?.length ?? 0) === 0 && (
-              <div className="py-16 text-center text-muted-foreground">
-                <div className="text-sm">{copy.noBadges}</div>
-              </div>
-            )}
-          </motion.div>
-        )}
+          </div>
+        </div>
+      </header>
 
-        {activeTab === "leaderboard" && (
-          <motion.div key="leaderboard" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setDeptFilter(undefined)}
-                className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${!deptFilter ? "border-primary/30 bg-primary/20 text-primary" : "border-border bg-white/5 text-muted-foreground"}`}
-              >
-                {copy.global}
-              </button>
-              {(departments ?? []).slice(0, 8).map((dept: any) => (
-                <button
-                  key={dept.id}
-                  onClick={() => setDeptFilter(dept.id)}
-                  className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${deptFilter === dept.id ? "border-primary/30 bg-primary/20 text-primary" : "border-border bg-white/5 text-muted-foreground"}`}
-                >
-                  {dept.name}
-                </button>
-              ))}
+      <section className="rounded-lg border border-border bg-card/82 p-4 shadow-[0_26px_90px_-52px_rgba(0,0,0,0.9)]">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setDeptFilter(undefined)}
+            className={`min-h-10 rounded-full border px-4 text-sm font-medium transition-[background-color,color,border-color,transform] active:scale-[0.96] ${
+              !deptFilter ? "border-primary/45 bg-primary/15 text-primary" : "border-border bg-background/55 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {copy.allDepartments}
+          </button>
+          {(departments ?? []).map((dept: any) => (
+            <button
+              key={dept.id}
+              onClick={() => setDeptFilter(dept.id)}
+              className={`min-h-10 rounded-full border px-4 text-sm font-medium transition-[background-color,color,border-color,transform] active:scale-[0.96] ${
+                deptFilter === dept.id ? "border-primary/45 bg-primary/15 text-primary" : "border-border bg-background/55 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {dept.name}
+            </button>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((item) => <div key={item} className="h-56 animate-pulse rounded-lg border border-border bg-background/55" />)}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{copy.noRows}</div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-3 md:items-end">
+              {podium[1] && <PodiumCard entry={podium[1]} place={2} />}
+              {podium[0] && <PodiumCard entry={podium[0]} place={1} lifted />}
+              {podium[2] && <PodiumCard entry={podium[2]} place={3} />}
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm">
-              <div className="grid grid-cols-[2rem_1fr_auto_auto_auto] gap-4 border-b border-border px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+            <div className="mt-6 overflow-hidden rounded-lg border border-border bg-background/45">
+              <div className="grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1fr)_7rem_6rem_7rem] gap-4 border-b border-border bg-muted/20 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground max-lg:hidden">
                 <span>#</span>
-                <span>{copy.operative}</span>
+                <span>{copy.defender}</span>
+                <span>{copy.department}</span>
+                <span className="text-right">{copy.streak}</span>
+                <span className="text-right">{copy.cci}</span>
                 <span className="text-right">XP</span>
-                <span className="text-right">{copy.level}</span>
-                <span className="text-right">CCI</span>
               </div>
-              <div className="divide-y divide-border/50">
-                {(leaderboard?.entries ?? []).map((entry: any, i: number) => (
+              <div className="divide-y divide-border/60">
+                {tableRows.map((entry, index) => (
                   <motion.div
                     key={entry.userId}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className={`grid grid-cols-[2rem_1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 ${entry.isCurrentUser ? "border-l-2 border-primary bg-primary/10" : "hover:bg-white/2"}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.025, duration: 0.25 }}
+                    className={`grid gap-3 px-5 py-4 lg:grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1fr)_7rem_6rem_7rem] lg:items-center ${
+                      entry.isCurrentUser ? "bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]" : "hover:bg-white/[0.025]"
+                    }`}
                   >
-                    <div className={`text-sm font-bold font-mono ${entry.rank === 1 ? "text-yellow-400" : entry.rank === 2 ? "text-slate-300" : entry.rank === 3 ? "text-amber-600" : "text-muted-foreground"}`}>
-                      {entry.rank <= 3 ? `Top ${entry.rank}` : `#${entry.rank}`}
-                    </div>
-                    <div>
-                      <div className={`text-sm font-medium ${entry.isCurrentUser ? "text-primary" : ""}`}>
-                        {entry.firstName} {entry.lastName}
-                        {entry.isCurrentUser && <span className="ml-1.5 text-xs text-primary/70">({copy.you})</span>}
+                    <div className="text-sm font-bold tabular-nums text-muted-foreground">#{entry.rank}</div>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${avatarTone(index)} text-xs font-bold text-white`}>
+                        {initials(entry.firstName, entry.lastName)}
                       </div>
-                      {entry.departmentName && <div className="text-xs text-muted-foreground">{entry.departmentName}</div>}
+                      <div className="min-w-0">
+                        <div className={`truncate text-sm font-semibold ${entry.isCurrentUser ? "text-primary" : "text-foreground"}`}>
+                          {entryName(entry)}
+                          {entry.isCurrentUser && <span className="ms-2 text-xs font-medium text-primary/70">({copy.you})</span>}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">{copy.sameTenant}</div>
+                      </div>
                     </div>
-                    <div className="text-right text-sm font-mono text-purple-400">{entry.xp.toLocaleString()}</div>
-                    <div className="text-right text-sm">{copy.level}.{entry.level}</div>
-                    <div className={`text-right text-sm font-mono ${entry.cciScore > 65 ? "text-emerald-400" : entry.cciScore > 50 ? "text-orange-400" : "text-red-400"}`}>
-                      {Math.round(entry.cciScore)}
+                    <div className="text-sm text-muted-foreground">{entry.departmentName ?? "-"}</div>
+                    <div className="text-sm tabular-nums text-muted-foreground lg:text-right">
+                      <Flame className="me-1 inline h-3.5 w-3.5 text-amber-400" />
+                      {entry.streakDays ?? 0}d
                     </div>
+                    <div className={`text-sm font-semibold tabular-nums lg:text-right ${entry.cciScore > 65 ? "text-emerald-400" : entry.cciScore > 50 ? "text-amber-400" : "text-red-400"}`}>
+                      {Math.round(entry.cciScore ?? 0)}
+                    </div>
+                    <div className="text-sm font-bold tabular-nums text-primary lg:text-right">{formatNumber(entry.xp)}</div>
                   </motion.div>
                 ))}
+                {tableRows.length === 0 && (
+                  <div className="px-5 py-6 text-center text-sm text-muted-foreground">
+                    {entries.length <= 3 ? copy.sameTenant : copy.noRows}
+                  </div>
+                )}
               </div>
-
-              {leaderboard?.currentUserRank && leaderboard.currentUserRank > 20 && (
-                <div className="border-t border-border px-5 py-3 text-center text-xs text-muted-foreground">
-                  {copy.yourRank}: #{leaderboard.currentUserRank} — {copy.keepGoing}
-                </div>
-              )}
             </div>
-          </motion.div>
+          </>
         )}
-      </AnimatePresence>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="rounded-lg border border-border bg-card/82 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">{copy.yourRank}</h2>
+            <span className="text-xs font-medium text-primary">{copy.sameTenant}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
+              {initials(user?.firstName, user?.lastName)}
+            </div>
+            <div>
+              <div className="text-xl font-bold text-foreground">{currentEntry ? `#${currentEntry.rank}` : leaderboard?.currentUserRank ? `#${leaderboard.currentUserRank}` : "-"}</div>
+              <div className="text-sm text-muted-foreground">{user ? `${user.firstName} ${user.lastName}` : copy.you}</div>
+            </div>
+          </div>
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>{copy.level} {gp?.level ?? 1}</span>
+              <span>{Math.max(0, (gp?.nextLevelXp ?? 200) - (gp?.xp ?? 0))} {copy.xpToNext}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-white/8">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${progressPct}%` }} transition={{ duration: 0.7, ease: "easeOut" }} className="h-full rounded-full bg-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card/82 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">{copy.earnedBadges}</h2>
+            <span className="text-xs font-medium text-primary">{badges?.length ?? 0} {copy.badges}</span>
+          </div>
+          {(badges?.length ?? 0) === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">{copy.noBadges}</div>
+          ) : (
+            <div className="space-y-5">
+              {groupedBadges.map((group) => (
+                <div key={group.category}>
+                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                    {group.category}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.badges.map((badge: any, index: number) => <BadgeTile key={badge.badgeId} badge={badge} index={index} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

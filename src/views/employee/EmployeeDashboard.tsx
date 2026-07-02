@@ -245,7 +245,9 @@ export default function EmployeeDashboard() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               {continueCourse
                 ? `${Math.max(0, 100 - courseProgress)}% left on your current course. Keep your learning momentum moving.`
-                : "Your learning path is ready. Start the recommended course to build your security score."}
+                : recommended.length > 0
+                  ? "Your database-backed learning path is ready. Start the recommended course to build your security score."
+                  : "No active course records were returned from the database for your learning path yet."}
             </p>
           </div>
 
@@ -283,7 +285,7 @@ export default function EmployeeDashboard() {
               <CourseRow course={continueCourse} featured />
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                No active courses yet. Complete the assessment to generate recommendations.
+                No in-progress or recommended course records were returned from the database.
               </div>
             )}
           </Section>
@@ -295,7 +297,7 @@ export default function EmployeeDashboard() {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                You are caught up on current recommendations.
+                No recommended course records were returned from the database.
               </div>
             )}
           </Section>
@@ -321,7 +323,7 @@ export default function EmployeeDashboard() {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                Course completions and earned badges will appear here.
+                No completed course or earned badge records were returned from the database.
               </div>
             )}
           </Section>
@@ -371,7 +373,7 @@ export default function EmployeeDashboard() {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                Complete courses and assessments to earn badges.
+                No earned badge records were returned from the database for this user.
               </div>
             )}
           </Section>
@@ -398,7 +400,7 @@ export default function EmployeeDashboard() {
               ))}
               {(leaderboard?.entries ?? []).length === 0 && (
                 <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                  Leaderboard data will appear after employees earn XP.
+                  No leaderboard rows were returned from the database.
                 </div>
               )}
             </div>

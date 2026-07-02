@@ -583,6 +583,7 @@ export const GetLeaderboardResponse = zod.object({
   "departmentName": zod.string().nullish(),
   "xp": zod.number(),
   "level": zod.number(),
+  "streakDays": zod.number(),
   "cciScore": zod.number(),
   "isCurrentUser": zod.boolean().optional()
 })),
@@ -1609,4 +1610,3 @@ export const GetPredictiveEmployeeResponse = zod.object({
 }),
   "computedAt": zod.string()
 })
-
