@@ -29,6 +29,7 @@ import {
   Settings,
   ShieldAlert,
   Target,
+  Trophy,
   UserCircle,
   Users,
   type LucideIcon,
@@ -39,6 +40,7 @@ import EmployeeDashboard from "./employee/EmployeeDashboard";
 import EmployeeAssessments from "./employee/EmployeeAssessments";
 import EmployeeLearning from "./employee/EmployeeLearning";
 import EmployeeAchievements from "./employee/EmployeeAchievements";
+import EmployeeLeaderboard from "./employee/EmployeeLeaderboard";
 import EmployeePhishing from "./employee/EmployeePhishing";
 import AdminDashboard from "./admin/AdminDashboard";
 import AdminUsers from "./admin/AdminUsers";
@@ -69,6 +71,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "nav.dashboard", icon: LayoutDashboard, key: "dashboard" },
     { label: "nav.myAssessments", icon: ClipboardCheck, key: "assessments" },
     { label: "nav.learning", icon: BookOpen, key: "learning" },
+    { label: "nav.leaderboard", icon: Trophy, key: "leaderboard" },
     { label: "nav.achievements", icon: Award, key: "achievements" },
     { label: "nav.phishingResults", icon: Target, key: "phishing" },
     { label: "nav.profile", icon: UserCircle, key: "profile" },
@@ -507,6 +510,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
     if (activeKey === "dashboard") return <EmployeeDashboard />;
     if (activeKey === "assessments") return <EmployeeAssessments />;
     if (activeKey === "learning") return <EmployeeLearning />;
+    if (activeKey === "leaderboard") return <EmployeeLeaderboard />;
     if (activeKey === "achievements") return <EmployeeAchievements />;
     if (activeKey === "phishing") return <EmployeePhishing />;
   }

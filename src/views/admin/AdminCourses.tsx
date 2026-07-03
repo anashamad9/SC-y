@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses } from "@workspace/api-client-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import ReactMarkdown from "react-markdown";
+import { CourseMarkdown } from "@/components/course-markdown";
 import { CourseProfilePage } from "@/components/course-profile-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -711,8 +711,8 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   </div>
                 )}
                 {form.markdownContent && (
-                  <div className="prose prose-sm mt-3 max-w-none rounded-lg border border-border bg-card p-4 dark:prose-invert">
-                    <ReactMarkdown>{form.markdownContent}</ReactMarkdown>
+                  <div className="mt-3 max-h-80 overflow-auto rounded-lg border border-border bg-card p-4">
+                    <CourseMarkdown content={form.markdownContent} />
                   </div>
                 )}
               </div>
@@ -750,8 +750,8 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                         Notes preview
                       </div>
                       {form.markdownContent ? (
-                        <div className="prose prose-sm max-h-64 max-w-none overflow-auto rounded-lg bg-card p-4 dark:prose-invert">
-                          <ReactMarkdown>{form.markdownContent}</ReactMarkdown>
+                        <div className="max-h-64 overflow-auto rounded-lg bg-card p-4">
+                          <CourseMarkdown content={form.markdownContent} />
                         </div>
                       ) : (
                         <div className="rounded-lg bg-muted/20 p-4 text-sm text-muted-foreground">

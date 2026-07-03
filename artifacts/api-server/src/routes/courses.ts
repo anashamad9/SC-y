@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
+const RECOMMENDED_COURSE_COUNT = 3;
 
 async function getUserProgress(userId: number) {
   return db.select().from(userCourseProgressTable).where(eq(userCourseProgressTable.userId, userId));
@@ -219,19 +220,20 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
   const inProgress = allCourses.filter(c => progressMap.get(c.id)?.status === "in_progress").map(c => buildCourseWithProgress(c, progressMap.get(c.id), lightweightCourse));
   const notStarted = allCourses.filter(c => !progressMap.has(c.id) || progressMap.get(c.id)?.status === "not_started");
 
-  // Recommend videos based on the user's readiness assessment points.
-  let recommended = notStarted.slice(0, 5);
+  // Recommend exactly three courses, prioritizing the user's readiness level.
+  let recommended = notStarted.slice(0, RECOMMENDED_COURSE_COUNT);
   if (profile) {
     const points = profile.securityReadinessScore;
     const readinessLevel = readinessLevelFromPoints(points);
-    const matchingRange = notStarted.filter(c =>
+    const matchingDifficulty = notStarted.filter(c => c.difficulty === readinessLevel);
+    const matchingRange = matchingDifficulty.filter(c =>
       (c.minScore !== null || c.maxScore !== null) &&
       (c.minScore === null || points >= c.minScore) &&
       (c.maxScore === null || points <= c.maxScore)
     );
-    const matchingDifficulty = notStarted.filter(c => c.difficulty === readinessLevel);
-    const unranged = notStarted.filter(c => c.minScore === null && c.maxScore === null);
-    recommended = (matchingRange.length > 0 ? matchingRange : matchingDifficulty.length > 0 ? matchingDifficulty : unranged).slice(0, 5);
+    const primary = matchingRange.length > 0 ? matchingRange : matchingDifficulty;
+    const fallback = notStarted.filter(course => !primary.some(match => match.id === course.id));
+    recommended = [...primary, ...fallback].slice(0, RECOMMENDED_COURSE_COUNT);
   }
 
   const totalXpEarned = progressRecords.reduce((sum, p) => sum + p.xpEarned, 0);

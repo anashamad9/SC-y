@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useGetCourse, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import ReactMarkdown from "react-markdown";
+import { CourseMarkdown } from "@/components/course-markdown";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { API_BASE } from "@/lib/runtime";
@@ -73,13 +73,6 @@ function isDirectVideo(url: string) {
   return /^(data:video|blob:|https?:.*\.(mp4|webm|ogg)(\?.*)?$|\/)/i.test(url);
 }
 
-function isLikelyRtlMarkdown(content?: string | null) {
-  if (!content) return false;
-  const arabicCount = content.match(/[\u0600-\u06FF]/g)?.length ?? 0;
-  const latinCount = content.match(/[A-Za-z]/g)?.length ?? 0;
-  return arabicCount > 0 && arabicCount >= latinCount;
-}
-
 export function CourseProfilePage({
   courseId,
   mode = "learner",
@@ -104,7 +97,6 @@ export function CourseProfilePage({
   const videoUrl = deferredVideoUrl ?? courseRecord?.videoUrl;
   const markdownContent = courseRecord?.markdownContent;
   const markdownUrl = courseRecord?.markdownUrl;
-  const markdownIsRtl = isLikelyRtlMarkdown(markdownContent);
   const canTrackProgress = mode === "learner";
 
   useEffect(() => {
@@ -208,7 +200,7 @@ export function CourseProfilePage({
       <div className="overflow-hidden rounded-2xl border border-border bg-card/85 shadow-2xl shadow-black/20 backdrop-blur-sm">
         <div className="h-1.5 w-full" style={{ backgroundColor: courseRecord.thumbnailColor ?? "#dc143c" }} />
         <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.7fr)] lg:p-7">
-          <section className="space-y-5">
+          <div className="space-y-4 lg:col-span-2">
             <div>
               <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">{copy.courseDetail}</div>
               <h2 className="text-2xl font-bold leading-tight md:text-3xl">{courseRecord.title}</h2>
@@ -223,8 +215,10 @@ export function CourseProfilePage({
               </div>
             </div>
 
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground">{courseRecord.description}</p>
+            <p className="text-sm leading-7 text-muted-foreground">{courseRecord.description}</p>
+          </div>
 
+          <section className="space-y-5">
             {(videoUrl || videoLoading) && (
               <div className="overflow-hidden rounded-xl border border-border bg-background">
                 <div className="aspect-video w-full bg-black">
@@ -253,39 +247,6 @@ export function CourseProfilePage({
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {(markdownContent || markdownUrl) && (
-              <div className="rounded-xl border border-border bg-background/70 p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
-                </div>
-                {markdownContent ? (
-                  <div
-                    dir={markdownIsRtl ? "rtl" : "ltr"}
-                    className={`prose prose-zinc prose-sm mx-auto max-w-3xl text-zinc-900 dark:prose-invert dark:text-zinc-100 prose-headings:text-zinc-950 prose-p:text-zinc-800 prose-li:text-zinc-800 prose-strong:text-zinc-950 dark:prose-headings:text-zinc-50 dark:prose-p:text-zinc-200 dark:prose-li:text-zinc-200 dark:prose-strong:text-zinc-50 ${markdownIsRtl ? "text-right" : "text-left"}`}
-                  >
-                    <ReactMarkdown>{markdownContent}</ReactMarkdown>
-                  </div>
-                ) : markdownUrl ? (
-                  <div className="mx-auto max-w-3xl">
-                    <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                      {copy.openMarkdown}
-                    </a>
-                  </div>
-                ) : null}
-                {canTrackProgress && (
-                  <div className="mx-auto mt-6 flex max-w-3xl justify-center border-t border-border pt-5">
-                    <Button
-                      onClick={completeCourse}
-                      disabled={progressMutation.isPending || currentPct >= 100}
-                      className="min-h-10 bg-primary px-5 text-white hover:bg-primary/85 active:scale-[0.96] transition-transform"
-                    >
-                      {currentPct >= 100 ? copy.courseCompleted : copy.finishCourse}
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
           </section>
@@ -378,6 +339,34 @@ export function CourseProfilePage({
               </div>
             )}
           </aside>
+
+          {(markdownContent || markdownUrl) && (
+            <div className="rounded-xl border border-border bg-background/70 p-5 lg:col-span-2">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
+              </div>
+              {markdownContent ? (
+                <CourseMarkdown content={markdownContent} />
+              ) : markdownUrl ? (
+                <div>
+                  <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                    {copy.openMarkdown}
+                  </a>
+                </div>
+              ) : null}
+              {canTrackProgress && (
+                <div className="mt-6 flex justify-center border-t border-border pt-5">
+                  <Button
+                    onClick={completeCourse}
+                    disabled={progressMutation.isPending || currentPct >= 100}
+                    className="min-h-10 bg-primary px-5 text-white hover:bg-primary/85 active:scale-[0.96] transition-transform"
+                  >
+                    {currentPct >= 100 ? copy.courseCompleted : copy.finishCourse}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

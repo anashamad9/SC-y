@@ -90,11 +90,12 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
     .from(gamificationProfilesTable)
     .innerJoin(usersTable, eq(gamificationProfilesTable.userId, usersTable.id));
 
-  // Compare only members from the authenticated user's tenant.
+  // Compare only employee members from the authenticated user's tenant.
   const sameTenantCondition = eq(usersTable.tenantId, currentUser.tenantId);
+  const employeeOnlyCondition = sql`lower(${usersTable.role}) = 'employee'`;
   const leaderboardCondition = departmentId
-    ? and(sameTenantCondition, eq(usersTable.departmentId, departmentId))
-    : sameTenantCondition;
+    ? and(sameTenantCondition, employeeOnlyCondition, eq(usersTable.departmentId, departmentId))
+    : and(sameTenantCondition, employeeOnlyCondition);
 
   const entries = departmentId
     ? await baseJoin.where(leaderboardCondition).orderBy(desc(gamificationProfilesTable.xp)).limit(limit)
@@ -141,8 +142,8 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
 
     if (userGp) {
       const aboveCondition = departmentId
-        ? and(sameTenantCondition, eq(usersTable.departmentId, departmentId), gt(gamificationProfilesTable.xp, userGp.xp))
-        : and(sameTenantCondition, gt(gamificationProfilesTable.xp, userGp.xp));
+        ? and(sameTenantCondition, employeeOnlyCondition, eq(usersTable.departmentId, departmentId), gt(gamificationProfilesTable.xp, userGp.xp))
+        : and(sameTenantCondition, employeeOnlyCondition, gt(gamificationProfilesTable.xp, userGp.xp));
 
       const [rankRow] = await db
         .select({ cnt: sql<number>`cast(count(*) as int)` })

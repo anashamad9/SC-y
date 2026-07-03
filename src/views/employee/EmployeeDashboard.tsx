@@ -290,10 +290,10 @@ export default function EmployeeDashboard() {
             )}
           </Section>
 
-          <Section title="Recommended courses" action={`${recommended.length} ready`} delay={2}>
+          <Section title="Recommended courses" action={`${Math.min(recommended.length, 3)} ready`} delay={2}>
             {recommended.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                {recommended.slice(0, 4).map((course: any) => <RecommendedCard key={course.id} course={course} />)}
+                {recommended.slice(0, 3).map((course: any) => <RecommendedCard key={course.id} course={course} />)}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
@@ -378,7 +378,7 @@ export default function EmployeeDashboard() {
             )}
           </Section>
 
-          <Section title="Leaderboard" action={rank ? `You #${rank}` : "Top 5"} delay={5}>
+          <Section title="Leader board" action={rank ? `You #${rank}` : "Top 5"} delay={5}>
             <div className="space-y-3">
               {(leaderboard?.entries ?? []).slice(0, 5).map((entry: any) => (
                 <div

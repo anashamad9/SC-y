@@ -126,7 +126,7 @@ export default function ReadinessAssessmentModal() {
                     <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
                   ) : recommendedCourses.length > 0 ? (
                     <div className="space-y-3">
-                      {recommendedCourses.slice(0, 4).map((course: any) => (
+                      {recommendedCourses.slice(0, 3).map((course: any) => (
                         <div key={course.id} className="rounded-xl border border-border bg-card p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
