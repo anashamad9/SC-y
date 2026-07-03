@@ -782,7 +782,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   </div>
                 )}
                 {(form.markdownSections[0]?.content || form.markdownContent) && (
-                  <div className="mt-3 max-h-80 overflow-auto rounded-lg border border-border bg-card p-4">
+                  <div className="mt-3 max-h-80 overflow-auto rounded-lg border border-border bg-card p-4 text-foreground">
                     <CourseMarkdown content={form.markdownSections[0]?.content ?? form.markdownContent} />
                   </div>
                 )}
@@ -827,7 +827,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                             title: form.markdownFileName || "Course notes",
                             content: form.markdownContent,
                           }]) as MarkdownSection[]).map((section, index) => (
-                            <div key={section.id} className="rounded-lg bg-card p-4">
+                            <div key={section.id} className="rounded-lg border border-border bg-card p-4 text-foreground">
                               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                                 <div className="text-xs font-medium text-muted-foreground">Chapter {index + 1}: {section.title || section.fileName}</div>
                                 <Button size="sm" variant="outline" className="h-8" disabled>

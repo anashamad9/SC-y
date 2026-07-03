@@ -1,5 +1,5 @@
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import { AlertTriangle, CheckCircle2, Info, Lightbulb, ShieldAlert, XCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -123,6 +123,62 @@ function toTableRows(value: unknown): Array<Record<string, unknown> | unknown[]>
   return Array.isArray(value) ? value.filter((row) => Array.isArray(row) || (row && typeof row === "object")) as Array<Record<string, unknown> | unknown[]> : [];
 }
 
+const MARKDOWN_COMPONENTS: Components = {
+  h1: ({ children }) => <h1 className="mb-5 mt-7 text-3xl font-bold leading-tight text-foreground">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-4 mt-7 text-2xl font-bold leading-tight text-foreground">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-3 mt-6 text-xl font-semibold leading-tight text-foreground">{children}</h3>,
+  h4: ({ children }) => <h4 className="mb-2 mt-5 text-lg font-semibold text-foreground">{children}</h4>,
+  p: ({ children }) => <p className="my-4 leading-8 text-foreground">{children}</p>,
+  ul: ({ children }) => <ul className="my-4 list-disc space-y-2 ps-6 text-foreground">{children}</ul>,
+  ol: ({ children }) => <ol className="my-4 list-decimal space-y-2 ps-6 text-foreground">{children}</ol>,
+  li: ({ children }) => <li className="leading-8 text-foreground marker:text-foreground/70">{children}</li>,
+  strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+  em: ({ children }) => <em className="text-foreground">{children}</em>,
+  a: ({ children, href }) => (
+    <a href={href} target={href?.startsWith("http") ? "_blank" : undefined} rel={href?.startsWith("http") ? "noreferrer" : undefined} className="font-medium text-primary underline-offset-4 hover:underline">
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="my-5 border-s-4 border-primary/40 bg-muted/40 px-4 py-2 text-foreground">
+      {children}
+    </blockquote>
+  ),
+  code: ({ children }) => (
+    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground">
+      {children}
+    </code>
+  ),
+  pre: ({ children }) => (
+    <pre className="my-5 overflow-x-auto rounded-lg border border-border bg-muted p-4 text-foreground">
+      {children}
+    </pre>
+  ),
+  hr: () => <hr className="my-8 border-border" />,
+  table: ({ children }) => (
+    <div className="my-5 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full border-collapse text-sm text-foreground">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-muted/60 text-foreground">{children}</thead>,
+  th: ({ children }) => <th className="border-b border-border px-4 py-3 text-start font-semibold text-foreground">{children}</th>,
+  td: ({ children }) => <td className="border-b border-border/70 px-4 py-3 text-foreground">{children}</td>,
+};
+
+function MarkdownText({
+  content,
+  className,
+}: {
+  content: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("max-w-none text-foreground", className)}>
+      <ReactMarkdown components={MARKDOWN_COMPONENTS}>{content}</ReactMarkdown>
+    </div>
+  );
+}
+
 export function isLikelyRtlMarkdown(content?: string | null) {
   if (!content) return false;
   const arabicCount = content.match(/[\u0600-\u06FF]/g)?.length ?? 0;
@@ -229,9 +285,7 @@ function GenericMdxBlock({
     <div className="my-5 rounded-xl border border-border bg-card/70 p-4 not-prose">
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{name}</div>
       {content ? (
-        <div className={cn("mt-3", COURSE_MARKDOWN_CLASSNAME)}>
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
+        <MarkdownText content={content} className="mt-3" />
       ) : (
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">
           {visibleAttributes.map(([key, value]) => (
@@ -367,32 +421,12 @@ function SecurityAlertBlock({
     >
       <Icon className="h-4 w-4" />
       <AlertTitle className={isCritical ? "text-red-950 dark:text-red-50" : "text-foreground"}>{title}</AlertTitle>
-      <AlertDescription className={cn(COURSE_MARKDOWN_CLASSNAME, isCritical && "text-red-950 dark:text-red-50 [&_*]:!text-current")}>
-        <ReactMarkdown>{content}</ReactMarkdown>
+      <AlertDescription className={cn("text-foreground", isCritical && "text-red-950 dark:text-red-50 [&_*]:!text-current")}>
+        <MarkdownText content={content} />
       </AlertDescription>
     </Alert>
   );
 }
-
-const COURSE_MARKDOWN_CLASSNAME = cn(
-  "prose prose-sm max-w-none",
-  "text-foreground",
-  "prose-headings:text-foreground prose-headings:font-bold",
-  "prose-p:text-foreground/90 prose-p:leading-7",
-  "prose-li:text-foreground/90 prose-li:marker:text-foreground/70",
-  "prose-strong:text-foreground prose-strong:font-semibold",
-  "prose-em:text-foreground",
-  "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
-  "prose-blockquote:border-primary/40 prose-blockquote:text-foreground/90",
-  "prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-foreground",
-  "prose-pre:border prose-pre:border-border prose-pre:bg-muted prose-pre:text-foreground",
-  "prose-hr:border-border",
-  "prose-th:text-foreground prose-td:text-foreground/90",
-  "[&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground",
-  "[&_p]:text-foreground/90 [&_li]:text-foreground/90 [&_strong]:text-foreground",
-  "[&_em]:text-foreground [&_blockquote]:text-foreground/90 [&_a]:text-primary",
-  "[&_code]:text-foreground [&_pre]:text-foreground [&_th]:text-foreground [&_td]:text-foreground/90",
-);
 
 function ScenarioSimulatorBlock({
   title,
@@ -423,7 +457,7 @@ export function CourseMarkdown({
     <div
       dir={isRtl ? "rtl" : "ltr"}
       className={cn(
-        COURSE_MARKDOWN_CLASSNAME,
+        "max-w-none text-foreground",
         isRtl ? "text-right" : "text-left",
         className,
       )}
@@ -444,7 +478,7 @@ export function CourseMarkdown({
         if (part.type === "generic-mdx") {
           return <GenericMdxBlock key={index} name={part.name} content={part.content} attributes={part.attributes} />;
         }
-        return <ReactMarkdown key={index}>{part.content}</ReactMarkdown>;
+        return <MarkdownText key={index} content={part.content} />;
       })}
     </div>
   );
