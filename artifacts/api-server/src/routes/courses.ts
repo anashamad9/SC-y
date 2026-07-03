@@ -467,9 +467,16 @@ router.post("/courses/video-upload-url", requireAuth, async (req, res): Promise<
   }
 
   const rawSignedUrl = signData.signedUrl ?? signData.signedURL ?? signData.url ?? "";
-  const token = signData.token || (rawSignedUrl ? new URL(rawSignedUrl, SUPABASE_STORAGE_API_BASE).searchParams.get("token") : "");
-  const uploadUrl = rawSignedUrl
-    ? new URL(rawSignedUrl, SUPABASE_STORAGE_API_BASE).toString()
+  // Supabase returns a path relative to /storage/v1 (e.g. "/object/upload/sign/...").
+  // Resolving that with `new URL(relative, base)` drops the "/storage/v1" prefix
+  // because a leading "/" is treated as path-absolute against the base's origin.
+  // Concatenate instead, matching how the official storage-js SDK builds this URL.
+  const resolvedSignedUrl = rawSignedUrl
+    ? (/^https?:\/\//i.test(rawSignedUrl) ? rawSignedUrl : `${SUPABASE_STORAGE_API_URL}${rawSignedUrl.startsWith("/") ? "" : "/"}${rawSignedUrl}`)
+    : "";
+  const token = signData.token || (resolvedSignedUrl ? new URL(resolvedSignedUrl).searchParams.get("token") : "");
+  const uploadUrl = resolvedSignedUrl
+    ? resolvedSignedUrl
     : `${SUPABASE_STORAGE_API_URL}/object/upload/sign/${COURSE_VIDEO_BUCKET}/${encodedPath}?token=${encodeURIComponent(token)}`;
 
   if (!token && !rawSignedUrl) {
