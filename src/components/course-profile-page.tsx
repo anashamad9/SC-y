@@ -14,6 +14,14 @@ const DIFFICULTY_COLOR: Record<string, string> = {
 };
 
 type CourseProfileMode = "learner" | "preview";
+type MarkdownSection = {
+  id: string;
+  title: string;
+  fileName?: string | null;
+  content?: string | null;
+  url?: string | null;
+  sizeBytes?: number | null;
+};
 
 function profileCopy(lang: "en" | "ar") {
   return lang === "ar"
@@ -34,6 +42,9 @@ function profileCopy(lang: "en" | "ar") {
         markComplete: "تحديد الفيديو كمكتمل",
         progressHelp: "يتم تحديث تقدم الدورة ونقاط الخبرة",
         courseCompleted: "اكتملت الدورة",
+        finishPhase: "إنهاء المرحلة",
+        phaseCompleted: "اكتملت المرحلة",
+        phase: "المرحلة",
         earned: "تم كسب",
         continueLearning: "متابعة التعلم",
         startCourse: "ابدأ الدورة",
@@ -59,6 +70,9 @@ function profileCopy(lang: "en" | "ar") {
         markComplete: "Mark video as complete",
         progressHelp: "Updates your course progress and XP",
         courseCompleted: "Course completed",
+        finishPhase: "Finish phase",
+        phaseCompleted: "Phase completed",
+        phase: "Phase",
         earned: "earned",
         continueLearning: "Continue learning",
         startCourse: "Start course",
@@ -93,11 +107,27 @@ export function CourseProfilePage({
 
   const courseRecord = course as any;
   const lessons = courseRecord?.lessons ?? [];
-  const currentPct = localProgress ?? (courseRecord?.progressPct ?? 0);
   const videoUrl = deferredVideoUrl ?? courseRecord?.videoUrl;
   const markdownContent = courseRecord?.markdownContent;
   const markdownUrl = courseRecord?.markdownUrl;
+  const [localCompletedSections, setLocalCompletedSections] = useState<string[] | null>(null);
+  const markdownSections: MarkdownSection[] = courseRecord?.markdownSections?.length
+    ? courseRecord.markdownSections
+    : markdownContent || markdownUrl
+      ? [{
+        id: "section-1",
+        title: courseRecord?.markdownFileName || copy.courseNotes,
+        fileName: courseRecord?.markdownFileName,
+        content: markdownContent,
+        url: markdownUrl,
+        sizeBytes: courseRecord?.markdownSizeBytes,
+      }]
+      : [];
+  const completedMarkdownSections: string[] = localCompletedSections ?? (courseRecord?.completedMarkdownSections ?? []);
+  const sectionProgressPct = markdownSections.length > 0 ? Math.round((completedMarkdownSections.length / markdownSections.length) * 100) : null;
+  const currentPct = localProgress ?? sectionProgressPct ?? (courseRecord?.progressPct ?? 0);
   const canTrackProgress = mode === "learner";
+  const canUseLessonProgress = canTrackProgress && markdownSections.length === 0;
 
   useEffect(() => {
     if (!courseRecord?.id) return;
@@ -141,7 +171,7 @@ export function CourseProfilePage({
   }, [courseRecord?.id, courseRecord?.videoFileName, courseRecord?.videoSizeBytes, courseRecord?.videoUrl]);
 
   function startLesson(lessonIndex: number) {
-    if (!canTrackProgress) return;
+    if (!canTrackProgress || markdownSections.length > 0) return;
 
     const lessonCount = Math.max(lessons.length, 1);
     const pct = Math.round(((lessonIndex + 1) / lessonCount) * 100);
@@ -169,8 +199,27 @@ export function CourseProfilePage({
     );
   }
 
-  function completeCourse() {
-    updateProgress(100, lessons.at(-1)?.id);
+  function completeMarkdownSection(sectionId: string) {
+    if (!canTrackProgress) return;
+
+    const nextCompleted = Array.from(new Set([...completedMarkdownSections, sectionId]));
+    const nextPct = markdownSections.length > 0 ? Math.round((nextCompleted.length / markdownSections.length) * 100) : 100;
+    setLocalCompletedSections(nextCompleted);
+    setLocalProgress(nextPct);
+    progressMutation.mutate(
+      { id: courseId, data: { progressPct: nextPct, completedMarkdownSectionId: sectionId } as any },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}`] });
+          queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/courses/learning-path"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/gamification/me"] });
+          queryClient.invalidateQueries({ queryKey: ["listCourses"] });
+          queryClient.invalidateQueries({ queryKey: ["getLearningPath"] });
+          queryClient.invalidateQueries({ queryKey: ["getMyGamification"] });
+        },
+      },
+    );
   }
 
   if (isLoading) {
@@ -269,7 +318,7 @@ export function CourseProfilePage({
               </div>
             )}
 
-            {canTrackProgress && (
+            {canUseLessonProgress && (
               <div className="space-y-2 rounded-xl border border-border bg-background/60 p-4">
                 <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
                   {lessons.length > 0 ? copy.lessonPlan : copy.videoProgress}
@@ -340,31 +389,44 @@ export function CourseProfilePage({
             )}
           </aside>
 
-          {(markdownContent || markdownUrl) && (
+          {markdownSections.length > 0 && (
             <div className="rounded-xl border border-border bg-background/70 p-5 lg:col-span-2">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
               </div>
-              {markdownContent ? (
-                <CourseMarkdown content={markdownContent} />
-              ) : markdownUrl ? (
-                <div>
-                  <a href={markdownUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                    {copy.openMarkdown}
-                  </a>
-                </div>
-              ) : null}
-              {canTrackProgress && (
-                <div className="mt-6 flex justify-center border-t border-border pt-5">
-                  <Button
-                    onClick={completeCourse}
-                    disabled={progressMutation.isPending || currentPct >= 100}
-                    className="min-h-10 bg-primary px-5 text-white hover:bg-primary/85 active:scale-[0.96] transition-transform"
-                  >
-                    {currentPct >= 100 ? copy.courseCompleted : copy.finishCourse}
-                  </Button>
-                </div>
-              )}
+              <div className="space-y-4">
+                {markdownSections.map((section, index) => {
+                  const isSectionDone = completedMarkdownSections.includes(section.id) || currentPct >= 100;
+                  return (
+                    <section key={section.id} className="rounded-lg border border-border bg-card/55 p-4">
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{copy.phase} {index + 1}</div>
+                          <h3 className="mt-1 text-base font-semibold">{section.title || section.fileName || `${copy.courseNotes} ${index + 1}`}</h3>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={isSectionDone ? "outline" : "default"}
+                          onClick={() => completeMarkdownSection(section.id)}
+                          disabled={!canTrackProgress || progressMutation.isPending || isSectionDone}
+                          className={isSectionDone ? "border-emerald-500/30 text-emerald-400" : "bg-primary text-white hover:bg-primary/85"}
+                        >
+                          {isSectionDone ? copy.phaseCompleted : copy.finishPhase}
+                        </Button>
+                      </div>
+                      {section.content ? (
+                        <CourseMarkdown content={section.content} />
+                      ) : section.url ? (
+                        <div>
+                          <a href={section.url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                            {copy.openMarkdown}
+                          </a>
+                        </div>
+                      ) : null}
+                    </section>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

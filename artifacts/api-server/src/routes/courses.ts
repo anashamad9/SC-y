@@ -7,6 +7,16 @@ const router: IRouter = Router();
 const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
 const RECOMMENDED_COURSE_COUNT = 3;
 
+type MarkdownSection = {
+  id: string;
+  title: string;
+  fileName?: string | null;
+  content?: string | null;
+  url?: string | null;
+  sizeBytes?: number | null;
+  uploadedAt?: string | null;
+};
+
 async function getUserProgress(userId: number) {
   return db.select().from(userCourseProgressTable).where(eq(userCourseProgressTable.userId, userId));
 }
@@ -21,6 +31,45 @@ function normalizeOptionalNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function normalizeMarkdownSections(value: unknown, existing?: MarkdownSection[] | null): MarkdownSection[] {
+  const source = Array.isArray(value) ? value : existing ?? [];
+  return source
+    .map((section, index): MarkdownSection | null => {
+      if (!section || typeof section !== "object") return null;
+      const item = section as Record<string, unknown>;
+      const fileName = normalizeOptionalString(item.fileName);
+      const content = normalizeOptionalString(item.content);
+      const url = normalizeOptionalString(item.url);
+      const title = normalizeOptionalString(item.title) ?? fileName ?? `Section ${index + 1}`;
+      if (!fileName && !content && !url) return null;
+      return {
+        id: normalizeOptionalString(item.id) ?? `section-${index + 1}`,
+        title,
+        fileName,
+        content,
+        url,
+        sizeBytes: normalizeOptionalNumber(item.sizeBytes),
+        uploadedAt: normalizeOptionalString(item.uploadedAt),
+      };
+    })
+    .filter((section): section is MarkdownSection => Boolean(section));
+}
+
+function getCourseMarkdownSections(course: typeof coursesTable.$inferSelect): MarkdownSection[] {
+  const stored = normalizeMarkdownSections(course.markdownSections);
+  if (stored.length > 0) return stored;
+  if (!course.markdownFileName && !course.markdownContent && !course.markdownUrl) return [];
+  return [{
+    id: "section-1",
+    title: course.markdownFileName ?? "Course notes",
+    fileName: course.markdownFileName,
+    content: course.markdownContent,
+    url: course.markdownUrl,
+    sizeBytes: course.markdownSizeBytes,
+    uploadedAt: course.markdownUploadedAt?.toISOString() ?? null,
+  }];
+}
+
 function buildCourseWritePayload(
   body: Record<string, unknown>,
   existing?: typeof coursesTable.$inferSelect,
@@ -32,6 +81,7 @@ function buildCourseWritePayload(
   const markdownContent = normalizeOptionalString(body.markdownContent);
   const markdownUrl = normalizeOptionalString(body.markdownUrl);
   const markdownSizeBytes = normalizeOptionalNumber(body.markdownSizeBytes);
+  const markdownSections = normalizeMarkdownSections(body.markdownSections, existing?.markdownSections as MarkdownSection[] | undefined);
   const videoTouched =
     videoFileName !== (existing?.videoFileName ?? null) ||
     videoMimeType !== (existing?.videoMimeType ?? null) ||
@@ -57,6 +107,7 @@ function buildCourseWritePayload(
     markdownFileName,
     markdownContent,
     markdownSizeBytes,
+    markdownSections,
     markdownUploadedAt: markdownTouched && (markdownFileName || markdownContent || markdownUrl || markdownSizeBytes) ? new Date() : (existing?.markdownUploadedAt ?? null),
     minScore: normalizeOptionalNumber(body.minScore),
     maxScore: normalizeOptionalNumber(body.maxScore),
@@ -79,6 +130,11 @@ function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert
   if (payload.markdownFileName && !isSupportedMarkdownFile(payload.markdownFileName)) {
     return "Only Markdown or MDX files ending in .md or .mdx are supported.";
   }
+  for (const section of normalizeMarkdownSections(payload.markdownSections)) {
+    if (section.fileName && !isSupportedMarkdownFile(section.fileName)) {
+      return "Only Markdown or MDX files ending in .md or .mdx are supported.";
+    }
+  }
   return null;
 }
 
@@ -88,6 +144,8 @@ function buildCourseWithProgress(
   options: { includeVideoUrl?: boolean } = {},
 ) {
   const { includeVideoUrl = true } = options;
+  const markdownSections = getCourseMarkdownSections(course);
+  const completedMarkdownSections = Array.isArray(progress?.completedMarkdownSections) ? progress.completedMarkdownSections : [];
   return {
     id: course.id,
     moduleId: course.moduleId,
@@ -104,6 +162,8 @@ function buildCourseWithProgress(
     markdownContent: course.markdownContent,
     markdownSizeBytes: course.markdownSizeBytes,
     markdownUploadedAt: course.markdownUploadedAt?.toISOString() ?? null,
+    markdownSections,
+    completedMarkdownSections,
     minScore: course.minScore,
     maxScore: course.maxScore,
     thumbnailColor: course.thumbnailColor,
@@ -308,16 +368,24 @@ router.get("/courses/:id/video", requireAuth, async (req, res): Promise<void> =>
 router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
   const courseId = Number(req.params.id);
-  const { progressPct, lastLessonId } = req.body as { progressPct: number; lastLessonId?: number };
+  const { progressPct, lastLessonId, completedMarkdownSectionId } = req.body as { progressPct?: number; lastLessonId?: number; completedMarkdownSectionId?: string };
 
   const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId));
   if (!course) { res.status(404).json({ message: "Not found" }); return; }
 
-  const clampedPct = Math.min(100, Math.max(0, progressPct));
+  const markdownSections = getCourseMarkdownSections(course);
+  const [existing] = await db.select().from(userCourseProgressTable).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId)));
+  const completedSections = new Set(Array.isArray(existing?.completedMarkdownSections) ? existing.completedMarkdownSections : []);
+  if (completedMarkdownSectionId && markdownSections.some((section) => section.id === completedMarkdownSectionId)) {
+    completedSections.add(completedMarkdownSectionId);
+  }
+  const sectionProgressPct = markdownSections.length > 0
+    ? Math.round((completedSections.size / markdownSections.length) * 100)
+    : null;
+  const requestedPct = typeof progressPct === "number" ? progressPct : (existing?.progressPct ?? 0);
+  const clampedPct = Math.min(100, Math.max(0, sectionProgressPct ?? requestedPct));
   const isCompleted = clampedPct >= 100;
   const xpEarned = isCompleted ? course.xpReward : Math.round(course.xpReward * clampedPct / 100);
-
-  const [existing] = await db.select().from(userCourseProgressTable).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId)));
 
   let record;
   if (existing) {
@@ -326,6 +394,7 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
       status: isCompleted ? "completed" : "in_progress",
       xpEarned,
       lastLessonId: lastLessonId ?? existing.lastLessonId,
+      completedMarkdownSections: Array.from(completedSections),
       completedAt: isCompleted ? (existing.completedAt ?? new Date()) : null,
     }).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId))).returning();
   } else {
@@ -336,6 +405,7 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
       status: isCompleted ? "completed" : (clampedPct > 0 ? "in_progress" : "not_started"),
       xpEarned,
       lastLessonId: lastLessonId ?? null,
+      completedMarkdownSections: Array.from(completedSections),
       startedAt: new Date(),
       completedAt: isCompleted ? new Date() : null,
     }).returning();
@@ -355,6 +425,7 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
     status: record.status,
     progressPct: record.progressPct,
     xpEarned: record.xpEarned,
+    completedMarkdownSections: record.completedMarkdownSections,
     completedAt: record.completedAt?.toISOString() ?? null,
   });
 });

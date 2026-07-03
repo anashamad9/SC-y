@@ -209,8 +209,25 @@ export interface CourseWithProgress {
   status?: string;
   progressPct?: number;
   xpEarned?: number;
+  markdownSections?: MarkdownSection[];
+  completedMarkdownSections?: string[];
   /** @nullable */
   completedAt?: string | null;
+}
+
+export interface MarkdownSection {
+  id: string;
+  title: string;
+  /** @nullable */
+  fileName?: string | null;
+  /** @nullable */
+  content?: string | null;
+  /** @nullable */
+  url?: string | null;
+  /** @nullable */
+  sizeBytes?: number | null;
+  /** @nullable */
+  uploadedAt?: string | null;
 }
 
 export interface Lesson {
@@ -235,6 +252,8 @@ export interface CourseDetail {
   lessons: Lesson[];
   status?: string;
   progressPct?: number;
+  markdownSections?: MarkdownSection[];
+  completedMarkdownSections?: string[];
 }
 
 export interface CourseProgress {
@@ -242,6 +261,7 @@ export interface CourseProgress {
   status: string;
   progressPct: number;
   xpEarned: number;
+  completedMarkdownSections?: string[];
   /** @nullable */
   completedAt?: string | null;
 }
@@ -249,6 +269,7 @@ export interface CourseProgress {
 export interface CourseProgressUpdate {
   progressPct: number;
   lastLessonId?: number;
+  completedMarkdownSectionId?: string;
 }
 
 export interface LearningPath {

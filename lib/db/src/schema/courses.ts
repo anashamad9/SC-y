@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, real, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real, bigint, jsonb } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const courseModulesTable = pgTable("course_modules", {
@@ -27,6 +27,15 @@ export const coursesTable = pgTable("courses", {
   markdownContent: text("markdown_content"),
   markdownSizeBytes: bigint("markdown_size_bytes", { mode: "number" }),
   markdownUploadedAt: timestamp("markdown_uploaded_at", { withTimezone: true }),
+  markdownSections: jsonb("markdown_sections").$type<Array<{
+    id: string;
+    title: string;
+    fileName?: string | null;
+    content?: string | null;
+    url?: string | null;
+    sizeBytes?: number | null;
+    uploadedAt?: string | null;
+  }>>().notNull().default([]),
   minScore: integer("min_score"),
   maxScore: integer("max_score"),
   thumbnailColor: text("thumbnail_color").notNull().default("#dc143c"),
@@ -57,6 +66,7 @@ export const userCourseProgressTable = pgTable("user_course_progress", {
   progressPct: real("progress_pct").notNull().default(0),
   xpEarned: integer("xp_earned").notNull().default(0),
   lastLessonId: integer("last_lesson_id").references(() => lessonsTable.id, { onDelete: "set null" }),
+  completedMarkdownSections: jsonb("completed_markdown_sections").$type<string[]>().notNull().default([]),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

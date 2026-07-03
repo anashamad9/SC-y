@@ -47,6 +47,15 @@ const EDITOR_STEPS = [
 const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
 const MAX_INLINE_VIDEO_BYTES = 25 * 1024 * 1024;
 type EditorStep = (typeof EDITOR_STEPS)[number]["key"];
+type MarkdownSection = {
+  id: string;
+  title: string;
+  fileName?: string | null;
+  content?: string | null;
+  url?: string | null;
+  sizeBytes?: number | null;
+  uploadedAt?: string | null;
+};
 
 async function apiFetch(path: string, opts?: RequestInit) {
   const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
@@ -79,6 +88,7 @@ interface CourseForm {
   markdownFileName: string;
   markdownContent: string;
   markdownSizeBytes: number | "";
+  markdownSections: MarkdownSection[];
   minScore: number | "";
   maxScore: number | "";
   durationMinutes: number;
@@ -101,6 +111,7 @@ const DEFAULT_FORM: CourseForm = {
   markdownFileName: "",
   markdownContent: "",
   markdownSizeBytes: "",
+  markdownSections: [],
   minScore: "",
   maxScore: "",
   durationMinutes: 30,
@@ -127,6 +138,10 @@ function isDirectVideo(url: string) {
 
 function isSupportedMarkdownFile(fileName: string) {
   return /\.(md|mdx)$/i.test(fileName);
+}
+
+function makeMarkdownSectionId(fileName: string) {
+  return `${fileName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export default function AdminCourses({ canManage = false }: { canManage?: boolean }) {
@@ -271,6 +286,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       markdownFileName: course.markdownFileName ?? "",
       markdownContent: course.markdownContent ?? "",
       markdownSizeBytes: course.markdownSizeBytes ?? "",
+      markdownSections: course.markdownSections ?? [],
       minScore: course.minScore ?? "",
       maxScore: course.maxScore ?? "",
       durationMinutes: course.durationMinutes,
@@ -330,26 +346,52 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     setVideoMessage("Video metadata captured. Paste a hosted or public video URL so learners can play it after saving.");
   }
 
-  function handleMarkdownFile(file?: File) {
+  function handleMarkdownFiles(fileList?: FileList | null) {
     setMarkdownMessage(null);
-    if (!file) return;
-    if (!isSupportedMarkdownFile(file.name)) {
+    const files = Array.from(fileList ?? []);
+    if (files.length === 0) return;
+    const unsupported = files.find((file) => !isSupportedMarkdownFile(file.name));
+    if (unsupported) {
       setMarkdownMessage("Only Markdown or MDX files ending in .md or .mdx are supported.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    Promise.all(files.map((file) => new Promise<MarkdownSection>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        id: makeMarkdownSectionId(file.name),
+        title: file.name.replace(/\.(md|mdx)$/i, "").replace(/[-_]+/g, " "),
+        fileName: file.name,
+        content: String(reader.result ?? ""),
+        sizeBytes: file.size,
+        uploadedAt: new Date().toISOString(),
+      });
+      reader.onerror = () => reject(new Error("Could not read the Markdown file."));
+      reader.readAsText(file);
+    }))).then((sections) => {
       setForm((current) => ({
         ...current,
-        markdownFileName: file.name,
-        markdownContent: String(reader.result ?? ""),
-        markdownSizeBytes: file.size,
+        markdownFileName: sections[0]?.fileName ?? current.markdownFileName,
+        markdownContent: sections[0]?.content ?? current.markdownContent,
+        markdownSizeBytes: sections[0]?.sizeBytes ?? current.markdownSizeBytes,
+        markdownSections: [...current.markdownSections, ...sections],
       }));
-      setMarkdownMessage("Markdown/MDX file loaded and ready to save.");
-    };
-    reader.onerror = () => setMarkdownMessage("Could not read the Markdown file.");
-    reader.readAsText(file);
+      setMarkdownMessage(`${sections.length} Markdown/MDX section${sections.length === 1 ? "" : "s"} loaded and ready to save.`);
+    }).catch((error: Error) => setMarkdownMessage(error.message));
+  }
+
+  function removeMarkdownSection(sectionId: string) {
+    setForm((current) => {
+      const nextSections = current.markdownSections.filter((section) => section.id !== sectionId);
+      const first = nextSections[0];
+      return {
+        ...current,
+        markdownSections: nextSections,
+        markdownFileName: first?.fileName ?? "",
+        markdownContent: first?.content ?? "",
+        markdownSizeBytes: first?.sizeBytes ?? "",
+      };
+    });
   }
 
   function handleSubmit() {
@@ -382,7 +424,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const isLastStep = editorStepIndex === EDITOR_STEPS.length - 1;
   const readinessRange = `${form.minScore || "Any"} - ${form.maxScore || "Any"}`;
   const hasVideo = Boolean(form.videoUrl || form.videoFileName || form.videoSizeBytes);
-  const hasMarkdown = Boolean(form.markdownUrl || form.markdownFileName || form.markdownContent);
+  const hasMarkdown = Boolean(form.markdownUrl || form.markdownFileName || form.markdownContent || form.markdownSections.length > 0);
   const moduleList = modules as any[];
   const coursesByModule = moduleList
   .filter((module) => activeModuleId === "all" || activeModuleId === module.id)
@@ -701,18 +743,27 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                     placeholder="Optional public URL for the Markdown or MDX file"
                     className="bg-muted/30"
                   />
-                  <Input type="file" accept=".md,.mdx,text/markdown,text/mdx,text/plain" onChange={(event) => handleMarkdownFile(event.target.files?.[0])} className="bg-muted/30" />
+                  <Input type="file" multiple accept=".md,.mdx,text/markdown,text/mdx,text/plain" onChange={(event) => handleMarkdownFiles(event.target.files)} className="bg-muted/30" />
                 </div>
                 {markdownMessage && <div className="mt-2 text-xs text-muted-foreground">{markdownMessage}</div>}
-                {(form.markdownFileName || form.markdownSizeBytes) && (
-                  <div className="mt-3 grid gap-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground sm:grid-cols-2">
-                    <div>File name: <span className="text-foreground">{form.markdownFileName || "Not provided"}</span></div>
-                    <div>Size: <span className="text-foreground">{formatBytes(typeof form.markdownSizeBytes === "number" ? form.markdownSizeBytes : null)}</span></div>
+                {form.markdownSections.length > 0 && (
+                  <div className="mt-3 space-y-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+                    {form.markdownSections.map((section, index) => (
+                      <div key={section.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/20 px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-foreground">Phase {index + 1}: {section.title || section.fileName}</div>
+                          <div>{section.fileName || "URL section"} · {formatBytes(section.sizeBytes ?? null)}</div>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => removeMarkdownSection(section.id)} className="h-7 px-2 text-red-400 hover:bg-red-500/10 hover:text-red-300">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
-                {form.markdownContent && (
+                {(form.markdownSections[0]?.content || form.markdownContent) && (
                   <div className="mt-3 max-h-80 overflow-auto rounded-lg border border-border bg-card p-4">
-                    <CourseMarkdown content={form.markdownContent} />
+                    <CourseMarkdown content={form.markdownSections[0]?.content ?? form.markdownContent} />
                   </div>
                 )}
               </div>
@@ -749,9 +800,31 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                         <FileText className="h-4 w-4 text-primary" />
                         Notes preview
                       </div>
-                      {form.markdownContent ? (
-                        <div className="max-h-64 overflow-auto rounded-lg bg-card p-4">
-                          <CourseMarkdown content={form.markdownContent} />
+                      {form.markdownSections.length > 0 || form.markdownContent ? (
+                        <div className="space-y-3">
+                          {((form.markdownSections.length > 0 ? form.markdownSections : [{
+                            id: "legacy-section",
+                            title: form.markdownFileName || "Course notes",
+                            content: form.markdownContent,
+                          }]) as MarkdownSection[]).map((section, index) => (
+                            <div key={section.id} className="rounded-lg bg-card p-4">
+                              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-xs font-medium text-muted-foreground">Phase {index + 1}: {section.title || section.fileName}</div>
+                                <Button size="sm" variant="outline" className="h-8" disabled>
+                                  Finish phase
+                                </Button>
+                              </div>
+                              {section.content ? (
+                                <div className="max-h-64 overflow-auto">
+                                  <CourseMarkdown content={section.content} />
+                                </div>
+                              ) : section.url ? (
+                                <a href={section.url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                                  Open Markdown file
+                                </a>
+                              ) : null}
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <div className="rounded-lg bg-muted/20 p-4 text-sm text-muted-foreground">
@@ -974,7 +1047,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
 
                           <div className="space-y-1 text-xs text-muted-foreground">
                             <div>Video: {currentCourse.videoFileName || (currentCourse.videoUrl ? "Attached" : "Not set")}</div>
-                            <div>Markdown: {currentCourse.markdownFileName || "Not set"}</div>
+                            <div>Markdown: {currentCourse.markdownSections?.length ? `${currentCourse.markdownSections.length} sections` : (currentCourse.markdownFileName || "Not set")}</div>
                             {(currentCourse.minScore !== null || currentCourse.maxScore !== null) && (
                               <div>
                                 Range: {currentCourse.minScore ?? "Any"} to {currentCourse.maxScore ?? "Any"}

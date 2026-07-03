@@ -43,6 +43,6 @@ begin
   ) then
     alter table courses
       add constraint courses_markdown_file_name_md
-      check (markdown_file_name is null or lower(markdown_file_name) like '%.md');
+      check (markdown_file_name is null or lower(markdown_file_name) ~ '\.mdx?$');
   end if;
 end $$;
