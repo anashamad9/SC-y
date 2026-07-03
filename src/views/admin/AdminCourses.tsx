@@ -45,7 +45,8 @@ const EDITOR_STEPS = [
   { key: "preview", label: "Preview", icon: Eye },
 ] as const;
 const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
-const MAX_INLINE_VIDEO_BYTES = 75 * 1024 * 1024;
+const MAX_INLINE_VIDEO_BYTES = 3 * 1024 * 1024;
+const API_REQUEST_TIMEOUT_MS = 45_000;
 type EditorStep = (typeof EDITOR_STEPS)[number]["key"];
 type MarkdownSection = {
   id: string;
@@ -58,7 +59,19 @@ type MarkdownSection = {
 };
 
 async function apiFetch(path: string, opts?: RequestInit) {
-  const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts, signal: opts?.signal ?? controller.signal });
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error("Upload timed out. Use a hosted video URL or choose a smaller video.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
   const text = await response.text();
   let data: any = {};
   try {
@@ -331,6 +344,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       videoFileName: file.name,
       videoMimeType: file.type,
       videoSizeBytes: file.size,
+      videoUrl: current.videoUrl.startsWith("data:video") ? "" : current.videoUrl,
     }));
 
     if (file.size <= MAX_INLINE_VIDEO_BYTES) {
@@ -344,7 +358,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       return;
     }
 
-    setVideoMessage("Video metadata captured. Files larger than 75MB need a hosted or public video URL for playback after saving.");
+    setVideoMessage("Video preview is ready. Files larger than 3MB need a hosted or public video URL before saving.");
   }
 
   function handleMarkdownFiles(fileList?: FileList | null) {
@@ -425,6 +439,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const isLastStep = editorStepIndex === EDITOR_STEPS.length - 1;
   const readinessRange = `${form.minScore || "Any"} - ${form.maxScore || "Any"}`;
   const hasVideo = Boolean(form.videoUrl || form.videoFileName || form.videoSizeBytes);
+  const videoNeedsUrl = Boolean((form.videoFileName || form.videoSizeBytes) && !form.videoUrl.trim());
   const hasMarkdown = Boolean(form.markdownUrl || form.markdownFileName || form.markdownContent || form.markdownSections.length > 0);
   const moduleList = modules as any[];
   const coursesByModule = moduleList
@@ -708,7 +723,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   <Input type="file" accept="video/*" onChange={(event) => handleVideoFile(event.target.files?.[0])} className="bg-muted/30" />
                 </div>
                 <div className="mt-2 text-[11px] text-muted-foreground">
-                  Videos can be selected up to 2GB. Files up to 75MB are embedded directly. Larger files need a hosted URL for playback after save.
+                  Videos can be selected up to 2GB. Files up to 3MB are embedded directly. Larger files need a hosted URL for playback after save.
                 </div>
                 {videoMessage && <div className="mt-2 text-xs text-muted-foreground">{videoMessage}</div>}
                 {(form.videoFileName || form.videoSizeBytes) && (
@@ -802,7 +817,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                           { label: "Title", value: form.title.trim() || "Missing", ready: Boolean(form.title.trim()) },
                           { label: "Module", value: moduleList.find((module) => module.id === form.moduleId)?.title ?? "Missing", ready: Boolean(form.moduleId) },
                           { label: "Category", value: form.category.replace(/_/g, " "), ready: Boolean(form.category) },
-                          { label: "Video", value: hasVideo ? "Attached" : "Not attached", ready: hasVideo },
+                          { label: "Video", value: videoNeedsUrl ? "Needs hosted URL" : hasVideo ? "Attached" : "Not attached", ready: hasVideo && !videoNeedsUrl },
                           { label: "Markdown notes", value: hasMarkdown ? "Attached" : "Optional", ready: true },
                           { label: "Readiness range", value: readinessRange, ready: true },
                           { label: "Reward", value: `${form.xpReward} XP`, ready: form.xpReward > 0 },
@@ -936,7 +951,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button size="sm" onClick={handleSubmit} disabled={!form.title.trim() || isPending} className="gap-2 active:scale-[0.96] transition-transform">
+                  <Button size="sm" onClick={handleSubmit} disabled={!form.title.trim() || videoNeedsUrl || isPending} className="gap-2 active:scale-[0.96] transition-transform">
                     <CheckCircle2 className="h-4 w-4" />
                     {isPending ? "Saving..." : editingId ? "Update course" : "Create course"}
                   </Button>
