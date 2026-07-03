@@ -144,6 +144,16 @@ function makeMarkdownSectionId(fileName: string) {
   return `${fileName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function titleFromMarkdownUrl(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    const fileName = pathname.split("/").filter(Boolean).at(-1) ?? url;
+    return fileName.replace(/\.(md|mdx)$/i, "").replace(/[-_]+/g, " ");
+  } catch {
+    return url.split("/").filter(Boolean).at(-1)?.replace(/\.(md|mdx)$/i, "").replace(/[-_]+/g, " ") || "Linked MDX section";
+  }
+}
+
 export default function AdminCourses({ canManage = false }: { canManage?: boolean }) {
   const [showModal, setShowModal] = useState(false);
   const [moduleFormOpen, setModuleFormOpen] = useState(false);
@@ -378,6 +388,26 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       }));
       setMarkdownMessage(`${sections.length} Markdown/MDX section${sections.length === 1 ? "" : "s"} loaded and ready to save.`);
     }).catch((error: Error) => setMarkdownMessage(error.message));
+  }
+
+  function addMarkdownUrlSection() {
+    const url = form.markdownUrl.trim();
+    if (!url) return;
+
+    setForm((current) => ({
+      ...current,
+      markdownUrl: "",
+      markdownSections: [
+        ...current.markdownSections,
+        {
+          id: makeMarkdownSectionId(url),
+          title: titleFromMarkdownUrl(url),
+          url,
+          uploadedAt: new Date().toISOString(),
+        },
+      ],
+    }));
+    setMarkdownMessage("Markdown/MDX URL added as a new phase.");
   }
 
   function removeMarkdownSection(sectionId: string) {
@@ -735,15 +765,36 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
               </div>
 
               <div className="sm:col-span-2 rounded-xl border border-border bg-background/60 p-4">
-                <div className="mb-3 text-sm font-medium">Markdown / MDX notes</div>
-                <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-medium">Markdown / MDX notes</div>
+                  <div className="text-xs text-muted-foreground">
+                    {form.markdownSections.length} phase{form.markdownSections.length === 1 ? "" : "s"} attached
+                  </div>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-[1fr_auto_260px]">
                   <Input
                     value={form.markdownUrl}
                     onChange={(event) => setForm((current) => ({ ...current, markdownUrl: event.target.value }))}
-                    placeholder="Optional public URL for the Markdown or MDX file"
+                    placeholder="Paste a public Markdown or MDX URL"
                     className="bg-muted/30"
                   />
-                  <Input type="file" multiple accept=".md,.mdx,text/markdown,text/mdx,text/plain" onChange={(event) => handleMarkdownFiles(event.target.files)} className="bg-muted/30" />
+                  <Button type="button" variant="outline" onClick={addMarkdownUrlSection} disabled={!form.markdownUrl.trim()} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add URL phase
+                  </Button>
+                  <Input
+                    type="file"
+                    multiple
+                    accept=".md,.mdx,text/markdown,text/mdx,text/plain"
+                    onChange={(event) => {
+                      handleMarkdownFiles(event.target.files);
+                      event.currentTarget.value = "";
+                    }}
+                    className="bg-muted/30"
+                  />
+                </div>
+                <div className="mt-2 text-[11px] text-muted-foreground">
+                  Select multiple files at once, or choose files again to append more phases.
                 </div>
                 {markdownMessage && <div className="mt-2 text-xs text-muted-foreground">{markdownMessage}</div>}
                 {form.markdownSections.length > 0 && (

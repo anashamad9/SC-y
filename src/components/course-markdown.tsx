@@ -1,15 +1,27 @@
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { AlertTriangle, Info, Lightbulb, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Lightbulb, ShieldAlert, XCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type CourseMarkdownPart =
   | { type: "markdown"; content: string }
   | { type: "security-alert"; alertType: string; content: string }
-  | { type: "scenario-simulator"; title: string; scenarioId: string };
+  | { type: "scenario-simulator"; title: string; scenarioId: string }
+  | { type: "interactive-table"; columns: string[]; data: Array<Record<string, unknown> | unknown[]> }
+  | { type: "interactive-quiz"; question: string; options: string[]; correctAnswer: string; explanation: string }
+  | { type: "generic-mdx"; name: string; content: string; attributes: Record<string, string> };
 
 const CUSTOM_MDX_TAG_RE =
-  /<SecurityAlert\b([^>]*)>([\s\S]*?)<\/SecurityAlert>|<ScenarioSimulator\b([^>]*)\/>/gi;
+  /<([A-Za-z][\w]*)\b([\s\S]*?)(?:\/>|>([\s\S]*?)<\/\1>)/gi;
+
+const SUPPORTED_MDX_COMPONENTS = new Set([
+  "SecurityAlert",
+  "ScenarioSimulator",
+  "InteractiveTable",
+  "InteractiveQuiz",
+]);
 
 const METADATA_KEYS = new Set([
   "title",
@@ -23,13 +35,92 @@ const METADATA_KEYS = new Set([
   "markdownUrl",
 ]);
 
-function parseAttributes(input = "") {
+function splitAttributes(input = "") {
   const attributes: Record<string, string> = {};
-  input.replace(/([A-Za-z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g, (_, key, doubleQuoted, singleQuoted) => {
-    attributes[key] = doubleQuoted ?? singleQuoted ?? "";
-    return "";
-  });
+  let index = 0;
+
+  while (index < input.length) {
+    while (/\s/.test(input[index] ?? "")) index += 1;
+    const keyMatch = input.slice(index).match(/^([A-Za-z][\w-]*)/);
+    if (!keyMatch) break;
+
+    const key = keyMatch[1];
+    index += key.length;
+    while (/\s/.test(input[index] ?? "")) index += 1;
+
+    if (input[index] !== "=") {
+      attributes[key] = "true";
+      continue;
+    }
+
+    index += 1;
+    while (/\s/.test(input[index] ?? "")) index += 1;
+
+    const quote = input[index];
+    if (quote === '"' || quote === "'") {
+      index += 1;
+      const start = index;
+      while (index < input.length && input[index] !== quote) index += 1;
+      attributes[key] = input.slice(start, index);
+      index += 1;
+      continue;
+    }
+
+    if (input[index] === "{") {
+      let depth = 0;
+      let inString: string | null = null;
+      const start = index;
+      while (index < input.length) {
+        const char = input[index];
+        const prev = input[index - 1];
+        if (inString) {
+          if (char === inString && prev !== "\\") inString = null;
+        } else if (char === '"' || char === "'") {
+          inString = char;
+        } else if (char === "{") {
+          depth += 1;
+        } else if (char === "}") {
+          depth -= 1;
+          if (depth === 0) {
+            index += 1;
+            break;
+          }
+        }
+        index += 1;
+      }
+      attributes[key] = input.slice(start, index);
+      continue;
+    }
+
+    const start = index;
+    while (index < input.length && !/\s/.test(input[index])) index += 1;
+    attributes[key] = input.slice(start, index);
+  }
+
   return attributes;
+}
+
+function parseAttributeValue(value: string | undefined) {
+  if (value === undefined) return undefined;
+  const trimmed = value.trim();
+  const unwrapped = trimmed.startsWith("{") && trimmed.endsWith("}") ? trimmed.slice(1, -1).trim() : trimmed;
+  if (!unwrapped) return "";
+  if ((unwrapped.startsWith("[") && unwrapped.endsWith("]")) || (unwrapped.startsWith("{") && unwrapped.endsWith("}"))) {
+    try {
+      return JSON.parse(unwrapped);
+    } catch {
+      return unwrapped;
+    }
+  }
+  return unwrapped;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
+
+function toTableRows(value: unknown): Array<Record<string, unknown> | unknown[]> {
+  return Array.isArray(value) ? value.filter((row) => Array.isArray(row) || (row && typeof row === "object")) as Array<Record<string, unknown> | unknown[]> : [];
 }
 
 export function isLikelyRtlMarkdown(content?: string | null) {
@@ -68,23 +159,46 @@ function splitCourseMarkdown(content: string): CourseMarkdownPart[] {
   const cleanContent = stripCourseMarkdownMetadata(content);
 
   for (const match of cleanContent.matchAll(CUSTOM_MDX_TAG_RE)) {
+    const componentName = match[1];
+    if (!SUPPORTED_MDX_COMPONENTS.has(componentName) && !/^[A-Z]/.test(componentName)) continue;
+
     const index = match.index ?? 0;
     const markdownBefore = cleanContent.slice(lastIndex, index);
     if (markdownBefore.trim()) parts.push({ type: "markdown", content: markdownBefore });
 
-    if (match[0].startsWith("<SecurityAlert")) {
-      const attributes = parseAttributes(match[1]);
+    const attributes = splitAttributes(match[2]);
+    if (componentName === "SecurityAlert") {
       parts.push({
         type: "security-alert",
         alertType: attributes.type || "info",
-        content: match[2].trim(),
+        content: (match[3] ?? "").trim(),
       });
-    } else {
-      const attributes = parseAttributes(match[3]);
+    } else if (componentName === "ScenarioSimulator") {
       parts.push({
         type: "scenario-simulator",
         scenarioId: attributes.scenarioId || attributes.scenarioid || "",
         title: attributes.title || "Scenario",
+      });
+    } else if (componentName === "InteractiveTable") {
+      parts.push({
+        type: "interactive-table",
+        columns: toStringArray(parseAttributeValue(attributes.columns)),
+        data: toTableRows(parseAttributeValue(attributes.data)),
+      });
+    } else if (componentName === "InteractiveQuiz") {
+      parts.push({
+        type: "interactive-quiz",
+        question: String(parseAttributeValue(attributes.question) ?? ""),
+        options: toStringArray(parseAttributeValue(attributes.options)),
+        correctAnswer: String(parseAttributeValue(attributes.correctAnswer ?? attributes.correctanswer) ?? ""),
+        explanation: String(parseAttributeValue(attributes.explanation) ?? ""),
+      });
+    } else {
+      parts.push({
+        type: "generic-mdx",
+        name: componentName,
+        content: (match[3] ?? "").trim(),
+        attributes,
       });
     }
 
@@ -94,6 +208,139 @@ function splitCourseMarkdown(content: string): CourseMarkdownPart[] {
   const markdownAfter = cleanContent.slice(lastIndex);
   if (markdownAfter.trim()) parts.push({ type: "markdown", content: markdownAfter });
   return parts;
+}
+
+function GenericMdxBlock({
+  name,
+  content,
+  attributes,
+}: {
+  name: string;
+  content: string;
+  attributes: Record<string, string>;
+}) {
+  const visibleAttributes = Object.entries(attributes)
+    .map(([key, value]) => [key, parseAttributeValue(value)] as const)
+    .filter(([, value]) => typeof value === "string" && value !== "true" && value.trim());
+
+  if (!content && visibleAttributes.length === 0) return null;
+
+  return (
+    <div className="my-5 rounded-xl border border-border bg-card/70 p-4 not-prose">
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{name}</div>
+      {content ? (
+        <div className="prose prose-sm mt-3 max-w-none dark:prose-invert">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+          {visibleAttributes.map(([key, value]) => (
+            <div key={key}>
+              <span className="font-medium text-foreground">{key}: </span>
+              {String(value)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InteractiveTableBlock({
+  columns,
+  data,
+}: {
+  columns: string[];
+  data: Array<Record<string, unknown> | unknown[]>;
+}) {
+  if (columns.length === 0 || data.length === 0) return null;
+
+  return (
+    <div className="my-5 overflow-hidden rounded-xl border border-border bg-card/70 not-prose">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] border-collapse text-sm">
+          <thead className="bg-muted/40">
+            <tr>
+              {columns.map((column) => (
+                <th key={column} className="border-b border-border px-4 py-3 text-start font-semibold text-foreground">
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, rowIndex) => (
+              <tr key={rowIndex} className="border-b border-border/70 last:border-0">
+                {columns.map((column, columnIndex) => {
+                  const value = Array.isArray(row) ? row[columnIndex] : row[column] ?? row[columnIndex];
+                  return (
+                    <td key={`${rowIndex}-${column}`} className="px-4 py-3 align-top text-muted-foreground">
+                      {String(value ?? "")}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function InteractiveQuizBlock({
+  question,
+  options,
+  correctAnswer,
+  explanation,
+}: {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const answered = selected !== null;
+  const isCorrect = selected === correctAnswer;
+
+  if (!question || options.length === 0) return null;
+
+  return (
+    <div className="my-5 rounded-xl border border-primary/25 bg-primary/5 p-4 not-prose">
+      <div className="text-sm font-semibold text-foreground">{question}</div>
+      <div className="mt-3 grid gap-2">
+        {options.map((option) => {
+          const optionIsCorrect = answered && option === correctAnswer;
+          const optionIsWrong = answered && option === selected && option !== correctAnswer;
+          return (
+            <Button
+              key={option}
+              type="button"
+              variant="outline"
+              onClick={() => setSelected(option)}
+              className={cn(
+                "h-auto min-h-10 justify-start whitespace-normal text-start",
+                optionIsCorrect && "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                optionIsWrong && "border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-300",
+              )}
+            >
+              <span className="flex items-start gap-2">
+                {optionIsCorrect && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+                {optionIsWrong && <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+                <span>{option}</span>
+              </span>
+            </Button>
+          );
+        })}
+      </div>
+      {answered && (
+        <div className={cn("mt-3 rounded-lg border p-3 text-sm", isCorrect ? "border-emerald-500/35 bg-emerald-500/10" : "border-amber-500/35 bg-amber-500/10")}>
+          <div className="font-medium">{isCorrect ? "Correct" : `Correct answer: ${correctAnswer}`}</div>
+          {explanation && <div className="mt-1 text-muted-foreground">{explanation}</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SecurityAlertBlock({
@@ -167,6 +414,15 @@ export function CourseMarkdown({
         }
         if (part.type === "scenario-simulator") {
           return <ScenarioSimulatorBlock key={index} title={part.title} scenarioId={part.scenarioId} />;
+        }
+        if (part.type === "interactive-table") {
+          return <InteractiveTableBlock key={index} columns={part.columns} data={part.data} />;
+        }
+        if (part.type === "interactive-quiz") {
+          return <InteractiveQuizBlock key={index} question={part.question} options={part.options} correctAnswer={part.correctAnswer} explanation={part.explanation} />;
+        }
+        if (part.type === "generic-mdx") {
+          return <GenericMdxBlock key={index} name={part.name} content={part.content} attributes={part.attributes} />;
         }
         return <ReactMarkdown key={index}>{part.content}</ReactMarkdown>;
       })}
