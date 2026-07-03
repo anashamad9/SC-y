@@ -45,7 +45,7 @@ const EDITOR_STEPS = [
   { key: "preview", label: "Preview", icon: Eye },
 ] as const;
 const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
-const MAX_INLINE_VIDEO_BYTES = 25 * 1024 * 1024;
+const MAX_INLINE_VIDEO_BYTES = 75 * 1024 * 1024;
 type EditorStep = (typeof EDITOR_STEPS)[number]["key"];
 type MarkdownSection = {
   id: string;
@@ -344,7 +344,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       return;
     }
 
-    setVideoMessage("Video metadata captured. Paste a hosted or public video URL so learners can play it after saving.");
+    setVideoMessage("Video metadata captured. Files larger than 75MB need a hosted or public video URL for playback after saving.");
   }
 
   function handleMarkdownFiles(fileList?: FileList | null) {
@@ -708,7 +708,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   <Input type="file" accept="video/*" onChange={(event) => handleVideoFile(event.target.files?.[0])} className="bg-muted/30" />
                 </div>
                 <div className="mt-2 text-[11px] text-muted-foreground">
-                  Videos can be selected up to 2GB. Files up to 25MB are embedded directly. Larger files need a hosted URL for playback after save.
+                  Videos can be selected up to 2GB. Files up to 75MB are embedded directly. Larger files need a hosted URL for playback after save.
                 </div>
                 {videoMessage && <div className="mt-2 text-xs text-muted-foreground">{videoMessage}</div>}
                 {(form.videoFileName || form.videoSizeBytes) && (
@@ -740,7 +740,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   <div className="text-sm font-medium">Markdown / MDX notes</div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs text-muted-foreground">
-                      {form.markdownSections.length} phase{form.markdownSections.length === 1 ? "" : "s"} attached
+                      {form.markdownSections.length} chapter{form.markdownSections.length === 1 ? "" : "s"} attached
                     </div>
                     <Button
                       type="button"
@@ -771,7 +771,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                     {form.markdownSections.map((section, index) => (
                       <div key={section.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/20 px-3 py-2">
                         <div className="min-w-0">
-                          <div className="truncate text-foreground">Phase {index + 1}: {section.title || section.fileName}</div>
+                          <div className="truncate text-foreground">Chapter {index + 1}: {section.title || section.fileName}</div>
                           <div>{section.fileName || "URL section"} · {formatBytes(section.sizeBytes ?? null)}</div>
                         </div>
                         <Button size="sm" variant="ghost" onClick={() => removeMarkdownSection(section.id)} className="h-7 px-2 text-red-400 hover:bg-red-500/10 hover:text-red-300">
@@ -829,9 +829,9 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                           }]) as MarkdownSection[]).map((section, index) => (
                             <div key={section.id} className="rounded-lg bg-card p-4">
                               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                <div className="text-xs font-medium text-muted-foreground">Phase {index + 1}: {section.title || section.fileName}</div>
+                                <div className="text-xs font-medium text-muted-foreground">Chapter {index + 1}: {section.title || section.fileName}</div>
                                 <Button size="sm" variant="outline" className="h-8" disabled>
-                                  Finish phase
+                                  Finish chapter
                                 </Button>
                               </div>
                               {section.content ? (

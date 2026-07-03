@@ -42,9 +42,9 @@ function profileCopy(lang: "en" | "ar") {
         markComplete: "تحديد الفيديو كمكتمل",
         progressHelp: "يتم تحديث تقدم الدورة ونقاط الخبرة",
         courseCompleted: "اكتملت الدورة",
-        finishPhase: "إنهاء المرحلة",
-        phaseCompleted: "اكتملت المرحلة",
-        phase: "المرحلة",
+        finishChapter: "إنهاء الفصل",
+        chapterCompleted: "اكتمل الفصل",
+        chapter: "الفصل",
         earned: "تم كسب",
         continueLearning: "متابعة التعلم",
         startCourse: "ابدأ الدورة",
@@ -70,9 +70,9 @@ function profileCopy(lang: "en" | "ar") {
         markComplete: "Mark video as complete",
         progressHelp: "Updates your course progress and XP",
         courseCompleted: "Course completed",
-        finishPhase: "Finish phase",
-        phaseCompleted: "Phase completed",
-        phase: "Phase",
+        finishChapter: "Finish chapter",
+        chapterCompleted: "Chapter completed",
+        chapter: "Chapter",
         earned: "earned",
         continueLearning: "Continue learning",
         startCourse: "Start course",
@@ -399,20 +399,11 @@ export function CourseProfilePage({
                   const isSectionDone = completedMarkdownSections.includes(section.id) || currentPct >= 100;
                   return (
                     <section key={section.id} className="rounded-lg border border-border bg-card/55 p-4">
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="mb-4">
                         <div>
-                          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{copy.phase} {index + 1}</div>
+                          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{copy.chapter} {index + 1}</div>
                           <h3 className="mt-1 text-base font-semibold">{section.title || section.fileName || `${copy.courseNotes} ${index + 1}`}</h3>
                         </div>
-                        <Button
-                          size="sm"
-                          variant={isSectionDone ? "outline" : "default"}
-                          onClick={() => completeMarkdownSection(section.id)}
-                          disabled={!canTrackProgress || progressMutation.isPending || isSectionDone}
-                          className={isSectionDone ? "border-emerald-500/30 text-emerald-400" : "bg-primary text-white hover:bg-primary/85"}
-                        >
-                          {isSectionDone ? copy.phaseCompleted : copy.finishPhase}
-                        </Button>
                       </div>
                       {section.content ? (
                         <CourseMarkdown content={section.content} />
@@ -423,6 +414,17 @@ export function CourseProfilePage({
                           </a>
                         </div>
                       ) : null}
+                      <div className="mt-5 flex justify-end border-t border-border pt-4">
+                        <Button
+                          size="sm"
+                          variant={isSectionDone ? "outline" : "default"}
+                          onClick={() => completeMarkdownSection(section.id)}
+                          disabled={!canTrackProgress || progressMutation.isPending || isSectionDone}
+                          className={isSectionDone ? "border-emerald-500/30 text-emerald-400" : "bg-primary text-white hover:bg-primary/85"}
+                        >
+                          {isSectionDone ? copy.chapterCompleted : copy.finishChapter}
+                        </Button>
+                      </div>
                     </section>
                   );
                 })}
