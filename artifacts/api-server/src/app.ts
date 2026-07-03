@@ -77,4 +77,14 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
   next(err);
 });
 
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  const dbError = err?.cause ?? err;
+  logger.error({ err, dbCode: dbError?.code, dbDetail: dbError?.detail, dbConstraint: dbError?.constraint_name }, "Unhandled request error");
+  res.status(500).json({ error: dbError?.detail || dbError?.message || err?.message || "Internal server error" });
+});
+
 export default app;
