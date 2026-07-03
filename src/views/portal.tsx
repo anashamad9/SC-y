@@ -171,6 +171,63 @@ function UserAvatar({ user, role, className = "h-9 w-9" }: { user: any; role: st
 
 function ProfileSettings({ user }: { user: any }) {
   const queryClient = useQueryClient();
+  const { lang, isRTL } = useI18n();
+  const { t } = useTranslation();
+  const copy = lang === "ar"
+    ? {
+        loading: "جارٍ تحميل الملف الشخصي...",
+        updateFailed: "فشل تحديث الملف الشخصي",
+        updated: "تم تحديث الملف الشخصي",
+        couldNotUpdate: "تعذر تحديث الملف الشخصي",
+        chooseImage: "اختر ملف صورة.",
+        imageTooLarge: "يجب أن تكون صورة الملف الشخصي 1MB أو أقل.",
+        imageSelected: "تم اختيار الصورة. احفظ الملف الشخصي لتطبيقها.",
+        imageReadFailed: "تعذر قراءة الصورة.",
+        passwordFailed: "فشل تحديث كلمة المرور",
+        passwordUpdated: "تم تحديث كلمة المرور",
+        title: "إعدادات الملف الشخصي",
+        sub: "إدارة تفاصيل الحساب المخزنة في قاعدة البيانات.",
+        profileImage: "صورة الملف الشخصي",
+        removeImage: "إزالة الصورة",
+        firstName: "الاسم الأول",
+        lastName: "اسم العائلة",
+        jobTitle: "المسمى الوظيفي",
+        avatarUrl: "رابط الصورة",
+        saving: "جارٍ الحفظ...",
+        saveProfile: "حفظ الملف الشخصي",
+        password: "كلمة المرور",
+        passwordSub: "غيّر كلمة المرور باستخدام بيانات اعتمادك الحالية.",
+        currentPassword: "كلمة المرور الحالية",
+        newPassword: "كلمة المرور الجديدة",
+        changePassword: "تغيير كلمة المرور",
+      }
+    : {
+        loading: "Loading profile...",
+        updateFailed: "Profile update failed",
+        updated: "Profile updated",
+        couldNotUpdate: "Could not update profile",
+        chooseImage: "Choose an image file.",
+        imageTooLarge: "Profile image must be 1MB or smaller.",
+        imageSelected: "Image selected. Save profile to apply it.",
+        imageReadFailed: "Could not read image.",
+        passwordFailed: "Password update failed",
+        passwordUpdated: "Password updated",
+        title: "Profile Settings",
+        sub: "Manage the account details stored in the database.",
+        profileImage: "Profile Image",
+        removeImage: "Remove Image",
+        firstName: "First Name",
+        lastName: "Last Name",
+        jobTitle: "Job Title",
+        avatarUrl: "Avatar URL",
+        saving: "Saving...",
+        saveProfile: "Save Profile",
+        password: "Password",
+        passwordSub: "Change your password using your current credentials.",
+        currentPassword: "Current password",
+        newPassword: "New password",
+        changePassword: "Change Password",
+      };
   const [form, setForm] = useState({
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
@@ -193,7 +250,7 @@ function ProfileSettings({ user }: { user: any }) {
   }, [user?.firstName, user?.lastName, user?.jobTitle, user?.avatarUrl]);
 
   if (!user) {
-    return <div className="text-sm text-muted-foreground">Loading profile...</div>;
+    return <div className="text-sm text-muted-foreground">{copy.loading}</div>;
   }
 
   async function saveProfile() {
@@ -206,11 +263,11 @@ function ProfileSettings({ user }: { user: any }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!response.ok) throw new Error("Profile update failed");
+      if (!response.ok) throw new Error(copy.updateFailed);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      setMessage("Profile updated");
+      setMessage(copy.updated);
     } catch {
-      setMessage("Could not update profile");
+      setMessage(copy.couldNotUpdate);
     } finally {
       setSaving(false);
     }
@@ -220,19 +277,19 @@ function ProfileSettings({ user }: { user: any }) {
     setImageMessage(null);
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setImageMessage("Choose an image file.");
+      setImageMessage(copy.chooseImage);
       return;
     }
     if (file.size > 1024 * 1024) {
-      setImageMessage("Profile image must be 1MB or smaller.");
+      setImageMessage(copy.imageTooLarge);
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       setForm(f => ({ ...f, avatarUrl: String(reader.result ?? "") }));
-      setImageMessage("Image selected. Save profile to apply it.");
+      setImageMessage(copy.imageSelected);
     };
-    reader.onerror = () => setImageMessage("Could not read image.");
+    reader.onerror = () => setImageMessage(copy.imageReadFailed);
     reader.readAsDataURL(file);
   }
 
@@ -246,30 +303,30 @@ function ProfileSettings({ user }: { user: any }) {
         body: JSON.stringify(passwordForm),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Password update failed");
+      if (!response.ok) throw new Error(data.error || copy.passwordFailed);
       setPasswordForm({ currentPassword: "", newPassword: "" });
-      setPasswordMessage(data.message || "Password updated");
+      setPasswordMessage(data.message || copy.passwordUpdated);
     } catch (error: any) {
-      setPasswordMessage(error.message || "Password update failed");
+      setPasswordMessage(error.message || copy.passwordFailed);
     }
   }
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-2xl space-y-5" dir={isRTL ? "rtl" : "ltr"}>
       <div>
-        <h2 className="text-lg font-bold mb-1">Profile Settings</h2>
-        <p className="text-sm text-muted-foreground">Manage the account details stored in the database.</p>
+        <h2 className="text-lg font-bold mb-1">{copy.title}</h2>
+        <p className="text-sm text-muted-foreground">{copy.sub}</p>
       </div>
       <div className="bg-card rounded-lg p-5 border border-border space-y-4">
         <div className="flex items-center gap-3">
           <UserAvatar user={{ ...user, avatarUrl: form.avatarUrl, firstName: form.firstName, lastName: form.lastName }} role={user.role ?? "Employee"} className="h-12 w-12" />
           <div>
             <div className="text-sm font-semibold">{form.firstName} {form.lastName}</div>
-            <div className="text-xs text-muted-foreground capitalize">{user.role}</div>
+            <div className="text-xs text-muted-foreground capitalize">{t(`roleTitle.${user.role}`, { defaultValue: user.role })}</div>
           </div>
         </div>
         <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-          <label className="text-xs text-muted-foreground block">Profile Image</label>
+          <label className="text-xs text-muted-foreground block">{copy.profileImage}</label>
           <div className="flex flex-wrap items-center gap-2">
             <Input
               type="file"
@@ -278,58 +335,58 @@ function ProfileSettings({ user }: { user: any }) {
               className="max-w-xs"
             />
             <Button type="button" size="sm" variant="outline" onClick={() => setForm(f => ({ ...f, avatarUrl: "" }))}>
-              Remove Image
+              {copy.removeImage}
             </Button>
           </div>
           {imageMessage && <div className="text-xs text-muted-foreground">{imageMessage}</div>}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">First Name</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{copy.firstName}</label>
             <Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Last Name</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{copy.lastName}</label>
             <Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Job Title</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{copy.jobTitle}</label>
             <Input value={form.jobTitle} onChange={e => setForm(f => ({ ...f, jobTitle: e.target.value }))} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Avatar URL</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{copy.avatarUrl}</label>
             <Input value={form.avatarUrl} onChange={e => setForm(f => ({ ...f, avatarUrl: e.target.value }))} />
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={saveProfile} disabled={saving || !form.firstName || !form.lastName}>
-            {saving ? "Saving..." : "Save Profile"}
+            {saving ? copy.saving : copy.saveProfile}
           </Button>
           {message && <span className="text-xs text-muted-foreground">{message}</span>}
         </div>
       </div>
       <div className="bg-card rounded-lg p-5 border border-border space-y-4">
         <div>
-          <h3 className="text-sm font-semibold">Password</h3>
-          <p className="text-xs text-muted-foreground">Change your password using your current credentials.</p>
+          <h3 className="text-sm font-semibold">{copy.password}</h3>
+          <p className="text-xs text-muted-foreground">{copy.passwordSub}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
             type="password"
             value={passwordForm.currentPassword}
             onChange={e => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))}
-            placeholder="Current password"
+            placeholder={copy.currentPassword}
           />
           <Input
             type="password"
             value={passwordForm.newPassword}
             onChange={e => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))}
-            placeholder="New password"
+            placeholder={copy.newPassword}
           />
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={changePassword} disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 8}>
-            Change Password
+            {copy.changePassword}
           </Button>
           {passwordMessage && <span className="text-xs text-muted-foreground">{passwordMessage}</span>}
         </div>
@@ -434,7 +491,9 @@ export default function Portal({ role }: { role: string }) {
                   <UserAvatar user={user} role={role} />
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{user.firstName} {user.lastName}</div>
-                    <div className={`text-xs capitalize ${activeKey === "profile" ? "text-white/80" : "text-muted-foreground"}`}>{user.role}</div>
+                    <div className={`text-xs capitalize ${activeKey === "profile" ? "text-white/80" : "text-muted-foreground"}`}>
+                      {t(`roleTitle.${user.role}`, { defaultValue: user.role })}
+                    </div>
                   </div>
                 </button>
                 <button

@@ -19,8 +19,8 @@ function initials(firstName?: string | null, lastName?: string | null) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.trim().toUpperCase() || "U";
 }
 
-function entryName(entry: any) {
-  return `${entry?.firstName ?? ""} ${entry?.lastName ?? ""}`.trim() || "Employee";
+function entryName(entry: any, fallback: string) {
+  return `${entry?.firstName ?? ""} ${entry?.lastName ?? ""}`.trim() || fallback;
 }
 
 function avatarTone(index: number) {
@@ -34,7 +34,7 @@ function xpProgress(profile: any) {
   return Math.min(100, Math.max(0, Math.round((current / needed) * 100)));
 }
 
-function PodiumCard({ entry, place, lifted = false }: { entry: any; place: 1 | 2 | 3; lifted?: boolean }) {
+function PodiumCard({ entry, place, lifted = false, employeeLabel }: { entry: any; place: 1 | 2 | 3; lifted?: boolean; employeeLabel: string }) {
   const tone = place === 1 ? "bg-primary" : place === 2 ? "bg-fuchsia-500" : "bg-amber-500";
   const ring = place === 1 ? "border-primary/45 shadow-primary/12" : "border-border shadow-black/20";
 
@@ -52,8 +52,8 @@ function PodiumCard({ entry, place, lifted = false }: { entry: any; place: 1 | 2
       <div className="mx-auto mb-3 flex h-7 w-7 items-center justify-center rounded-full bg-background text-xs font-bold tabular-nums text-primary">
         {place}
       </div>
-      <div className="truncate text-base font-semibold text-foreground">{entryName(entry)}</div>
-      <div className="mt-1 truncate text-xs text-muted-foreground">{entry?.departmentName ?? "Employee"}</div>
+      <div className="truncate text-base font-semibold text-foreground">{entryName(entry, employeeLabel)}</div>
+      <div className="mt-1 truncate text-xs text-muted-foreground">{entry?.departmentName ?? employeeLabel}</div>
       <div className="mt-4 text-2xl font-bold tabular-nums text-primary">{formatNumber(entry?.xp)}</div>
       <div className="text-xs uppercase tracking-wider text-muted-foreground">XP</div>
     </motion.div>
@@ -91,6 +91,7 @@ export default function EmployeeLeaderboard() {
         noRows: "لا توجد سجلات موظفين في لوحة الصدارة لهذه المؤسسة.",
         you: "أنت",
         cci: "CCI",
+        employee: "موظف",
       }
     : {
         compete: "Compete",
@@ -107,6 +108,7 @@ export default function EmployeeLeaderboard() {
         noRows: "No employee leaderboard rows were returned for this tenant.",
         you: "You",
         cci: "CCI",
+        employee: "Employee",
       };
 
   return (
@@ -169,9 +171,9 @@ export default function EmployeeLeaderboard() {
         ) : (
           <>
             <div className="grid gap-4 md:grid-cols-3 md:items-end">
-              {podium[1] && <PodiumCard entry={podium[1]} place={2} />}
-              {podium[0] && <PodiumCard entry={podium[0]} place={1} lifted />}
-              {podium[2] && <PodiumCard entry={podium[2]} place={3} />}
+              {podium[1] && <PodiumCard entry={podium[1]} place={2} employeeLabel={copy.employee} />}
+              {podium[0] && <PodiumCard entry={podium[0]} place={1} lifted employeeLabel={copy.employee} />}
+              {podium[2] && <PodiumCard entry={podium[2]} place={3} employeeLabel={copy.employee} />}
             </div>
 
             <div className="mt-6 overflow-hidden rounded-lg border border-border bg-background/45">
@@ -201,7 +203,7 @@ export default function EmployeeLeaderboard() {
                       </div>
                       <div className="min-w-0">
                         <div className={`truncate text-sm font-semibold ${entry.isCurrentUser ? "text-primary" : "text-foreground"}`}>
-                          {entryName(entry)}
+                          {entryName(entry, copy.employee)}
                           {entry.isCurrentUser && <span className="ms-2 text-xs font-medium text-primary/70">({copy.you})</span>}
                         </div>
                         <div className="truncate text-xs text-muted-foreground">{copy.sameTenant}</div>

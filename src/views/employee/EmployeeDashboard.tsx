@@ -49,10 +49,130 @@ function initials(firstName?: string | null, lastName?: string | null) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.trim().toUpperCase() || "U";
 }
 
-function courseStatusLabel(status?: string) {
-  if (status === "completed") return "Completed";
-  if (status === "in_progress") return "In progress";
-  return "Recommended";
+function dashboardCopy(lang: "en" | "ar") {
+  return lang === "ar"
+    ? {
+        course: "دورة",
+        completed: "مكتمل",
+        inProgress: "قيد التقدم",
+        recommended: "موصى به",
+        securityModule: "وحدة تعلم أمني",
+        lessons: "دروس",
+        complete: "مكتمل",
+        there: "بك",
+        learning: "التعلم",
+        recently: "حديثاً",
+        badge: "شارة",
+        welcomeBack: "مرحباً بعودتك",
+        readinessIntro: "جاهزيتك الأمنية هي",
+        leftOnCourse: (left: number) => `تبقى ${left}% من دورتك الحالية. حافظ على زخم التعلم.`,
+        pathReady: "مسار التعلم الخاص بك جاهز. ابدأ الدورة الموصى بها لتحسين درجتك الأمنية.",
+        noPath: "لا توجد دورات نشطة في قاعدة البيانات لمسار التعلم الخاص بك حالياً.",
+        xp: "XP",
+        next: "التالي",
+        level: "المستوى",
+        rank: "الترتيب",
+        keepClimbing: "واصل التقدم",
+        streak: "السلسلة",
+        active: "نشطة",
+        restart: "ابدأ من جديد",
+        xpToNext: "XP للمستوى التالي",
+        continueLearning: "متابعة التعلم",
+        learningPath: "مسار التعلم",
+        noCourse: "لا توجد دورات قيد التقدم أو موصى بها في قاعدة البيانات.",
+        recommendedCourses: "الدورات الموصى بها",
+        ready: "جاهزة",
+        noRecommended: "لا توجد دورات موصى بها في قاعدة البيانات.",
+        recentActivity: "النشاط الأخير",
+        completedCourse: "أكملت",
+        earnedBadge: "حصلت على",
+        noActivity: "لا توجد دورات مكتملة أو شارات مكتسبة في قاعدة البيانات لهذا المستخدم.",
+        priorityActions: "الإجراءات ذات الأولوية",
+        live: "مباشر",
+        setup: "إعداد",
+        completeAssessment: "أكمل تقييم الجاهزية",
+        completeAssessmentDetail: "افتح الدرجات الشخصية وتوصيات الدورات.",
+        continue: "تابع",
+        module: "وحدة",
+        reduceRisk: "قلل المخاطر البشرية",
+        riskNeedsAttention: (score: number) => `درجة المخاطر ${score}/100 تحتاج إلى اهتمام.`,
+        learningStyle: "نمط التعلم",
+        riskSnapshot: "ملخص المخاطر",
+        scored: "تم التقييم",
+        pending: "قيد الانتظار",
+        humanRisk: "المخاطر البشرية",
+        recentBadges: "الشارات الأخيرة",
+        total: "المجموع",
+        noBadges: "لا توجد شارات مكتسبة في قاعدة البيانات لهذا المستخدم.",
+        leaderBoard: "لوحة الصدارة",
+        youRank: (rank: number) => `أنت #${rank}`,
+        top5: "أفضل 5",
+        noLeaderboard: "لا توجد سجلات في لوحة الصدارة في قاعدة البيانات.",
+      }
+    : {
+        course: "Course",
+        completed: "Completed",
+        inProgress: "In progress",
+        recommended: "Recommended",
+        securityModule: "Security learning module",
+        lessons: "lessons",
+        complete: "complete",
+        there: "there",
+        learning: "Learning",
+        recently: "Recently",
+        badge: "Badge",
+        welcomeBack: "Welcome back",
+        readinessIntro: "your security readiness is",
+        leftOnCourse: (left: number) => `${left}% left on your current course. Keep your learning momentum moving.`,
+        pathReady: "Your database-backed learning path is ready. Start the recommended course to build your security score.",
+        noPath: "No active course records were returned from the database for your learning path yet.",
+        xp: "XP",
+        next: "next",
+        level: "Level",
+        rank: "Rank",
+        keepClimbing: "Keep climbing",
+        streak: "Streak",
+        active: "active",
+        restart: "restart",
+        xpToNext: "XP to next level",
+        continueLearning: "Continue learning",
+        learningPath: "Learning path",
+        noCourse: "No in-progress or recommended course records were returned from the database.",
+        recommendedCourses: "Recommended courses",
+        ready: "ready",
+        noRecommended: "No recommended course records were returned from the database.",
+        recentActivity: "Recent activity",
+        completedCourse: "Completed",
+        earnedBadge: "Earned",
+        noActivity: "No completed course or earned badge records were returned from the database.",
+        priorityActions: "Priority actions",
+        live: "Live",
+        setup: "Setup",
+        completeAssessment: "Complete readiness assessment",
+        completeAssessmentDetail: "Unlock personalized scores and course recommendations.",
+        continue: "Continue",
+        module: "module",
+        reduceRisk: "Reduce human risk",
+        riskNeedsAttention: (score: number) => `${score}/100 risk score needs attention.`,
+        learningStyle: "learning style",
+        riskSnapshot: "Risk snapshot",
+        scored: "Scored",
+        pending: "Pending",
+        humanRisk: "Human risk",
+        recentBadges: "Recent badges",
+        total: "total",
+        noBadges: "No earned badge records were returned from the database for this user.",
+        leaderBoard: "Leader board",
+        youRank: (rank: number) => `You #${rank}`,
+        top5: "Top 5",
+        noLeaderboard: "No leaderboard rows were returned from the database.",
+      };
+}
+
+function courseStatusLabel(status: string | undefined, copy: ReturnType<typeof dashboardCopy>) {
+  if (status === "completed") return copy.completed;
+  if (status === "in_progress") return copy.inProgress;
+  return copy.recommended;
 }
 
 function panelDelay(index: number) {
@@ -99,7 +219,7 @@ function Section({
   );
 }
 
-function CourseRow({ course, featured = false }: { course: any; featured?: boolean }) {
+function CourseRow({ course, featured = false, copy }: { course: any; featured?: boolean; copy: ReturnType<typeof dashboardCopy> }) {
   const pct = clampPct(course?.progressPct ?? 0);
   return (
     <div className={`rounded-lg border border-border bg-background/55 p-4 ${featured ? "sm:p-5" : ""}`}>
@@ -112,20 +232,20 @@ function CourseRow({ course, featured = false }: { course: any; featured?: boole
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-foreground">{course?.title ?? "Course"}</h3>
+            <h3 className="truncate text-sm font-semibold text-foreground">{course?.title ?? copy.course}</h3>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${DIFFICULTY_COLOR[course?.difficulty] ?? "border-border bg-muted/40 text-muted-foreground"}`}>
-              {courseStatusLabel(course?.status)}
+              {courseStatusLabel(course?.status, copy)}
             </span>
           </div>
-          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course?.description ?? "Security learning module"}</p>
+          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course?.description ?? copy.securityModule}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span>{course?.durationMinutes ?? 0}m</span>
-            <span>{course?.lessonCount ?? 0} lessons</span>
+            <span>{course?.lessonCount ?? 0} {copy.lessons}</span>
             <span className="font-medium text-primary">+{course?.xpReward ?? 0} XP</span>
           </div>
           <div className="mt-3">
             <ProgressLine value={pct} />
-            <div className="mt-1 text-xs text-muted-foreground">{pct}% complete</div>
+            <div className="mt-1 text-xs text-muted-foreground">{pct}% {copy.complete}</div>
           </div>
         </div>
         {featured && <ChevronRight className="mt-3 h-5 w-5 shrink-0 text-primary" />}
@@ -156,7 +276,8 @@ function RecommendedCard({ course }: { course: any }) {
 }
 
 export default function EmployeeDashboard() {
-  const { isRTL } = useI18n();
+  const { lang, isRTL } = useI18n();
+  const copy = dashboardCopy(lang);
   const { data: user } = useGetMe();
   const { data: scores, isLoading: scoresLoading } = useGetMyScores();
   const { data: gp, isLoading: gpLoading } = useGetMyGamification();
@@ -175,39 +296,39 @@ export default function EmployeeDashboard() {
   const xpCurrent = gp ? gp.xp - gp.currentLevelXp : 0;
   const xpNeeded = gp ? Math.max(1, gp.nextLevelXp - gp.currentLevelXp) : 200;
   const xpPct = clampPct((xpCurrent / xpNeeded) * 100);
-  const firstName = user?.firstName || "there";
+  const firstName = user?.firstName || copy.there;
   const readiness = hasScores ? clampPct(scores?.securityReadinessScore ?? scores?.cciScore ?? 0) : path?.completionRate ?? 0;
   const rank = leaderboard?.entries?.find((entry: any) => entry.isCurrentUser)?.rank ?? leaderboard?.currentUserRank;
   const recentBadges = (badges ?? []).slice(0, 6);
   const recentActivity = [
     ...completed.slice(0, 3).map((course: any) => ({
       id: `course-${course.id}`,
-      title: `Completed ${course.title}`,
-      meta: `${course.category?.replace(/_/g, " ") ?? "Learning"} · +${course.xpEarned ?? course.xpReward ?? 0} XP`,
-      when: course.completedAt ? new Date(course.completedAt).toLocaleDateString() : "Recently",
+      title: `${copy.completedCourse} ${course.title}`,
+      meta: `${course.category?.replace(/_/g, " ") ?? copy.learning} · +${course.xpEarned ?? course.xpReward ?? 0} XP`,
+      when: course.completedAt ? new Date(course.completedAt).toLocaleDateString() : copy.recently,
       value: `+${course.xpEarned ?? course.xpReward ?? 0} XP`,
     })),
     ...recentBadges.slice(0, 3).map((badge: any) => ({
       id: `badge-${badge.badgeId}`,
-      title: `Earned ${badge.name}`,
+      title: `${copy.earnedBadge} ${badge.name}`,
       meta: badge.category,
       when: new Date(badge.earnedAt).toLocaleDateString(),
-      value: "Badge",
+      value: copy.badge,
     })),
   ].slice(0, 4);
 
   const priorityActions = [
     !hasScores
-      ? { title: "Complete readiness assessment", detail: "Unlock personalized scores and course recommendations.", tone: "text-amber-400" }
+      ? { title: copy.completeAssessment, detail: copy.completeAssessmentDetail, tone: "text-amber-400" }
       : null,
     continueCourse
-      ? { title: `Continue ${continueCourse.title}`, detail: `${courseProgress}% complete · ${continueCourse.durationMinutes ?? 0}m module`, tone: "text-primary" }
+      ? { title: `${copy.continue} ${continueCourse.title}`, detail: `${courseProgress}% ${copy.complete} · ${continueCourse.durationMinutes ?? 0}m ${copy.module}`, tone: "text-primary" }
       : null,
     hasScores && (scores?.humanRiskScore ?? 0) > 60
-      ? { title: "Reduce human risk", detail: `${Math.round(scores?.humanRiskScore ?? 0)}/100 risk score needs attention.`, tone: "text-red-400" }
+      ? { title: copy.reduceRisk, detail: copy.riskNeedsAttention(Math.round(scores?.humanRiskScore ?? 0)), tone: "text-red-400" }
       : null,
     profile
-      ? { title: profile.behavioralType, detail: `${profile.learningStyle} learning style`, tone: "text-emerald-400" }
+      ? { title: profile.behavioralType, detail: `${profile.learningStyle} ${copy.learningStyle}`, tone: "text-emerald-400" }
       : null,
   ].filter(Boolean) as { title: string; detail: string; tone: string }[];
 
@@ -238,24 +359,24 @@ export default function EmployeeDashboard() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:72px_72px] opacity-35" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">Welcome back</div>
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">{copy.welcomeBack}</div>
             <h1 className="max-w-3xl text-2xl font-bold leading-tight text-foreground text-balance sm:text-4xl">
-              {firstName}, your security readiness is <span className="text-primary">{readiness}%</span>
+              {firstName}, {copy.readinessIntro} <span className="text-primary">{readiness}%</span>
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               {continueCourse
-                ? `${Math.max(0, 100 - courseProgress)}% left on your current course. Keep your learning momentum moving.`
+                ? copy.leftOnCourse(Math.max(0, 100 - courseProgress))
                 : recommended.length > 0
-                  ? "Your database-backed learning path is ready. Start the recommended course to build your security score."
-                  : "No active course records were returned from the database for your learning path yet."}
+                  ? copy.pathReady
+                  : copy.noPath}
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: "XP", value: formatNumber(gp?.xp), sub: `${formatNumber(gp?.nextLevelXp)} next`, icon: Sparkles },
-              { label: "Level", value: gp?.level ?? 1, sub: rank ? `Rank #${rank}` : "Keep climbing", icon: Trophy },
-              { label: "Streak", value: `${gp?.streakDays ?? 0}d`, sub: gp?.streakDays ? "active" : "restart", icon: Flame },
+              { label: copy.xp, value: formatNumber(gp?.xp), sub: `${formatNumber(gp?.nextLevelXp)} ${copy.next}`, icon: Sparkles },
+              { label: copy.level, value: gp?.level ?? 1, sub: rank ? `${copy.rank} #${rank}` : copy.keepClimbing, icon: Trophy },
+              { label: copy.streak, value: `${gp?.streakDays ?? 0}d`, sub: gp?.streakDays ? copy.active : copy.restart, icon: Flame },
             ].map((stat) => {
               const Icon = stat.icon;
               return (
@@ -272,37 +393,37 @@ export default function EmployeeDashboard() {
         <div className="relative mt-6">
           <ProgressLine value={xpPct} />
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Level {gp?.level ?? 1}</span>
-            <span>{formatNumber(Math.max(0, xpNeeded - xpCurrent))} XP to next level</span>
+            <span>{copy.level} {gp?.level ?? 1}</span>
+            <span>{formatNumber(Math.max(0, xpNeeded - xpCurrent))} {copy.xpToNext}</span>
           </div>
         </div>
       </motion.section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="space-y-5">
-          <Section title="Continue learning" action="Learning path" delay={1}>
+          <Section title={copy.continueLearning} action={copy.learningPath} delay={1}>
             {continueCourse ? (
-              <CourseRow course={continueCourse} featured />
+              <CourseRow course={continueCourse} featured copy={copy} />
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                No in-progress or recommended course records were returned from the database.
+                {copy.noCourse}
               </div>
             )}
           </Section>
 
-          <Section title="Recommended courses" action={`${Math.min(recommended.length, 3)} ready`} delay={2}>
+          <Section title={copy.recommendedCourses} action={`${Math.min(recommended.length, 3)} ${copy.ready}`} delay={2}>
             {recommended.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 {recommended.slice(0, 3).map((course: any) => <RecommendedCard key={course.id} course={course} />)}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                No recommended course records were returned from the database.
+                {copy.noRecommended}
               </div>
             )}
           </Section>
 
-          <Section title="Recent activity" delay={3}>
+          <Section title={copy.recentActivity} delay={3}>
             {recentActivity.length > 0 ? (
               <div className="space-y-3">
                 {recentActivity.map((item) => (
@@ -323,14 +444,14 @@ export default function EmployeeDashboard() {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                No completed course or earned badge records were returned from the database.
+                {copy.noActivity}
               </div>
             )}
           </Section>
         </main>
 
         <aside className="space-y-5">
-          <Section title="Priority actions" action={hasScores ? "Live" : "Setup"} delay={2}>
+          <Section title={copy.priorityActions} action={hasScores ? copy.live : copy.setup} delay={2}>
             <div className="space-y-3">
               {priorityActions.slice(0, 4).map((item) => (
                 <div key={item.title} className="rounded-lg border border-border bg-background/55 p-4">
@@ -341,10 +462,10 @@ export default function EmployeeDashboard() {
             </div>
           </Section>
 
-          <Section title="Risk snapshot" action={hasScores ? scores?.riskCategory ?? "Scored" : "Pending"} delay={3}>
+          <Section title={copy.riskSnapshot} action={hasScores ? scores?.riskCategory ?? copy.scored : copy.pending} delay={3}>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Human risk", value: hasScores ? scores?.humanRiskScore ?? 0 : 0, icon: Gauge, color: "text-red-400" },
+                { label: copy.humanRisk, value: hasScores ? scores?.humanRiskScore ?? 0 : 0, icon: Gauge, color: "text-red-400" },
                 { label: "CCI", value: hasScores ? scores?.cciScore ?? 0 : 0, icon: ShieldCheck, color: "text-emerald-400" },
               ].map((item) => {
                 const Icon = item.icon;
@@ -359,7 +480,7 @@ export default function EmployeeDashboard() {
             </div>
           </Section>
 
-          <Section title="Recent badges" action={`${badges?.length ?? 0} total`} delay={4}>
+          <Section title={copy.recentBadges} action={`${badges?.length ?? 0} ${copy.total}`} delay={4}>
             {recentBadges.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
                 {recentBadges.map((badge: any, index: number) => (
@@ -373,12 +494,12 @@ export default function EmployeeDashboard() {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                No earned badge records were returned from the database for this user.
+                {copy.noBadges}
               </div>
             )}
           </Section>
 
-          <Section title="Leader board" action={rank ? `You #${rank}` : "Top 5"} delay={5}>
+          <Section title={copy.leaderBoard} action={rank ? copy.youRank(rank) : copy.top5} delay={5}>
             <div className="space-y-3">
               {(leaderboard?.entries ?? []).slice(0, 5).map((entry: any) => (
                 <div
@@ -393,14 +514,14 @@ export default function EmployeeDashboard() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-foreground">{entry.firstName} {entry.lastName}</div>
-                    <div className="truncate text-xs text-muted-foreground">{entry.departmentName ?? `Level ${entry.level}`}</div>
+                    <div className="truncate text-xs text-muted-foreground">{entry.departmentName ?? `${copy.level} ${entry.level}`}</div>
                   </div>
                   <div className="text-sm font-bold tabular-nums text-primary">{formatNumber(entry.xp)}</div>
                 </div>
               ))}
               {(leaderboard?.entries ?? []).length === 0 && (
                 <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-                  No leaderboard rows were returned from the database.
+                  {copy.noLeaderboard}
                 </div>
               )}
             </div>
