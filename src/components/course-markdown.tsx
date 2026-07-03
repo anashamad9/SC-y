@@ -229,7 +229,7 @@ function GenericMdxBlock({
     <div className="my-5 rounded-xl border border-border bg-card/70 p-4 not-prose">
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{name}</div>
       {content ? (
-        <div className="prose prose-sm mt-3 max-w-none dark:prose-invert">
+        <div className={cn("mt-3", COURSE_MARKDOWN_CLASSNAME)}>
           <ReactMarkdown>{content}</ReactMarkdown>
         </div>
       ) : (
@@ -366,13 +366,33 @@ function SecurityAlertBlock({
       )}
     >
       <Icon className="h-4 w-4" />
-      <AlertTitle>{title}</AlertTitle>
-      <AlertDescription className="prose prose-sm max-w-none dark:prose-invert">
+      <AlertTitle className={isCritical ? "text-red-950 dark:text-red-50" : "text-foreground"}>{title}</AlertTitle>
+      <AlertDescription className={cn(COURSE_MARKDOWN_CLASSNAME, isCritical && "text-red-950 dark:text-red-50 [&_*]:!text-current")}>
         <ReactMarkdown>{content}</ReactMarkdown>
       </AlertDescription>
     </Alert>
   );
 }
+
+const COURSE_MARKDOWN_CLASSNAME = cn(
+  "prose prose-sm max-w-none",
+  "text-foreground",
+  "prose-headings:text-foreground prose-headings:font-bold",
+  "prose-p:text-foreground/90 prose-p:leading-7",
+  "prose-li:text-foreground/90 prose-li:marker:text-foreground/70",
+  "prose-strong:text-foreground prose-strong:font-semibold",
+  "prose-em:text-foreground",
+  "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
+  "prose-blockquote:border-primary/40 prose-blockquote:text-foreground/90",
+  "prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-foreground",
+  "prose-pre:border prose-pre:border-border prose-pre:bg-muted prose-pre:text-foreground",
+  "prose-hr:border-border",
+  "prose-th:text-foreground prose-td:text-foreground/90",
+  "[&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground",
+  "[&_p]:text-foreground/90 [&_li]:text-foreground/90 [&_strong]:text-foreground",
+  "[&_em]:text-foreground [&_blockquote]:text-foreground/90 [&_a]:text-primary",
+  "[&_code]:text-foreground [&_pre]:text-foreground [&_th]:text-foreground [&_td]:text-foreground/90",
+);
 
 function ScenarioSimulatorBlock({
   title,
@@ -403,7 +423,7 @@ export function CourseMarkdown({
     <div
       dir={isRtl ? "rtl" : "ltr"}
       className={cn(
-        "prose prose-zinc prose-sm max-w-none text-zinc-900 dark:prose-invert dark:text-zinc-100 prose-headings:text-zinc-950 prose-p:text-zinc-800 prose-li:text-zinc-800 prose-strong:text-zinc-950 dark:prose-headings:text-zinc-50 dark:prose-p:text-zinc-200 dark:prose-li:text-zinc-200 dark:prose-strong:text-zinc-50",
+        COURSE_MARKDOWN_CLASSNAME,
         isRtl ? "text-right" : "text-left",
         className,
       )}
