@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import { API_BASE } from "@/lib/runtime";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 
 const ARABIC_RE = /[\u0600-\u06FF]/;
 
@@ -150,7 +150,7 @@ export default function AIChatWidget() {
         {open ? (
           <span className="text-xl text-primary leading-none">×</span>
         ) : (
-          <img src={logo} alt="The Harvesters Logo" className="h-10 w-8 object-contain" />
+          <BrandLogo className="h-10 w-8 object-contain" />
         )}
       </motion.button>
 
@@ -167,7 +167,7 @@ export default function AIChatWidget() {
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-background border-b border-border">
               <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-                <img src={logo} alt="The Harvesters Logo" className="h-6 w-5 object-contain" />
+                <BrandLogo className="h-6 w-5 object-contain" />
               </div>
               <div>
                 <div className="text-sm font-semibold">{t("ai.title")}</div>

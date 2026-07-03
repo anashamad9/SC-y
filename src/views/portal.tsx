@@ -5,12 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGetMe, useLogout, useGetUserStats, useListDepartments } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 import { useI18n } from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
-  Award,
   BarChart3,
   BookOpen,
   Bot,
@@ -39,7 +38,6 @@ import ReadinessAssessmentModal from "@/components/readiness-assessment-modal";
 import EmployeeDashboard from "./employee/EmployeeDashboard";
 import EmployeeAssessments from "./employee/EmployeeAssessments";
 import EmployeeLearning from "./employee/EmployeeLearning";
-import EmployeeAchievements from "./employee/EmployeeAchievements";
 import EmployeeLeaderboard from "./employee/EmployeeLeaderboard";
 import EmployeePhishing from "./employee/EmployeePhishing";
 import AdminDashboard from "./admin/AdminDashboard";
@@ -72,7 +70,6 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "nav.myAssessments", icon: ClipboardCheck, key: "assessments" },
     { label: "nav.learning", icon: BookOpen, key: "learning" },
     { label: "nav.leaderboard", icon: Trophy, key: "leaderboard" },
-    { label: "nav.achievements", icon: Award, key: "achievements" },
     { label: "nav.phishingResults", icon: Target, key: "phishing" },
     { label: "nav.profile", icon: UserCircle, key: "profile" },
   ],
@@ -443,7 +440,7 @@ export default function Portal({ role }: { role: string }) {
             {/* Logo */}
             <div className="px-5 py-4">
               <Link href="/" className="flex items-center gap-3.5">
-                <img src={logo} alt="The Harvesters Logo" className="h-12 w-10 object-contain" />
+                <BrandLogo className="h-12 w-10 object-contain" />
                 <div>
                   <div className="font-bold text-sm tracking-[0.22em] text-foreground">CYBERCULTX</div>
                   <div className="text-sm text-muted-foreground">{t(`roleTitle.${role}`)}</div>
@@ -570,7 +567,6 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
     if (activeKey === "assessments") return <EmployeeAssessments />;
     if (activeKey === "learning") return <EmployeeLearning />;
     if (activeKey === "leaderboard") return <EmployeeLeaderboard />;
-    if (activeKey === "achievements") return <EmployeeAchievements />;
     if (activeKey === "phishing") return <EmployeePhishing />;
   }
 
@@ -582,7 +578,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
     if (activeKey === "reports") return <AdminReports />;
     if (activeKey === "ai") return (
       <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-center">
-        <img src={logo} alt="The Harvesters Logo" className="h-14 w-10 object-contain" />
+        <BrandLogo className="h-14 w-10 object-contain" />
         <div className="text-lg font-semibold">{t("ai.aiReports")}</div>
         <div className="text-sm text-muted-foreground max-w-sm">
           {t("common.aiAssistantHint")}
@@ -590,7 +586,7 @@ function PortalContent({ role, activeKey, stats, departments, user }: {
         <div className="mt-2 flex items-center gap-2 text-xs text-primary">
           <span>Look for the</span>
           <span className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-            <img src={logo} alt="The Harvesters Logo" className="h-6 w-5 object-contain" />
+            <BrandLogo className="h-6 w-5 object-contain" />
           </span>
           <span>button at the bottom right</span>
         </div>

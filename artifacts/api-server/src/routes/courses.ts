@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, courseModulesTable, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable } from "@workspace/db";
+import { db, courseModulesTable, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable, userBadgesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
@@ -95,6 +95,7 @@ function buildCourseWritePayload(
 
   return {
     moduleId: normalizeOptionalNumber(body.moduleId),
+    badgeId: normalizeOptionalNumber(body.badgeId),
     title: String(body.title ?? existing?.title ?? ""),
     category: String(body.category ?? existing?.category ?? ""),
     description: String(body.description ?? existing?.description ?? ""),
@@ -149,6 +150,7 @@ function buildCourseWithProgress(
   return {
     id: course.id,
     moduleId: course.moduleId,
+    badgeId: course.badgeId,
     title: course.title,
     category: course.category,
     description: course.description,
@@ -417,6 +419,9 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
     if (gp) {
       const newXp = gp.xp + course.xpReward;
       await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
+    }
+    if (course.badgeId) {
+      await db.insert(userBadgesTable).values({ userId, badgeId: course.badgeId }).onConflictDoNothing();
     }
   }
 

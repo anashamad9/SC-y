@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE } from "@/lib/runtime";
-import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileText, Film, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileText, Film, ImageIcon, Pencil, Plus, Trash2 } from "lucide-react";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   beginner: "text-emerald-400",
@@ -46,8 +46,17 @@ const EDITOR_STEPS = [
 ] as const;
 const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
 const MAX_INLINE_VIDEO_BYTES = 3 * 1024 * 1024;
+const MAX_BADGE_IMAGE_BYTES = 512 * 1024;
 const API_REQUEST_TIMEOUT_MS = 45_000;
 type EditorStep = (typeof EDITOR_STEPS)[number]["key"];
+type CourseBadge = {
+  id: number;
+  name: string;
+  description: string;
+  imageUrl?: string | null;
+  imageFileName?: string | null;
+  imageSizeBytes?: number | null;
+};
 type MarkdownSection = {
   id: string;
   title: string;
@@ -89,6 +98,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
 
 interface CourseForm {
   moduleId: number | "";
+  badgeId: number | "";
   title: string;
   category: string;
   description: string;
@@ -112,6 +122,7 @@ interface CourseForm {
 
 const DEFAULT_FORM: CourseForm = {
   moduleId: "",
+  badgeId: "",
   title: "",
   category: "email_security",
   description: "",
@@ -157,6 +168,31 @@ function makeMarkdownSectionId(fileName: string) {
   return `${fileName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Could not read the selected PNG."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readImageDimensions(file: File) {
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+      URL.revokeObjectURL(objectUrl);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not inspect the selected PNG."));
+    };
+    image.src = objectUrl;
+  });
+}
+
 export default function AdminCourses({ canManage = false }: { canManage?: boolean }) {
   const [showModal, setShowModal] = useState(false);
   const [moduleFormOpen, setModuleFormOpen] = useState(false);
@@ -169,6 +205,14 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const [confirmModuleDelete, setConfirmModuleDelete] = useState<number | null>(null);
   const [videoMessage, setVideoMessage] = useState<string | null>(null);
   const [markdownMessage, setMarkdownMessage] = useState<string | null>(null);
+  const [badgeMessage, setBadgeMessage] = useState<string | null>(null);
+  const [badgeForm, setBadgeForm] = useState({
+    name: "",
+    description: "",
+    imageUrl: "",
+    imageFileName: "",
+    imageSizeBytes: 0,
+  });
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [previewCourseId, setPreviewCourseId] = useState<number | null>(null);
   const markdownInputRef = useRef<HTMLInputElement | null>(null);
@@ -179,6 +223,11 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const { data: modules = [], isLoading: modulesLoading } = useQuery({
     queryKey: ["/api/courses/modules"],
     queryFn: () => apiFetch("/api/courses/modules"),
+  });
+  const { data: badgeCatalog = [], isLoading: badgesLoading } = useQuery({
+    queryKey: ["/api/gamification/badge-catalog"],
+    queryFn: () => apiFetch("/api/gamification/badge-catalog"),
+    enabled: canManage,
   });
 
   useEffect(() => {
@@ -219,6 +268,22 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       toast({ title: "Module created" });
     },
     onError: (error: Error) => toast({ title: error.message || "Failed to create module", variant: "destructive" }),
+  });
+
+  const createBadge = useMutation({
+    mutationFn: () =>
+      apiFetch("/api/gamification/badge-catalog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...badgeForm, category: "course" }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gamification/badge-catalog"] });
+      setBadgeForm({ name: "", description: "", imageUrl: "", imageFileName: "", imageSizeBytes: 0 });
+      setBadgeMessage(null);
+      toast({ title: "Badge uploaded" });
+    },
+    onError: (error: Error) => toast({ title: error.message || "Failed to upload badge", variant: "destructive" }),
   });
 
   const updateCourse = useMutation({
@@ -289,6 +354,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     setForm({
       title: course.title,
       moduleId: course.moduleId ?? "",
+      badgeId: course.badgeId ?? "",
       category: course.category,
       description: course.description ?? "",
       difficulty: course.difficulty,
@@ -395,6 +461,45 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     }).catch((error: Error) => setMarkdownMessage(error.message));
   }
 
+  async function handleBadgeFile(file?: File) {
+    setBadgeMessage(null);
+    if (!file) return;
+    if (file.type !== "image/png" && !file.name.toLowerCase().endsWith(".png")) {
+      setBadgeMessage("Badge image must be a PNG file.");
+      return;
+    }
+    if (file.size > MAX_BADGE_IMAGE_BYTES) {
+      setBadgeMessage("Badge PNG must be 512KB or smaller.");
+      return;
+    }
+
+    try {
+      const dimensions = await readImageDimensions(file);
+      if (dimensions.width !== dimensions.height) {
+        setBadgeMessage(`Badge PNG must be square 1:1. This file is ${dimensions.width}x${dimensions.height}px.`);
+        return;
+      }
+      const imageUrl = await readFileAsDataUrl(file);
+      setBadgeForm((current) => ({
+        ...current,
+        imageUrl,
+        imageFileName: file.name,
+        imageSizeBytes: file.size,
+      }));
+      setBadgeMessage(`PNG ready: ${dimensions.width}x${dimensions.height}px, ${formatBytes(file.size)}.`);
+    } catch (error: any) {
+      setBadgeMessage(error?.message ?? "Could not read the selected PNG.");
+    }
+  }
+
+  function handleCreateBadge() {
+    if (!badgeForm.name.trim() || !badgeForm.description.trim() || !badgeForm.imageUrl) {
+      setBadgeMessage("Add a badge name, description, and square PNG before uploading.");
+      return;
+    }
+    createBadge.mutate();
+  }
+
   function removeMarkdownSection(sectionId: string) {
     setForm((current) => {
       const nextSections = current.markdownSections.filter((section) => section.id !== sectionId);
@@ -442,6 +547,9 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const videoNeedsUrl = Boolean((form.videoFileName || form.videoSizeBytes) && !form.videoUrl.trim());
   const hasMarkdown = Boolean(form.markdownUrl || form.markdownFileName || form.markdownContent || form.markdownSections.length > 0);
   const moduleList = modules as any[];
+  const badgeList = badgeCatalog as CourseBadge[];
+  const selectedBadge = badgeList.find((badge) => badge.id === form.badgeId);
+  const badgeById = new Map(badgeList.map((badge) => [badge.id, badge]));
   const coursesByModule = moduleList
   .filter((module) => activeModuleId === "all" || activeModuleId === module.id)
   .map((module) => ({
@@ -508,6 +616,88 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
               {createModule.isPending ? "Saving..." : "Save module"}
             </Button>
           </div>
+        </div>
+      )}
+
+      {canManage && (
+        <div className="rounded-xl border border-border bg-card/80 p-4">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                Course badges
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                PNG only. Use a square 1:1 badge, recommended 512x512 px, max 512KB.
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {badgeList.length} badge{badgeList.length === 1 ? "" : "s"} available
+            </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[180px_1fr_1fr_auto]">
+            <Input
+              value={badgeForm.name}
+              onChange={(event) => setBadgeForm((current) => ({ ...current, name: event.target.value }))}
+              placeholder="Badge name"
+              className="bg-muted/30"
+            />
+            <Input
+              value={badgeForm.description}
+              onChange={(event) => setBadgeForm((current) => ({ ...current, description: event.target.value }))}
+              placeholder="Short badge description"
+              className="bg-muted/30"
+            />
+            <Input
+              type="file"
+              accept="image/png,.png"
+              onChange={(event) => {
+                handleBadgeFile(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+              className="bg-muted/30"
+            />
+            <Button
+              size="sm"
+              onClick={handleCreateBadge}
+              disabled={createBadge.isPending || !badgeForm.name.trim() || !badgeForm.description.trim() || !badgeForm.imageUrl}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {createBadge.isPending ? "Uploading..." : "Upload badge"}
+            </Button>
+          </div>
+          {badgeMessage && <div className="mt-2 text-xs text-muted-foreground">{badgeMessage}</div>}
+
+          {(badgeForm.imageUrl || badgeList.length > 0) && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              {badgeForm.imageUrl && (
+                <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 p-2">
+                  <img src={badgeForm.imageUrl} alt="Selected badge preview" className="h-10 w-10 rounded-md object-contain" />
+                  <div className="min-w-0 text-xs">
+                    <div className="truncate font-medium text-foreground">{badgeForm.imageFileName}</div>
+                    <div className="text-muted-foreground">{formatBytes(badgeForm.imageSizeBytes)}</div>
+                  </div>
+                </div>
+              )}
+              {badgeList.slice(0, 8).map((badge) => (
+                <div key={badge.id} className="flex items-center gap-2 rounded-lg border border-border bg-background/55 p-2">
+                  {badge.imageUrl ? (
+                    <img src={badge.imageUrl} alt={badge.name} className="h-9 w-9 rounded-md object-contain" />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/15 text-primary">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                  )}
+                  <div className="min-w-0 text-xs">
+                    <div className="max-w-32 truncate font-medium text-foreground">{badge.name}</div>
+                    <div className="text-muted-foreground">{formatBytes(badge.imageSizeBytes)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -694,6 +884,32 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
               </div>
 
               <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs text-muted-foreground">Course badge</label>
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <select
+                    value={form.badgeId}
+                    onChange={(event) => setForm((current) => ({ ...current, badgeId: event.target.value === "" ? "" : Number(event.target.value) }))}
+                    className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
+                  >
+                    <option value="">No badge</option>
+                    {badgeList.map((badge) => (
+                      <option key={badge.id} value={badge.id}>{badge.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex min-h-10 items-center gap-2 rounded-md border border-border bg-muted/20 px-3">
+                    {selectedBadge?.imageUrl ? (
+                      <img src={selectedBadge.imageUrl} alt={selectedBadge.name} className="h-7 w-7 rounded object-contain" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="max-w-40 truncate text-xs text-muted-foreground">
+                      {selectedBadge?.name ?? (badgesLoading ? "Loading badges..." : "Optional")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs text-muted-foreground">Description</label>
                 <textarea
                   value={form.description}
@@ -819,6 +1035,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                           { label: "Category", value: form.category.replace(/_/g, " "), ready: Boolean(form.category) },
                           { label: "Video", value: videoNeedsUrl ? "Needs hosted URL" : hasVideo ? "Attached" : "Not attached", ready: hasVideo && !videoNeedsUrl },
                           { label: "Markdown notes", value: hasMarkdown ? "Attached" : "Optional", ready: true },
+                          { label: "Badge", value: selectedBadge?.name ?? "Optional", ready: true },
                           { label: "Readiness range", value: readinessRange, ready: true },
                           { label: "Reward", value: `${form.xpReward} XP`, ready: form.xpReward > 0 },
                         ].map((item) => (
@@ -930,6 +1147,19 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                         <span className="rounded-md bg-muted/30 px-2 py-1">Range {readinessRange}</span>
                         {hasMarkdown && <span className="rounded-md bg-muted/30 px-2 py-1">Notes ready</span>}
                       </div>
+                      {selectedBadge && (
+                        <div className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-2 text-[11px]">
+                          {selectedBadge.imageUrl ? (
+                            <img src={selectedBadge.imageUrl} alt={selectedBadge.name} className="h-7 w-7 rounded object-contain" />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-primary" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-foreground">{selectedBadge.name}</div>
+                            <div className="truncate text-muted-foreground">Course completion badge</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1006,7 +1236,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
         )}
       </AnimatePresence>
 
-      {isLoading || modulesLoading ? (
+      {isLoading || modulesLoading || badgesLoading ? (
         <div className="flex justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
@@ -1083,6 +1313,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                           <div className="space-y-1 text-xs text-muted-foreground">
                             <div>Video: {currentCourse.videoFileName || (currentCourse.videoUrl ? "Attached" : "Not set")}</div>
                             <div>Markdown: {currentCourse.markdownSections?.length ? `${currentCourse.markdownSections.length} sections` : (currentCourse.markdownFileName || "Not set")}</div>
+                            <div>Badge: {badgeById.get(currentCourse.badgeId)?.name ?? "Not set"}</div>
                             {(currentCourse.minScore !== null || currentCourse.maxScore !== null) && (
                               <div>
                                 Range: {currentCourse.minScore ?? "Any"} to {currentCourse.maxScore ?? "Any"}

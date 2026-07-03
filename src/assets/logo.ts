@@ -1,3 +1,3 @@
-const logo = "/harvesters-logo-pTM7qJ45.png";
+const logo = "/light.png";
 
 export default logo;

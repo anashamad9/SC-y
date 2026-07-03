@@ -173,6 +173,8 @@ export interface PsychometricProfile {
 }
 export interface CourseWithProgress {
     id: number;
+    /** @nullable */
+    badgeId?: number | null;
     title: string;
     category: string;
     description: string;
@@ -184,8 +186,24 @@ export interface CourseWithProgress {
     status?: string;
     progressPct?: number;
     xpEarned?: number;
+    markdownSections?: MarkdownSection[];
+    completedMarkdownSections?: string[];
     /** @nullable */
     completedAt?: string | null;
+}
+export interface MarkdownSection {
+    id: string;
+    title: string;
+    /** @nullable */
+    fileName?: string | null;
+    /** @nullable */
+    content?: string | null;
+    /** @nullable */
+    url?: string | null;
+    /** @nullable */
+    sizeBytes?: number | null;
+    /** @nullable */
+    uploadedAt?: string | null;
 }
 export interface Lesson {
     id: number;
@@ -198,6 +216,8 @@ export interface Lesson {
 }
 export interface CourseDetail {
     id: number;
+    /** @nullable */
+    badgeId?: number | null;
     title: string;
     category: string;
     description: string;
@@ -208,18 +228,22 @@ export interface CourseDetail {
     lessons: Lesson[];
     status?: string;
     progressPct?: number;
+    markdownSections?: MarkdownSection[];
+    completedMarkdownSections?: string[];
 }
 export interface CourseProgress {
     courseId: number;
     status: string;
     progressPct: number;
     xpEarned: number;
+    completedMarkdownSections?: string[];
     /** @nullable */
     completedAt?: string | null;
 }
 export interface CourseProgressUpdate {
     progressPct: number;
     lastLessonId?: number;
+    completedMarkdownSectionId?: string;
 }
 export interface LearningPath {
     recommended: CourseWithProgress[];
@@ -266,6 +290,12 @@ export interface Badge {
     name: string;
     description: string;
     iconName: string;
+    /** @nullable */
+    imageUrl?: string | null;
+    /** @nullable */
+    imageFileName?: string | null;
+    /** @nullable */
+    imageSizeBytes?: number | null;
     category: string;
     xpRequired?: number;
 }
@@ -274,7 +304,18 @@ export interface UserBadgeDetail {
     name: string;
     description: string;
     iconName: string;
+    /** @nullable */
+    imageUrl?: string | null;
+    /** @nullable */
+    imageFileName?: string | null;
     category: string;
+    earnedAt: string;
+}
+export interface LeaderboardBadge {
+    badgeId: number;
+    name: string;
+    /** @nullable */
+    imageUrl?: string | null;
     earnedAt: string;
 }
 export interface LeaderboardEntry {
@@ -286,7 +327,9 @@ export interface LeaderboardEntry {
     departmentName?: string | null;
     xp: number;
     level: number;
+    streakDays: number;
     cciScore: number;
+    badges?: LeaderboardBadge[];
     isCurrentUser?: boolean;
 }
 export interface LeaderboardResponse {

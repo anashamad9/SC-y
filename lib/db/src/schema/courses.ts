@@ -1,5 +1,6 @@
 import { pgTable, text, serial, timestamp, integer, boolean, real, bigint, jsonb } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { badgesTable } from "./gamification";
 
 export const courseModulesTable = pgTable("course_modules", {
   id: serial("id").primaryKey(),
@@ -14,6 +15,7 @@ export const courseModulesTable = pgTable("course_modules", {
 export const coursesTable = pgTable("courses", {
   id: serial("id").primaryKey(),
   moduleId: integer("module_id").references(() => courseModulesTable.id, { onDelete: "cascade" }),
+  badgeId: integer("badge_id").references(() => badgesTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   category: text("category").notNull(),
   description: text("description").notNull(),

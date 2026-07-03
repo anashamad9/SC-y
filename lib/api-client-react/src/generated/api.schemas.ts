@@ -198,6 +198,8 @@ export interface PsychometricProfile {
 
 export interface CourseWithProgress {
   id: number;
+  /** @nullable */
+  badgeId?: number | null;
   title: string;
   category: string;
   description: string;
@@ -242,6 +244,8 @@ export interface Lesson {
 
 export interface CourseDetail {
   id: number;
+  /** @nullable */
+  badgeId?: number | null;
   title: string;
   category: string;
   description: string;
@@ -322,6 +326,12 @@ export interface Badge {
   name: string;
   description: string;
   iconName: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  imageFileName?: string | null;
+  /** @nullable */
+  imageSizeBytes?: number | null;
   category: string;
   xpRequired?: number;
 }
@@ -331,7 +341,19 @@ export interface UserBadgeDetail {
   name: string;
   description: string;
   iconName: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  imageFileName?: string | null;
   category: string;
+  earnedAt: string;
+}
+
+export interface LeaderboardBadge {
+  badgeId: number;
+  name: string;
+  /** @nullable */
+  imageUrl?: string | null;
   earnedAt: string;
 }
 
@@ -346,6 +368,7 @@ export interface LeaderboardEntry {
   level: number;
   streakDays: number;
   cciScore: number;
+  badges?: LeaderboardBadge[];
   isCurrentUser?: boolean;
 }
 

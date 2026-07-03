@@ -1,4 +1,4 @@
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 
 export default function Footer() {
   return (
@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-3 mb-6">
-              <img src={logo} alt="The Harvesters Logo" className="h-10 w-8 object-contain opacity-90" />
+              <BrandLogo className="h-10 w-8 object-contain opacity-90" />
               <span className="text-lg font-bold tracking-tight text-foreground/90">
                 CyberCultX
               </span>

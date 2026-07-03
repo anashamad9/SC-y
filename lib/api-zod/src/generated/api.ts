@@ -585,6 +585,12 @@ export const GetLeaderboardResponse = zod.object({
   "level": zod.number(),
   "streakDays": zod.number(),
   "cciScore": zod.number(),
+  "badges": zod.array(zod.object({
+  "badgeId": zod.number(),
+  "name": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "earnedAt": zod.string()
+})).optional(),
   "isCurrentUser": zod.boolean().optional()
 })),
   "currentUserRank": zod.number().nullable()
@@ -613,6 +619,8 @@ export const GetMyBadgesResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string(),
   "iconName": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "imageFileName": zod.string().nullish(),
   "category": zod.string(),
   "earnedAt": zod.string()
 })

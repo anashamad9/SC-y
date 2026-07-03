@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useForgotPassword } from "@workspace/api-client-react";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -52,7 +52,7 @@ export default function ForgotPassword() {
       >
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <img src={logo} alt="The Harvesters Logo" className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
+            <BrandLogo className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Access Recovery</h1>
           <p className="text-sm text-muted-foreground mt-2 text-center">

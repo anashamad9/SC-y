@@ -887,7 +887,7 @@ export declare const useCreatePhishingTemplate: <TError = ErrorType<unknown>, TC
 }, TContext>;
 export declare const getGeneratePhishingTemplateUrl: () => string;
 /**
- * @summary AI-generate a phishing template (mock)
+ * @summary Generate a phishing template
  */
 export declare const generatePhishingTemplate: (phishingGenerateInput: PhishingGenerateInput, options?: RequestInit) => Promise<PhishingGenerateResult>;
 export declare const getGeneratePhishingTemplateMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
@@ -902,7 +902,7 @@ export type GeneratePhishingTemplateMutationResult = NonNullable<Awaited<ReturnT
 export type GeneratePhishingTemplateMutationBody = BodyType<PhishingGenerateInput>;
 export type GeneratePhishingTemplateMutationError = ErrorType<unknown>;
 /**
-* @summary AI-generate a phishing template (mock)
+* @summary Generate a phishing template
 */
 export declare const useGeneratePhishingTemplate: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePhishingTemplate>>, TError, {
@@ -1393,6 +1393,32 @@ export declare const useUpdateTenant: <TError = ErrorType<unknown>, TContext = u
 }) => UseMutationResult<Awaited<ReturnType<typeof updateTenant>>, TError, {
     id: number;
     data: BodyType<TenantInput>;
+}, TContext>;
+export declare const getDeleteTenantUrl: (id: number) => string;
+/**
+ * @summary Delete tenant
+ */
+export declare const deleteTenant: (id: number, options?: RequestInit) => Promise<void>;
+export declare const getDeleteTenantMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteTenant>>, TError, {
+        id: number;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof deleteTenant>>, TError, {
+    id: number;
+}, TContext>;
+export type DeleteTenantMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTenant>>>;
+export type DeleteTenantMutationError = ErrorType<unknown>;
+/**
+* @summary Delete tenant
+*/
+export declare const useDeleteTenant: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteTenant>>, TError, {
+        id: number;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof deleteTenant>>, TError, {
+    id: number;
 }, TContext>;
 export declare const getGetSystemConfigUrl: () => string;
 /**

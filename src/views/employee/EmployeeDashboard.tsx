@@ -219,6 +219,24 @@ function Section({
   );
 }
 
+function BadgeMark({ badge, className = "h-11 w-11" }: { badge: any; className?: string }) {
+  if (badge?.imageUrl) {
+    return (
+      <img
+        src={badge.imageUrl}
+        alt={badge.name ?? "Badge"}
+        className={`${className} rounded-lg border border-border bg-background object-contain p-1`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${className} flex items-center justify-center rounded-lg bg-primary text-primary-foreground`}>
+      <Award className="h-5 w-5" />
+    </div>
+  );
+}
+
 function CourseRow({ course, featured = false, copy }: { course: any; featured?: boolean; copy: ReturnType<typeof dashboardCopy> }) {
   const pct = clampPct(course?.progressPct ?? 0);
   return (
@@ -314,6 +332,7 @@ export default function EmployeeDashboard() {
       meta: badge.category,
       when: new Date(badge.earnedAt).toLocaleDateString(),
       value: copy.badge,
+      badge,
     })),
   ].slice(0, 4);
 
@@ -428,9 +447,13 @@ export default function EmployeeDashboard() {
               <div className="space-y-3">
                 {recentActivity.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/55 p-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </div>
+                    {(item as any).badge ? (
+                      <BadgeMark badge={(item as any).badge} className="h-9 w-9" />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-foreground">{item.title}</div>
                       <div className="truncate text-xs capitalize text-muted-foreground">{item.meta}</div>
@@ -485,8 +508,14 @@ export default function EmployeeDashboard() {
               <div className="grid grid-cols-3 gap-3">
                 {recentBadges.map((badge: any, index: number) => (
                   <div key={badge.badgeId} className="rounded-lg border border-border bg-background/55 p-3 text-center">
-                    <div className={`mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-lg ${BADGE_TONES[index % BADGE_TONES.length]}`}>
-                      <Award className="h-5 w-5" />
+                    <div className="mx-auto mb-2 w-fit">
+                      {badge.imageUrl ? (
+                        <BadgeMark badge={badge} />
+                      ) : (
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${BADGE_TONES[index % BADGE_TONES.length]}`}>
+                          <Award className="h-5 w-5" />
+                        </div>
+                      )}
                     </div>
                     <div className="truncate text-[11px] font-semibold text-foreground">{badge.name}</div>
                   </div>

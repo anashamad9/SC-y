@@ -123,6 +123,7 @@ create table course_modules (
 create table courses (
   id serial primary key,
   module_id integer references course_modules(id) on delete cascade,
+  badge_id integer,
   title text not null,
   category text not null,
   description text not null,
@@ -244,6 +245,9 @@ create table badges (
   name text not null unique,
   description text not null,
   icon_name text not null,
+  image_url text,
+  image_file_name text,
+  image_size_bytes integer,
   category text not null,
   xp_required integer not null default 0,
   is_active boolean not null default true
@@ -256,6 +260,10 @@ create table user_badges (
   earned_at timestamptz not null default now(),
   unique (user_id, badge_id)
 );
+
+alter table courses
+  add constraint courses_badge_id_badges_id_fk
+  foreign key (badge_id) references badges(id) on delete set null;
 
 create table cci_snapshots (
   id serial primary key,
@@ -373,6 +381,7 @@ create index audit_logs_created_at_idx on audit_logs(created_at desc);
 create index course_modules_is_active_idx on course_modules(is_active);
 create index course_modules_display_order_idx on course_modules(display_order);
 create index courses_module_id_idx on courses(module_id);
+create index courses_badge_id_idx on courses(badge_id);
 create index courses_is_active_idx on courses(is_active);
 create index courses_score_range_idx on courses(min_score, max_score);
 create index lessons_course_id_idx on lessons(course_id);

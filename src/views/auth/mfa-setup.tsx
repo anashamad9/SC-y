@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useSetupMfa, useVerifyMfa, useGetMe } from "@workspace/api-client-react";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 
 const verifySchema = z.object({
   code: z.string().length(6, "Enter the 6-digit code from your authenticator app"),
@@ -77,7 +77,7 @@ export default function MfaSetup() {
       >
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <img src={logo} alt="The Harvesters Logo" className="h-16 w-12 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
+            <BrandLogo className="h-16 w-12 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Multi-Factor Authentication</h1>
           <p className="text-sm text-muted-foreground mt-2 text-center">

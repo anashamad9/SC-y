@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRegister } from "@workspace/api-client-react";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 
 const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -64,7 +64,7 @@ export default function Register() {
       >
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <img src={logo} alt="The Harvesters Logo" className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
+            <BrandLogo className="h-20 w-14 object-contain mb-4 cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-center">Request Clearance</h1>
           <p className="text-sm text-muted-foreground mt-2 text-center">Submit your account request for super admin approval</p>

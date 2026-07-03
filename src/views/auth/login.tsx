@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useLogin, useVerifyMfa } from "@workspace/api-client-react";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 import ThemeToggle from "@/components/theme-toggle";
 import { API_BASE } from "@/lib/runtime";
 import { useI18n, type Lang } from "@/lib/i18n";
@@ -280,7 +280,7 @@ export default function Login() {
         <div className="w-full max-w-sm bg-card p-6 rounded-lg border border-border text-card-foreground">
           <div className="flex flex-col items-center mb-6">
             <Link href="/">
-              <img src={logo} alt="The Harvesters Logo" className="h-16 w-12 object-contain mb-3 cursor-pointer hover:scale-105 transition-transform" />
+              <BrandLogo className="h-16 w-12 object-contain mb-3 cursor-pointer hover:scale-105 transition-transform" />
             </Link>
             <h1 className="text-xl font-bold tracking-tight text-center">{copy.identityTitle}</h1>
             <p className="text-xs text-muted-foreground mt-1.5 text-center">{copy.identitySub}</p>
@@ -400,7 +400,7 @@ export default function Login() {
             animate={{ rotate: [0, 8, -8, 0], scale: [1, 1.04, 1] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <img src={logo} alt="The Harvesters Logo" className="h-24 w-16 object-contain" />
+            <BrandLogo className="h-24 w-16 object-contain" />
           </motion.div>
           {[
             ["left-10 top-20", copy.orbitLabels[0]],

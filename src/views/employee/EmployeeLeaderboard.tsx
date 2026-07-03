@@ -34,6 +34,35 @@ function xpProgress(profile: any) {
   return Math.min(100, Math.max(0, Math.round((current / needed) * 100)));
 }
 
+function BadgeStrip({ badges, compact = false }: { badges?: any[]; compact?: boolean }) {
+  const visibleBadges = (badges ?? []).filter(Boolean).slice(0, 3);
+  if (visibleBadges.length === 0) return null;
+
+  return (
+    <div className={`flex flex-wrap ${compact ? "justify-center" : ""} gap-1.5`}>
+      {visibleBadges.map((badge) => (
+        badge.imageUrl ? (
+          <img
+            key={badge.badgeId}
+            src={badge.imageUrl}
+            alt={badge.name ?? "Badge"}
+            title={badge.name}
+            className="h-6 w-6 rounded-md border border-border bg-background object-contain p-0.5"
+          />
+        ) : (
+          <div
+            key={badge.badgeId}
+            title={badge.name}
+            className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-primary/15 text-primary"
+          >
+            <Medal className="h-3.5 w-3.5" />
+          </div>
+        )
+      ))}
+    </div>
+  );
+}
+
 function PodiumCard({ entry, place, lifted = false, employeeLabel }: { entry: any; place: 1 | 2 | 3; lifted?: boolean; employeeLabel: string }) {
   const tone = place === 1 ? "bg-primary" : place === 2 ? "bg-fuchsia-500" : "bg-amber-500";
   const ring = place === 1 ? "border-primary/45 shadow-primary/12" : "border-border shadow-black/20";
@@ -56,6 +85,9 @@ function PodiumCard({ entry, place, lifted = false, employeeLabel }: { entry: an
       <div className="mt-1 truncate text-xs text-muted-foreground">{entry?.departmentName ?? employeeLabel}</div>
       <div className="mt-4 text-2xl font-bold tabular-nums text-primary">{formatNumber(entry?.xp)}</div>
       <div className="text-xs uppercase tracking-wider text-muted-foreground">XP</div>
+      <div className="mt-3">
+        <BadgeStrip badges={entry?.badges} compact />
+      </div>
     </motion.div>
   );
 }
@@ -207,6 +239,9 @@ export default function EmployeeLeaderboard() {
                           {entry.isCurrentUser && <span className="ms-2 text-xs font-medium text-primary/70">({copy.you})</span>}
                         </div>
                         <div className="truncate text-xs text-muted-foreground">{copy.sameTenant}</div>
+                        <div className="mt-1">
+                          <BadgeStrip badges={entry.badges} />
+                        </div>
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground">{entry.departmentName ?? "-"}</div>
@@ -243,6 +278,9 @@ export default function EmployeeLeaderboard() {
           <div>
             <div className="text-xl font-bold text-foreground">{currentEntry ? `#${currentEntry.rank}` : leaderboard?.currentUserRank ? `#${leaderboard.currentUserRank}` : "-"}</div>
             <div className="text-sm text-muted-foreground">{user ? `${user.firstName} ${user.lastName}` : copy.you}</div>
+            <div className="mt-2">
+              <BadgeStrip badges={currentEntry?.badges} />
+            </div>
           </div>
         </div>
         <div className="mt-5">

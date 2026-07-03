@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 import { API_BASE } from "@/lib/runtime";
 
 export default function ResetPassword() {
@@ -46,7 +46,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-sm bg-card text-card-foreground rounded-lg p-6 border border-border">
         <div className="flex flex-col items-center mb-6">
           <Link href="/">
-            <img src={logo} alt="The Harvesters Logo" className="h-16 w-12 object-contain mb-3" />
+            <BrandLogo className="h-16 w-12 object-contain mb-3" />
           </Link>
           <h1 className="text-xl font-bold">Reset Password</h1>
           <p className="text-xs text-muted-foreground mt-1.5 text-center">Set a new password for your account</p>

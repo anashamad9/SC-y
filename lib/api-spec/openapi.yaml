@@ -1834,6 +1834,8 @@ components:
       properties:
         id:
           type: integer
+        badgeId:
+          type: ["integer", "null"]
         title:
           type: string
         category:
@@ -1865,6 +1867,8 @@ components:
       properties:
         id:
           type: integer
+        badgeId:
+          type: ["integer", "null"]
         title:
           type: string
         type:
@@ -2032,6 +2036,12 @@ components:
           type: string
         iconName:
           type: string
+        imageUrl:
+          type: ["string", "null"]
+        imageFileName:
+          type: ["string", "null"]
+        imageSizeBytes:
+          type: ["integer", "null"]
         category:
           type: string
         xpRequired:
@@ -2049,8 +2059,25 @@ components:
           type: string
         iconName:
           type: string
+        imageUrl:
+          type: ["string", "null"]
+        imageFileName:
+          type: ["string", "null"]
         category:
           type: string
+        earnedAt:
+          type: string
+
+    LeaderboardBadge:
+      type: object
+      required: [badgeId, name, earnedAt]
+      properties:
+        badgeId:
+          type: integer
+        name:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
         earnedAt:
           type: string
 
@@ -2076,6 +2103,10 @@ components:
           type: integer
         cciScore:
           type: number
+        badges:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardBadge"
         isCurrentUser:
           type: boolean
 

@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import logo from "@/assets/logo";
+import BrandLogo from "@/components/brand-logo";
 import ThemeToggle from "@/components/theme-toggle";
 
 export default function Navbar() {
@@ -14,7 +14,7 @@ export default function Navbar() {
     >
       <div className="container mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          <img src={logo} alt="The Harvesters Logo" className="h-12 w-10 object-contain" />
+          <BrandLogo className="h-12 w-10 object-contain" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             CyberCultX
           </span>

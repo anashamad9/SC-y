@@ -14,6 +14,11 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
+const THEME_LOGOS: Record<Theme, string> = {
+  dark: "/dark.png",
+  light: "/light.png",
+};
+
 function readStoredTheme(): Theme {
   if (typeof window === "undefined") return "dark";
   return localStorage.getItem("ccx-theme") === "light" ? "light" : "dark";
@@ -22,6 +27,27 @@ function readStoredTheme(): Theme {
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.classList.toggle("light", theme === "light");
+  updateThemeIcons(theme);
+}
+
+function updateThemeIcons(theme: Theme) {
+  const href = THEME_LOGOS[theme];
+  const rels = ["icon", "shortcut icon", "apple-touch-icon"];
+
+  for (const rel of rels) {
+    const links = Array.from(document.querySelectorAll<HTMLLinkElement>(`link[rel="${rel}"]`));
+    if (links.length === 0) {
+      const link = document.createElement("link");
+      link.rel = rel;
+      links.push(link);
+      document.head.appendChild(link);
+    }
+    for (const link of links) {
+      link.href = href;
+      link.type = "image/png";
+      link.removeAttribute("media");
+    }
+  }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
