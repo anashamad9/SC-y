@@ -44,8 +44,8 @@ const EDITOR_STEPS = [
   { key: "assets", label: "Assets", icon: Film },
   { key: "preview", label: "Preview", icon: Eye },
 ] as const;
-const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
-const MAX_INLINE_VIDEO_BYTES = 3 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 75 * 1024 * 1024;
+const MAX_INLINE_VIDEO_BYTES = MAX_VIDEO_SIZE_BYTES;
 const MAX_BADGE_IMAGE_BYTES = 512 * 1024;
 const API_REQUEST_TIMEOUT_MS = 45_000;
 type EditorStep = (typeof EDITOR_STEPS)[number]["key"];
@@ -75,7 +75,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
     response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts, signal: opts?.signal ?? controller.signal });
   } catch (error: any) {
     if (error?.name === "AbortError") {
-      throw new Error("Upload timed out. Use a hosted video URL or choose a smaller video.");
+      throw new Error("Video upload timed out. Choose a smaller video or paste a hosted video URL.");
     }
     throw error;
   } finally {
@@ -88,7 +88,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
   } catch {
     const cleanText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     if (response.status === 413) {
-      throw new Error("Video payload is too large for this deployment. Use a hosted video URL or choose a smaller video.");
+      throw new Error("Video upload is too large for this deployment. Choose a video under 75MB or paste a hosted video URL.");
     }
     throw new Error(cleanText || `Request failed with status ${response.status}`);
   }
@@ -398,7 +398,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       return;
     }
     if (file.size > MAX_VIDEO_SIZE_BYTES) {
-      setVideoMessage("Uploaded videos must be 2GB or smaller.");
+      setVideoMessage("Uploaded videos must be 75MB or smaller. For larger videos, paste a hosted URL instead.");
       return;
     }
 
@@ -417,14 +417,14 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       const reader = new FileReader();
       reader.onload = () => {
         setForm((current) => ({ ...current, videoUrl: String(reader.result ?? "") }));
-        setVideoMessage("Video embedded directly into the course.");
+      setVideoMessage("Video uploaded and ready to save.");
       };
       reader.onerror = () => setVideoMessage("Could not read the selected video file.");
       reader.readAsDataURL(file);
       return;
     }
 
-    setVideoMessage("Video preview is ready. Files larger than 3MB need a hosted or public video URL before saving.");
+    setVideoMessage("Video preview is ready. Paste a hosted URL to save videos larger than 75MB.");
   }
 
   function handleMarkdownFiles(fileList?: FileList | null) {
@@ -939,7 +939,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   <Input type="file" accept="video/*" onChange={(event) => handleVideoFile(event.target.files?.[0])} className="bg-muted/30" />
                 </div>
                 <div className="mt-2 text-[11px] text-muted-foreground">
-                  Videos can be selected up to 2GB. Files up to 3MB are embedded directly. Larger files need a hosted URL for playback after save.
+                  Upload MP4/WebM files up to 75MB directly. For larger videos, paste a hosted video URL.
                 </div>
                 {videoMessage && <div className="mt-2 text-xs text-muted-foreground">{videoMessage}</div>}
                 {(form.videoFileName || form.videoSizeBytes) && (

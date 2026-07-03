@@ -124,45 +124,45 @@ function toTableRows(value: unknown): Array<Record<string, unknown> | unknown[]>
 }
 
 const MARKDOWN_COMPONENTS: Components = {
-  h1: ({ children }) => <h1 className="mb-5 mt-7 text-3xl font-bold leading-tight text-foreground">{children}</h1>,
-  h2: ({ children }) => <h2 className="mb-4 mt-7 text-2xl font-bold leading-tight text-foreground">{children}</h2>,
-  h3: ({ children }) => <h3 className="mb-3 mt-6 text-xl font-semibold leading-tight text-foreground">{children}</h3>,
-  h4: ({ children }) => <h4 className="mb-2 mt-5 text-lg font-semibold text-foreground">{children}</h4>,
-  p: ({ children }) => <p className="my-4 leading-8 text-foreground">{children}</p>,
-  ul: ({ children }) => <ul className="my-4 list-disc space-y-2 ps-6 text-foreground">{children}</ul>,
-  ol: ({ children }) => <ol className="my-4 list-decimal space-y-2 ps-6 text-foreground">{children}</ol>,
-  li: ({ children }) => <li className="leading-8 text-foreground marker:text-foreground/70">{children}</li>,
-  strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
-  em: ({ children }) => <em className="text-foreground">{children}</em>,
+  h1: ({ children }) => <h1 className="mb-5 mt-7 text-3xl font-bold leading-tight text-current">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-4 mt-7 text-2xl font-bold leading-tight text-current">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-3 mt-6 text-xl font-semibold leading-tight text-current">{children}</h3>,
+  h4: ({ children }) => <h4 className="mb-2 mt-5 text-lg font-semibold text-current">{children}</h4>,
+  p: ({ children }) => <p className="my-4 leading-8 text-current">{children}</p>,
+  ul: ({ children }) => <ul className="my-4 list-disc space-y-2 ps-6 text-current">{children}</ul>,
+  ol: ({ children }) => <ol className="my-4 list-decimal space-y-2 ps-6 text-current">{children}</ol>,
+  li: ({ children }) => <li className="leading-8 text-current marker:text-current/70">{children}</li>,
+  strong: ({ children }) => <strong className="font-bold text-current">{children}</strong>,
+  em: ({ children }) => <em className="text-current">{children}</em>,
   a: ({ children, href }) => (
     <a href={href} target={href?.startsWith("http") ? "_blank" : undefined} rel={href?.startsWith("http") ? "noreferrer" : undefined} className="font-medium text-primary underline-offset-4 hover:underline">
       {children}
     </a>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="my-5 border-s-4 border-primary/40 bg-muted/40 px-4 py-2 text-foreground">
+    <blockquote className="my-5 border-s-4 border-primary/40 bg-muted/40 px-4 py-2 text-current">
       {children}
     </blockquote>
   ),
   code: ({ children }) => (
-    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground">
+    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-current">
       {children}
     </code>
   ),
   pre: ({ children }) => (
-    <pre className="my-5 overflow-x-auto rounded-lg border border-border bg-muted p-4 text-foreground">
+    <pre className="my-5 overflow-x-auto rounded-lg border border-border bg-muted p-4 text-current">
       {children}
     </pre>
   ),
   hr: () => <hr className="my-8 border-border" />,
   table: ({ children }) => (
     <div className="my-5 overflow-x-auto rounded-lg border border-border">
-      <table className="w-full border-collapse text-sm text-foreground">{children}</table>
+      <table className="w-full border-collapse text-sm text-current">{children}</table>
     </div>
   ),
-  thead: ({ children }) => <thead className="bg-muted/60 text-foreground">{children}</thead>,
-  th: ({ children }) => <th className="border-b border-border px-4 py-3 text-start font-semibold text-foreground">{children}</th>,
-  td: ({ children }) => <td className="border-b border-border/70 px-4 py-3 text-foreground">{children}</td>,
+  thead: ({ children }) => <thead className="bg-muted/60 text-current">{children}</thead>,
+  th: ({ children }) => <th className="border-b border-border px-4 py-3 text-start font-semibold text-current">{children}</th>,
+  td: ({ children }) => <td className="border-b border-border/70 px-4 py-3 text-current">{children}</td>,
 };
 
 function MarkdownText({
@@ -408,20 +408,25 @@ function SecurityAlertBlock({
   const isCritical = normalizedType === "critical" || normalizedType === "danger";
   const Icon = isCritical ? ShieldAlert : normalizedType === "tip" ? Lightbulb : normalizedType === "warning" ? AlertTriangle : Info;
   const title = isCritical ? "تنبيه أمني" : normalizedType === "tip" ? "نصيحة" : normalizedType === "warning" ? "تحذير" : "ملاحظة";
+  const toneClass = isCritical
+    ? "border-red-500/70 bg-red-50 text-red-950"
+    : normalizedType === "tip"
+      ? "border-emerald-500/55 bg-emerald-50 text-emerald-950"
+      : normalizedType === "warning"
+        ? "border-amber-500/60 bg-amber-50 text-amber-950"
+        : "border-sky-500/55 bg-sky-50 text-sky-950";
 
   return (
     <Alert
-      variant={isCritical ? "destructive" : "default"}
+      variant="default"
       className={cn(
-        "my-5 border bg-card/80",
-        isCritical && "border-red-500/40 bg-red-500/10 text-red-900 dark:text-red-100",
-        normalizedType === "tip" && "border-emerald-500/35 bg-emerald-500/10",
-        normalizedType === "warning" && "border-amber-500/35 bg-amber-500/10",
+        "my-5 border shadow-sm [&>svg]:text-current",
+        toneClass,
       )}
     >
       <Icon className="h-4 w-4" />
-      <AlertTitle className={isCritical ? "text-red-950 dark:text-red-50" : "text-foreground"}>{title}</AlertTitle>
-      <AlertDescription className={cn("text-foreground", isCritical && "text-red-950 dark:text-red-50 [&_*]:!text-current")}>
+      <AlertTitle className="text-current">{title}</AlertTitle>
+      <AlertDescription className="text-current [&_*]:!text-current">
         <MarkdownText content={content} />
       </AlertDescription>
     </Alert>

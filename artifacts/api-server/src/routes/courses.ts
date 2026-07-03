@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
-const MAX_VIDEO_SIZE_BYTES = 2_147_483_648;
+const MAX_VIDEO_SIZE_BYTES = 75 * 1024 * 1024;
 const RECOMMENDED_COURSE_COUNT = 3;
 
 type MarkdownSection = {
@@ -126,7 +126,7 @@ function isSupportedMarkdownFile(fileName: string) {
 
 function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert>) {
   if (payload.videoSizeBytes !== null && payload.videoSizeBytes !== undefined && payload.videoSizeBytes > MAX_VIDEO_SIZE_BYTES) {
-    return "Uploaded videos must be 2GB or smaller.";
+    return "Uploaded videos must be 75MB or smaller. For larger videos, use a hosted video URL.";
   }
   if (payload.markdownFileName && !isSupportedMarkdownFile(payload.markdownFileName)) {
     return "Only Markdown or MDX files ending in .md or .mdx are supported.";
