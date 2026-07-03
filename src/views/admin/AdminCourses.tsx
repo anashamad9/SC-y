@@ -44,7 +44,7 @@ const EDITOR_STEPS = [
   { key: "assets", label: "Assets", icon: Film },
   { key: "preview", label: "Preview", icon: Eye },
 ] as const;
-const MAX_VIDEO_SIZE_BYTES = 75 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024;
 const MAX_INLINE_VIDEO_BYTES = MAX_VIDEO_SIZE_BYTES;
 const MAX_BADGE_IMAGE_BYTES = 512 * 1024;
 const API_REQUEST_TIMEOUT_MS = 45_000;
@@ -88,7 +88,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
   } catch {
     const cleanText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     if (response.status === 413) {
-      throw new Error("Video upload is too large for this deployment. Choose a video under 75MB or paste a hosted video URL.");
+      throw new Error("Video upload is too large for this deployment. Use direct storage upload or paste a hosted video URL.");
     }
     throw new Error(cleanText || `Request failed with status ${response.status}`);
   }
@@ -204,6 +204,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmModuleDelete, setConfirmModuleDelete] = useState<number | null>(null);
   const [videoMessage, setVideoMessage] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [markdownMessage, setMarkdownMessage] = useState<string | null>(null);
   const [badgeMessage, setBadgeMessage] = useState<string | null>(null);
   const [badgeForm, setBadgeForm] = useState({
@@ -390,7 +391,35 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     setForm(DEFAULT_FORM);
   }
 
-  function handleVideoFile(file?: File) {
+  async function uploadVideoFile(file: File) {
+    const uploadConfig = await apiFetch("/api/courses/video-upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file.name,
+        mimeType: file.type || "video/mp4",
+        sizeBytes: file.size,
+      }),
+    });
+
+    const uploadResponse = await fetch(uploadConfig.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "video/mp4",
+        "x-upsert": "false",
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text().catch(() => "");
+      throw new Error(errorText || "Could not upload the video to storage.");
+    }
+
+    return String(uploadConfig.publicUrl ?? "");
+  }
+
+  async function handleVideoFile(file?: File) {
     setVideoMessage(null);
     if (!file) return;
     if (!file.type.startsWith("video/")) {
@@ -398,7 +427,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       return;
     }
     if (file.size > MAX_VIDEO_SIZE_BYTES) {
-      setVideoMessage("Uploaded videos must be 75MB or smaller. For larger videos, paste a hosted URL instead.");
+      setVideoMessage("Uploaded videos must be 500MB or smaller. For larger videos, paste a hosted URL instead.");
       return;
     }
 
@@ -414,17 +443,23 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     }));
 
     if (file.size <= MAX_INLINE_VIDEO_BYTES) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setForm((current) => ({ ...current, videoUrl: String(reader.result ?? "") }));
-      setVideoMessage("Video uploaded and ready to save.");
-      };
-      reader.onerror = () => setVideoMessage("Could not read the selected video file.");
-      reader.readAsDataURL(file);
+      setVideoUploading(true);
+      setVideoMessage("Uploading video to storage...");
+      try {
+        const publicUrl = await uploadVideoFile(file);
+        if (!publicUrl) throw new Error("Storage did not return a video URL.");
+        setForm((current) => ({ ...current, videoUrl: publicUrl }));
+        setVideoMessage("Video uploaded to storage and ready to save.");
+      } catch (error: any) {
+        setForm((current) => ({ ...current, videoUrl: "" }));
+        setVideoMessage(error?.message ?? "Could not upload the selected video. Paste a hosted video URL instead.");
+      } finally {
+        setVideoUploading(false);
+      }
       return;
     }
 
-    setVideoMessage("Video preview is ready. Paste a hosted URL to save videos larger than 75MB.");
+    setVideoMessage("Video preview is ready. Paste a hosted URL to save videos larger than 500MB.");
   }
 
   function handleMarkdownFiles(fileList?: FileList | null) {
@@ -523,8 +558,8 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     }
     if ((form.videoFileName || form.videoSizeBytes) && !form.videoUrl.trim()) {
       toast({
-        title: "Video URL required",
-        description: "Paste a hosted or public video URL so the course page can play the uploaded video.",
+        title: "Video upload required",
+        description: "Wait for the storage upload to finish, or paste a hosted video URL.",
         variant: "destructive",
       });
       return;
@@ -537,7 +572,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     createCourse.mutate(form);
   }
 
-  const isPending = createCourse.isPending || updateCourse.isPending;
+  const isPending = createCourse.isPending || updateCourse.isPending || videoUploading;
   const previewVideoSource = videoPreviewUrl ?? form.videoUrl;
   const editorStepIndex = EDITOR_STEPS.findIndex((step) => step.key === editorStep);
   const isFirstStep = editorStepIndex === 0;
@@ -939,7 +974,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                   <Input type="file" accept="video/*" onChange={(event) => handleVideoFile(event.target.files?.[0])} className="bg-muted/30" />
                 </div>
                 <div className="mt-2 text-[11px] text-muted-foreground">
-                  Upload MP4/WebM files up to 75MB directly. For larger videos, paste a hosted video URL.
+                  Upload MP4/WebM files up to 500MB directly to storage. For larger videos, paste a hosted video URL.
                 </div>
                 {videoMessage && <div className="mt-2 text-xs text-muted-foreground">{videoMessage}</div>}
                 {(form.videoFileName || form.videoSizeBytes) && (
@@ -1033,7 +1068,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                           { label: "Title", value: form.title.trim() || "Missing", ready: Boolean(form.title.trim()) },
                           { label: "Module", value: moduleList.find((module) => module.id === form.moduleId)?.title ?? "Missing", ready: Boolean(form.moduleId) },
                           { label: "Category", value: form.category.replace(/_/g, " "), ready: Boolean(form.category) },
-                          { label: "Video", value: videoNeedsUrl ? "Needs hosted URL" : hasVideo ? "Attached" : "Not attached", ready: hasVideo && !videoNeedsUrl },
+                          { label: "Video", value: videoUploading ? "Uploading..." : videoNeedsUrl ? "Needs storage upload" : hasVideo ? "Attached" : "Not attached", ready: hasVideo && !videoNeedsUrl && !videoUploading },
                           { label: "Markdown notes", value: hasMarkdown ? "Attached" : "Optional", ready: true },
                           { label: "Badge", value: selectedBadge?.name ?? "Optional", ready: true },
                           { label: "Readiness range", value: readinessRange, ready: true },
@@ -1183,7 +1218,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
                 ) : (
                   <Button size="sm" onClick={handleSubmit} disabled={!form.title.trim() || videoNeedsUrl || isPending} className="gap-2 active:scale-[0.96] transition-transform">
                     <CheckCircle2 className="h-4 w-4" />
-                    {isPending ? "Saving..." : editingId ? "Update course" : "Create course"}
+                    {videoUploading ? "Uploading video..." : isPending ? "Saving..." : editingId ? "Update course" : "Create course"}
                   </Button>
                 )}
               </div>

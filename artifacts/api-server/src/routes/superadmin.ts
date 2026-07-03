@@ -182,7 +182,7 @@ router.get("/system/health", requireAuth, requireRole(...["superadmin"]), async 
       services: {
         database: { status: "healthy" },
         auth: { status: "healthy" },
-        storage: { status: process.env.STORAGE_PROVIDER ? "configured" : "not_configured" },
+        storage: { status: (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY) ? "configured" : "not_configured" },
         email: { status: process.env.EMAIL_PROVIDER ? "configured" : "not_configured" },
       },
       metrics: {

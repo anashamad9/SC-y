@@ -71,7 +71,7 @@ app.use("/api", generalLimiter);
 app.use("/api", router);
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err?.type === "entity.too.large") {
-    res.status(413).json({ error: "Video upload is too large for this deployment. Choose a video under 75MB or use a hosted video URL." });
+    res.status(413).json({ error: "Request body is too large. Videos should upload through Supabase Storage, not through the course JSON payload." });
     return;
   }
   next(err);

@@ -4,8 +4,13 @@ import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
-const MAX_VIDEO_SIZE_BYTES = 75 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024;
 const RECOMMENDED_COURSE_COUNT = 3;
+const COURSE_VIDEO_BUCKET = process.env.SUPABASE_COURSE_VIDEO_BUCKET || "course-videos";
+const SUPABASE_STORAGE_URL = getSupabaseUrl();
+const SUPABASE_STORAGE_API_URL = SUPABASE_STORAGE_URL ? `${SUPABASE_STORAGE_URL}/storage/v1` : "";
+const SUPABASE_STORAGE_API_BASE = SUPABASE_STORAGE_API_URL ? `${SUPABASE_STORAGE_API_URL}/` : "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || "";
 
 type MarkdownSection = {
   id: string;
@@ -29,6 +34,49 @@ function normalizeOptionalNumber(value: unknown) {
   if (value === "" || value === null || value === undefined) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getSupabaseUrl() {
+  if (process.env.SUPABASE_URL) return process.env.SUPABASE_URL.replace(/\/$/, "");
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) return process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "");
+  if (!process.env.DATABASE_URL) return "";
+
+  try {
+    const hostname = new URL(process.env.DATABASE_URL).hostname;
+    const match = hostname.match(/^db\.([^.]+)\.supabase\.co$/);
+    return match ? `https://${match[1]}.supabase.co` : "";
+  } catch {
+    return "";
+  }
+}
+
+function encodeStoragePath(path: string) {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function cleanFileName(fileName: string) {
+  return fileName
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 72) || "course-video";
+}
+
+function videoExtension(fileName: string, mimeType: string) {
+  const fromName = fileName.match(/\.(mp4|webm|ogg)$/i)?.[1]?.toLowerCase();
+  if (fromName) return fromName;
+  if (mimeType === "video/webm") return "webm";
+  if (mimeType === "video/ogg") return "ogg";
+  return "mp4";
+}
+
+function publicStorageUrl(path: string) {
+  return `${SUPABASE_STORAGE_API_URL}/object/public/${COURSE_VIDEO_BUCKET}/${encodeStoragePath(path)}`;
+}
+
+function isSupportedVideoMime(mimeType: string) {
+  return ["video/mp4", "video/webm", "video/ogg", "video/quicktime"].includes(mimeType);
 }
 
 function normalizeMarkdownSections(value: unknown, existing?: MarkdownSection[] | null): MarkdownSection[] {
@@ -126,7 +174,7 @@ function isSupportedMarkdownFile(fileName: string) {
 
 function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert>) {
   if (payload.videoSizeBytes !== null && payload.videoSizeBytes !== undefined && payload.videoSizeBytes > MAX_VIDEO_SIZE_BYTES) {
-    return "Uploaded videos must be 75MB or smaller. For larger videos, use a hosted video URL.";
+    return "Uploaded videos must be 500MB or smaller. For larger videos, use a hosted video URL.";
   }
   if (payload.markdownFileName && !isSupportedMarkdownFile(payload.markdownFileName)) {
     return "Only Markdown or MDX files ending in .md or .mdx are supported.";
@@ -364,6 +412,77 @@ router.get("/courses/:id/video", requireAuth, async (req, res): Promise<void> =>
 
   if (!course) { res.status(404).json({ message: "Not found" }); return; }
   res.json({ videoUrl: course.videoUrl });
+});
+
+// POST /courses/video-upload-url — create a direct Supabase Storage upload URL
+router.post("/courses/video-upload-url", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (user.role?.toLowerCase() !== "superadmin") {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+
+  if (!SUPABASE_STORAGE_URL || !SUPABASE_SERVICE_KEY) {
+    res.status(501).json({
+      error: "Video storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then create the course-videos storage bucket.",
+    });
+    return;
+  }
+
+  const fileName = normalizeOptionalString(req.body?.fileName) ?? "course-video.mp4";
+  const mimeType = normalizeOptionalString(req.body?.mimeType) ?? "video/mp4";
+  const sizeBytes = normalizeOptionalNumber(req.body?.sizeBytes) ?? 0;
+
+  if (!isSupportedVideoMime(mimeType)) {
+    res.status(400).json({ error: "Only MP4, WebM, MOV, or OGG video files are supported." }); return;
+  }
+  if (sizeBytes <= 0 || sizeBytes > MAX_VIDEO_SIZE_BYTES) {
+    res.status(400).json({ error: "Uploaded videos must be 500MB or smaller. For larger videos, use a hosted video URL." }); return;
+  }
+
+  const extension = videoExtension(fileName, mimeType);
+  const objectPath = `courses/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${cleanFileName(fileName)}.${extension}`;
+  const encodedPath = encodeStoragePath(objectPath);
+  const signUrl = `${SUPABASE_STORAGE_API_URL}/object/upload/sign/${COURSE_VIDEO_BUCKET}/${encodedPath}`;
+
+  const signResponse = await fetch(signUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+      apikey: SUPABASE_SERVICE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ upsert: false }),
+  });
+  const signText = await signResponse.text();
+  let signData: any = {};
+  try {
+    signData = signText ? JSON.parse(signText) : {};
+  } catch {
+    signData = {};
+  }
+
+  if (!signResponse.ok) {
+    res.status(502).json({ error: signData?.error || signData?.message || "Could not create a video upload URL. Check the Supabase Storage bucket." });
+    return;
+  }
+
+  const rawSignedUrl = signData.signedUrl ?? signData.signedURL ?? signData.url ?? "";
+  const token = signData.token || (rawSignedUrl ? new URL(rawSignedUrl, SUPABASE_STORAGE_API_BASE).searchParams.get("token") : "");
+  const uploadUrl = rawSignedUrl
+    ? new URL(rawSignedUrl, SUPABASE_STORAGE_API_BASE).toString()
+    : `${SUPABASE_STORAGE_API_URL}/object/upload/sign/${COURSE_VIDEO_BUCKET}/${encodedPath}?token=${encodeURIComponent(token)}`;
+
+  if (!token && !rawSignedUrl) {
+    res.status(502).json({ error: "Supabase did not return a signed upload token." });
+    return;
+  }
+
+  res.json({
+    uploadUrl,
+    publicUrl: publicStorageUrl(objectPath),
+    path: objectPath,
+    bucket: COURSE_VIDEO_BUCKET,
+  });
 });
 
 // PATCH /courses/:id/progress
