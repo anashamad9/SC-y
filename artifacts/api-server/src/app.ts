@@ -84,7 +84,8 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
   }
   const dbError = err?.cause ?? err;
   logger.error({ err, dbCode: dbError?.code, dbDetail: dbError?.detail, dbConstraint: dbError?.constraint_name }, "Unhandled request error");
-  res.status(500).json({ error: dbError?.detail || dbError?.message || err?.message || "Internal server error" });
+  const message = [dbError?.message || err?.message, dbError?.detail].filter(Boolean).join(" — ");
+  res.status(500).json({ error: message || "Internal server error" });
 });
 
 export default app;
