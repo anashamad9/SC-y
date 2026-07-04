@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, departmentsTable } from "@workspace/db";
+import { db, usersTable, departmentsTable, gamificationProfilesTable } from "@workspace/db";
 import { eq, count, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { GetUserParams, UpdateUserParams, UpdateUserBody, ListUsersQueryParams } from "@workspace/api-zod";
@@ -16,6 +16,7 @@ function isElevated(role: string): role is ElevatedRole {
 function buildUserResponse(user: typeof usersTable.$inferSelect, deptName?: string | null) {
   return {
     id: user.id,
+    tenantId: user.tenantId,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -231,12 +232,37 @@ router.post("/users", requireAuth, requireRole("admin", "superadmin"), async (re
   }
   const bcrypt = await import("bcryptjs");
   const passwordHash = await bcrypt.hash(password || "Welcome1!", 12);
+  const requesterId = req.user!.userId;
+  const parsedDepartmentId = departmentId ? Number(departmentId) : null;
+  if (parsedDepartmentId !== null && (!Number.isInteger(parsedDepartmentId) || parsedDepartmentId <= 0)) {
+    res.status(400).json({ error: "Invalid department" }); return;
+  }
+
+  const [requester] = await db.select({ tenantId: usersTable.tenantId }).from(usersTable).where(eq(usersTable.id, requesterId));
+  let tenantId = requester?.tenantId ?? null;
+  let departmentTenantId: number | null = null;
+  if (parsedDepartmentId) {
+    const [department] = await db.select({ tenantId: departmentsTable.tenantId }).from(departmentsTable).where(eq(departmentsTable.id, parsedDepartmentId));
+    if (!department) {
+      res.status(400).json({ error: "Department not found" }); return;
+    }
+    departmentTenantId = department.tenantId;
+    tenantId = department.tenantId;
+  }
+  if (requesterRole === "admin" && departmentTenantId && requester?.tenantId && departmentTenantId !== requester.tenantId) {
+    res.status(403).json({ error: "Admins can only create users in their own tenant" }); return;
+  }
+  if (requestedRole !== "superadmin" && !tenantId) {
+    res.status(400).json({ error: "Choose a department or sign in with a tenant-scoped admin account." }); return;
+  }
+
   const [user] = await db.insert(usersTable).values({
     email: email.toLowerCase(),
     firstName,
     lastName,
     role: requestedRole,
-    departmentId: departmentId ? parseInt(departmentId) : null,
+    tenantId: requestedRole === "superadmin" ? null : tenantId,
+    departmentId: parsedDepartmentId,
     jobTitle: jobTitle || null,
     passwordHash,
     approvalStatus: "approved",
@@ -244,6 +270,7 @@ router.post("/users", requireAuth, requireRole("admin", "superadmin"), async (re
     approvedAt: new Date(),
     rejectedAt: null,
   }).returning();
+  await db.insert(gamificationProfilesTable).values({ userId: user.id }).onConflictDoNothing();
   res.status(201).json(buildUserResponse(user));
 });
 

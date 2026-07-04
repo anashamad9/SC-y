@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetAssessment, useGetLearningPath, useListAssessments, useSubmitAssessment } from "@workspace/api-client-react";
@@ -82,6 +82,17 @@ export default function ReadinessAssessmentModal() {
     advanced: "متقدم",
   };
   const recommendedCourses = (learningPath as any)?.recommended ?? [];
+
+  useEffect(() => {
+    if (!readinessAssessment?.completed) return;
+    fetch("/api/auth/complete-onboarding", {
+      method: "POST",
+      credentials: "include",
+    }).finally(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["getMe"] });
+    });
+  }, [queryClient, readinessAssessment?.completed]);
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground md:px-8" dir="rtl">

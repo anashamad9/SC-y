@@ -4,6 +4,7 @@ import { badgesTable } from "./gamification";
 
 export const courseModulesTable = pgTable("course_modules", {
   id: serial("id").primaryKey(),
+  badgeId: integer("badge_id").references(() => badgesTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   description: text("description"),
   difficulty: text("difficulty").notNull().default("beginner"),

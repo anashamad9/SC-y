@@ -1,9 +1,10 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import { avg, count, desc, eq } from "drizzle-orm";
+import { and, avg, count, desc, eq } from "drizzle-orm";
 import {
   assessmentResultsTable,
   auditLogsTable,
+  courseModulesTable,
   coursesTable,
   db,
   psychometricProfilesTable,
@@ -67,7 +68,12 @@ async function buildPlatformContext(userId: number, role: string) {
       onboardingCompleted: usersTable.onboardingCompleted,
     }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
 
-    const [courseSummary] = await db.select({ total: count() }).from(coursesTable).where(eq(coursesTable.isActive, true));
+    const visibleCourseCondition = and(eq(coursesTable.isActive, true), eq(courseModulesTable.isActive, true));
+    const [courseSummary] = await db
+      .select({ total: count() })
+      .from(coursesTable)
+      .innerJoin(courseModulesTable, eq(coursesTable.moduleId, courseModulesTable.id))
+      .where(visibleCourseCondition);
     const recommendedCourses = await db.select({
       title: coursesTable.title,
       category: coursesTable.category,
@@ -75,7 +81,12 @@ async function buildPlatformContext(userId: number, role: string) {
       minScore: coursesTable.minScore,
       maxScore: coursesTable.maxScore,
       durationMinutes: coursesTable.durationMinutes,
-    }).from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder).limit(8);
+    })
+      .from(coursesTable)
+      .innerJoin(courseModulesTable, eq(coursesTable.moduleId, courseModulesTable.id))
+      .where(visibleCourseCondition)
+      .orderBy(coursesTable.displayOrder)
+      .limit(8);
 
     const context: Record<string, unknown> = {
       currentUser: currentUser ? {

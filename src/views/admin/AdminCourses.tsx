@@ -196,7 +196,12 @@ function readImageDimensions(file: File) {
 export default function AdminCourses({ canManage = false }: { canManage?: boolean }) {
   const [showModal, setShowModal] = useState(false);
   const [moduleFormOpen, setModuleFormOpen] = useState(false);
-  const [moduleForm, setModuleForm] = useState({ title: "", description: "", difficulty: "beginner" });
+  const [moduleForm, setModuleForm] = useState<{ title: string; description: string; difficulty: string; badgeId: number | "" }>({
+    title: "",
+    description: "",
+    difficulty: "beginner",
+    badgeId: "",
+  });
   const [activeModuleId, setActiveModuleId] = useState<number | "all">("all");
   const [editorStep, setEditorStep] = useState<EditorStep>("details");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -264,7 +269,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
     onSuccess: (module: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses/modules"] });
       setActiveModuleId(module.id);
-      setModuleForm({ title: "", description: "", difficulty: "beginner" });
+      setModuleForm({ title: "", description: "", difficulty: "beginner", badgeId: "" });
       setModuleFormOpen(false);
       toast({ title: "Module created" });
     },
@@ -627,7 +632,7 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
       {canManage && moduleFormOpen && (
         <div className="rounded-xl border border-border bg-card/80 p-4">
           <div className="mb-3 text-sm font-semibold">Create module</div>
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_220px_auto]">
             <Input
               value={moduleForm.title}
               onChange={(event) => setModuleForm((current) => ({ ...current, title: event.target.value }))}
@@ -646,6 +651,14 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
               className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
             >
               {DIFFICULTIES.map((difficulty) => <option key={difficulty} value={difficulty}>{difficulty}</option>)}
+            </select>
+            <select
+              value={moduleForm.badgeId}
+              onChange={(event) => setModuleForm((current) => ({ ...current, badgeId: event.target.value === "" ? "" : Number(event.target.value) }))}
+              className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
+            >
+              <option value="">Choose badge</option>
+              {badgeList.map((badge) => <option key={badge.id} value={badge.id}>{badge.name}</option>)}
             </select>
             <Button size="sm" onClick={() => createModule.mutate()} disabled={!moduleForm.title.trim() || createModule.isPending}>
               {createModule.isPending ? "Saving..." : "Save module"}
@@ -747,8 +760,9 @@ export default function AdminCourses({ canManage = false }: { canManage?: boolea
           <button
             key={module.id}
             onClick={() => setActiveModuleId(module.id)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${activeModuleId === module.id ? "border-primary/30 bg-primary/15 text-primary" : "border-border bg-card text-muted-foreground"}`}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${activeModuleId === module.id ? "border-primary/30 bg-primary/15 text-primary" : "border-border bg-card text-muted-foreground"}`}
           >
+            {module.badge?.imageUrl && <img src={module.badge.imageUrl} alt={module.badge.name} className="h-4 w-4 rounded object-contain" />}
             {module.title}
           </button>
         ))}

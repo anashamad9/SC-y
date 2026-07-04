@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useGetCourse, useUpdateCourseProgress } from "@workspace/api-client-react";
+import { useGetCourse, useGetMe, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CourseMarkdown } from "@/components/course-markdown";
 import { Button } from "@/components/ui/button";
@@ -98,10 +98,12 @@ export function CourseProfilePage({
 }) {
   const queryClient = useQueryClient();
   const { data: course, isLoading } = useGetCourse(courseId);
+  const { data: user } = useGetMe();
   const progressMutation = useUpdateCourseProgress();
   const [localProgress, setLocalProgress] = useState<number | null>(null);
   const [deferredVideoUrl, setDeferredVideoUrl] = useState<string | null>(null);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState<any[]>([]);
   const { lang, isRTL } = useI18n();
   const copy = profileCopy(lang);
 
@@ -186,14 +188,20 @@ export function CourseProfilePage({
     progressMutation.mutate(
       { id: courseId, data: { progressPct: nextPct, lastLessonId } },
       {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
+          const nextBadges = Array.isArray(data?.awardedBadges) ? data.awardedBadges : [];
+          if (nextBadges.length > 0) setEarnedBadges((current) => [...current, ...nextBadges]);
           queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}`] });
           queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
           queryClient.invalidateQueries({ queryKey: ["/api/courses/learning-path"] });
           queryClient.invalidateQueries({ queryKey: ["/api/gamification/me"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/gamification/badges"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
           queryClient.invalidateQueries({ queryKey: ["listCourses"] });
           queryClient.invalidateQueries({ queryKey: ["getLearningPath"] });
           queryClient.invalidateQueries({ queryKey: ["getMyGamification"] });
+          queryClient.invalidateQueries({ queryKey: ["getMyBadges"] });
+          queryClient.invalidateQueries({ queryKey: ["getLeaderboard"] });
         },
       },
     );
@@ -209,14 +217,20 @@ export function CourseProfilePage({
     progressMutation.mutate(
       { id: courseId, data: { progressPct: nextPct, completedMarkdownSectionId: sectionId } as any },
       {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
+          const nextBadges = Array.isArray(data?.awardedBadges) ? data.awardedBadges : [];
+          if (nextBadges.length > 0) setEarnedBadges((current) => [...current, ...nextBadges]);
           queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}`] });
           queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
           queryClient.invalidateQueries({ queryKey: ["/api/courses/learning-path"] });
           queryClient.invalidateQueries({ queryKey: ["/api/gamification/me"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/gamification/badges"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
           queryClient.invalidateQueries({ queryKey: ["listCourses"] });
           queryClient.invalidateQueries({ queryKey: ["getLearningPath"] });
           queryClient.invalidateQueries({ queryKey: ["getMyGamification"] });
+          queryClient.invalidateQueries({ queryKey: ["getMyBadges"] });
+          queryClient.invalidateQueries({ queryKey: ["getLeaderboard"] });
         },
       },
     );
@@ -235,6 +249,32 @@ export function CourseProfilePage({
       className="space-y-5"
       dir={isRTL ? "rtl" : "ltr"}
     >
+      {earnedBadges[0] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/75 px-4 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-sm rounded-2xl border border-primary/30 bg-card p-6 text-center shadow-2xl"
+          >
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl border border-border bg-background p-2">
+              {earnedBadges[0].imageUrl ? (
+                <img src={earnedBadges[0].imageUrl} alt={earnedBadges[0].name} className="h-full w-full rounded-xl object-contain" />
+              ) : (
+                <span className="text-4xl font-bold text-primary">✓</span>
+              )}
+            </div>
+            <div className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-primary">Congratulations</div>
+            <h3 className="mt-2 text-2xl font-bold">
+              {user?.firstName ?? "You"} earned {earnedBadges[0].name}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{earnedBadges[0].description}</p>
+            <Button className="mt-6 w-full bg-primary text-white hover:bg-primary/85" onClick={() => setEarnedBadges((current) => current.slice(1))}>
+              Continue
+            </Button>
+          </motion.div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" onClick={onBack} className="text-muted-foreground hover:text-foreground">
           {isRTL ? `${copy.back} <-` : `<- ${copy.back}`}

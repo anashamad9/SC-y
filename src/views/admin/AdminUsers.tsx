@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useListUsers, useUpdateUser, useListDepartments } from "@workspace/api-client-react";
+import { useGetMe, useListUsers, useUpdateUser, useListDepartments } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,15 @@ const EMPTY_EDIT_FORM = { role: "", departmentId: "", firstName: "", lastName: "
 
 async function apiFetch(path: string, opts?: RequestInit) {
   const r = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const text = await r.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!r.ok) throw new Error(data.error || text || "Request failed");
+  return data;
 }
 
 const BLANK_FORM = { email: "", firstName: "", lastName: "", role: "employee", departmentId: "", jobTitle: "", password: "" };
@@ -40,7 +47,10 @@ export default function AdminUsers() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useListUsers({ role: roleFilter || undefined, page, limit: 20 });
   const { data: departments } = useListDepartments();
+  const { data: currentUser } = useGetMe();
   const updateUser = useUpdateUser();
+  const canManageSuperAdmins = currentUser?.role?.toLowerCase() === "superadmin";
+  const roleOptions = ROLES.filter((role) => canManageSuperAdmins || role !== "superadmin");
 
   const createUser = useMutation({
     mutationFn: (body: typeof BLANK_FORM) => apiFetch("/api/users", {
@@ -158,7 +168,7 @@ export default function AdminUsers() {
                 <label className="text-xs text-muted-foreground mb-1 block">Role</label>
                 <select value={createForm.role} onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}
                   className="w-full bg-muted/30 border border-border rounded-md px-3 py-2 text-sm">
-                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
@@ -213,7 +223,7 @@ export default function AdminUsers() {
         <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
           className="bg-muted/30 border border-border rounded-md px-3 py-2 text-sm">
           <option value="">All Roles</option>
-          {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+          {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
 
@@ -272,7 +282,7 @@ export default function AdminUsers() {
                   {editingId === u.id ? (
                     <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
                       className="bg-muted border border-border rounded px-2 py-1 text-xs w-full">
-                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   ) : (
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${ROLE_COLORS[u.role.toLowerCase()] ?? ROLE_COLORS.employee}`}>

@@ -112,6 +112,7 @@ create table audit_logs (
 
 create table course_modules (
   id serial primary key,
+  badge_id integer,
   title text not null,
   description text,
   difficulty text not null default 'beginner',
@@ -265,6 +266,10 @@ alter table courses
   add constraint courses_badge_id_badges_id_fk
   foreign key (badge_id) references badges(id) on delete set null;
 
+alter table course_modules
+  add constraint course_modules_badge_id_badges_id_fk
+  foreign key (badge_id) references badges(id) on delete set null;
+
 create table cci_snapshots (
   id serial primary key,
   user_id integer not null references users(id) on delete cascade,
@@ -380,6 +385,7 @@ create index audit_logs_tenant_id_idx on audit_logs(tenant_id);
 create index audit_logs_created_at_idx on audit_logs(created_at desc);
 create index course_modules_is_active_idx on course_modules(is_active);
 create index course_modules_display_order_idx on course_modules(display_order);
+create index course_modules_badge_id_idx on course_modules(badge_id);
 create index courses_module_id_idx on courses(module_id);
 create index courses_badge_id_idx on courses(badge_id);
 create index courses_is_active_idx on courses(is_active);

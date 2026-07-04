@@ -185,6 +185,27 @@ function computeCCI(s: Record<string, number>, learningEngagement = 50): number 
   return Math.round(secAwareness + compliance + learning + riskConscious + culture);
 }
 
+async function awardXp(userId: number, xpGain: number) {
+  const [gp] = await db.select().from(gamificationProfilesTable).where(eq(gamificationProfilesTable.userId, userId));
+  const newXp = (gp?.xp ?? 0) + xpGain;
+  const level = Math.floor(newXp / 200) + 1;
+  if (gp) {
+    await db.update(gamificationProfilesTable).set({
+      xp: newXp,
+      level,
+      lastActivityAt: new Date(),
+    }).where(eq(gamificationProfilesTable.userId, userId));
+    return;
+  }
+
+  await db.insert(gamificationProfilesTable).values({
+    userId,
+    xp: newXp,
+    level,
+    lastActivityAt: new Date(),
+  }).onConflictDoNothing();
+}
+
 // GET /assessments — list with user completion status
 router.get("/assessments", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
@@ -266,6 +287,14 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
   const [assessment] = await db.select().from(assessmentsTable).where(eq(assessmentsTable.id, assessmentId));
   if (!assessment) { res.status(404).json({ message: "Not found" }); return; }
 
+  const [previousResult] = await db.select({ id: assessmentResultsTable.id }).from(assessmentResultsTable)
+    .where(and(eq(assessmentResultsTable.userId, userId), eq(assessmentResultsTable.assessmentId, assessmentId)))
+    .limit(1);
+  if (previousResult) {
+    res.status(409).json({ error: "This assessment has already been completed. Only one attempt is allowed." });
+    return;
+  }
+
   const questions = await db.select().from(assessmentQuestionsTable).where(eq(assessmentQuestionsTable.assessmentId, assessmentId));
 
   if (assessment.type === "psychometric") {
@@ -334,11 +363,7 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
     });
 
     const xpGain = 50 + totalPoints;
-    const [gp] = await db.select().from(gamificationProfilesTable).where(eq(gamificationProfilesTable.userId, userId));
-    if (gp) {
-      const newXp = gp.xp + xpGain;
-      await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
-    }
+    await awardXp(userId, xpGain);
 
     await db.update(usersTable).set({ onboardingCompleted: true }).where(eq(usersTable.id, userId));
 
@@ -456,11 +481,7 @@ router.post("/assessments/:id/submit", requireAuth, async (req, res): Promise<vo
 
   // Award XP
   const xpGain = 50 + Math.round(overallScore * 0.5);
-  const [gp] = await db.select().from(gamificationProfilesTable).where(eq(gamificationProfilesTable.userId, userId));
-  if (gp) {
-    const newXp = gp.xp + xpGain;
-    await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
-  }
+  await awardXp(userId, xpGain);
 
   await db.update(usersTable).set({ onboardingCompleted: true }).where(eq(usersTable.id, userId));
 

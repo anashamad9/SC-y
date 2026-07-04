@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, courseModulesTable, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable, userBadgesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, courseModulesTable, coursesTable, lessonsTable, userCourseProgressTable, psychometricProfilesTable, gamificationProfilesTable, userBadgesTable, badgesTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -228,9 +228,33 @@ function buildCourseWithProgress(
   };
 }
 
-function buildModule(module: typeof courseModulesTable.$inferSelect) {
+type BadgeSummary = {
+  id: number;
+  name: string;
+  description: string;
+  iconName: string;
+  imageUrl: string | null;
+  imageFileName: string | null;
+  category: string;
+};
+
+function buildBadgeSummary(badge: typeof badgesTable.$inferSelect): BadgeSummary {
+  return {
+    id: badge.id,
+    name: badge.name,
+    description: badge.description,
+    iconName: badge.iconName,
+    imageUrl: badge.imageUrl,
+    imageFileName: badge.imageFileName,
+    category: badge.category,
+  };
+}
+
+function buildModule(module: typeof courseModulesTable.$inferSelect, badge?: BadgeSummary | null) {
   return {
     id: module.id,
+    badgeId: module.badgeId,
+    badge: badge ?? null,
     title: module.title,
     description: module.description,
     difficulty: module.difficulty,
@@ -238,6 +262,51 @@ function buildModule(module: typeof courseModulesTable.$inferSelect) {
     isActive: module.isActive,
     createdAt: module.createdAt.toISOString(),
   };
+}
+
+async function visibleActiveCourses() {
+  const rows = await db
+    .select({ course: coursesTable })
+    .from(coursesTable)
+    .innerJoin(courseModulesTable, eq(coursesTable.moduleId, courseModulesTable.id))
+    .where(and(eq(coursesTable.isActive, true), eq(courseModulesTable.isActive, true)))
+    .orderBy(coursesTable.displayOrder);
+
+  return rows.map(row => row.course);
+}
+
+async function awardXp(userId: number, xpGain: number) {
+  const [gp] = await db.select().from(gamificationProfilesTable).where(eq(gamificationProfilesTable.userId, userId));
+  const newXp = (gp?.xp ?? 0) + xpGain;
+  const level = Math.floor(newXp / 200) + 1;
+  if (gp) {
+    await db.update(gamificationProfilesTable).set({
+      xp: newXp,
+      level,
+      lastActivityAt: new Date(),
+    }).where(eq(gamificationProfilesTable.userId, userId));
+    return;
+  }
+
+  await db.insert(gamificationProfilesTable).values({
+    userId,
+    xp: newXp,
+    level,
+    lastActivityAt: new Date(),
+  }).onConflictDoNothing();
+}
+
+async function awardBadgeIfNew(userId: number, badgeId: number | null | undefined) {
+  if (!badgeId) return null;
+  const inserted = await db
+    .insert(userBadgesTable)
+    .values({ userId, badgeId })
+    .onConflictDoNothing()
+    .returning();
+  if (inserted.length === 0) return null;
+
+  const [badge] = await db.select().from(badgesTable).where(eq(badgesTable.id, badgeId));
+  return badge ? buildBadgeSummary(badge) : null;
 }
 
 function readinessLevelFromPoints(points: number | null | undefined) {
@@ -255,7 +324,13 @@ router.get("/courses/modules", requireAuth, async (_req, res): Promise<void> => 
     .where(eq(courseModulesTable.isActive, true))
     .orderBy(courseModulesTable.displayOrder, courseModulesTable.id);
 
-  res.json(modules.map(buildModule));
+  const badgeIds = [...new Set(modules.map(module => module.badgeId).filter(Boolean))] as number[];
+  const badges = badgeIds.length > 0
+    ? await db.select().from(badgesTable).where(inArray(badgesTable.id, badgeIds))
+    : [];
+  const badgeMap = new Map(badges.map(badge => [badge.id, buildBadgeSummary(badge)]));
+
+  res.json(modules.map(module => buildModule(module, module.badgeId ? badgeMap.get(module.badgeId) : null)));
 });
 
 // POST /courses/modules — create module (superadmin only)
@@ -272,6 +347,7 @@ router.post("/courses/modules", requireAuth, async (req, res): Promise<void> => 
 
   const [module] = await db.insert(courseModulesTable).values({
     title,
+    badgeId: normalizeOptionalNumber(req.body?.badgeId),
     description: normalizeOptionalString(req.body?.description),
     difficulty: normalizeOptionalString(req.body?.difficulty) ?? "beginner",
     displayOrder: normalizeOptionalNumber(req.body?.displayOrder) ?? 0,
@@ -290,6 +366,7 @@ router.patch("/courses/modules/:id", requireAuth, async (req, res): Promise<void
   const id = Number(req.params.id);
   const [module] = await db.update(courseModulesTable).set({
     title: normalizeOptionalString(req.body?.title) ?? undefined,
+    badgeId: normalizeOptionalNumber(req.body?.badgeId) ?? undefined,
     description: normalizeOptionalString(req.body?.description),
     difficulty: normalizeOptionalString(req.body?.difficulty) ?? undefined,
     displayOrder: normalizeOptionalNumber(req.body?.displayOrder) ?? undefined,
@@ -321,7 +398,7 @@ router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void
   const userId = req.user!.userId;
 
   const [profile] = await db.select().from(psychometricProfilesTable).where(eq(psychometricProfilesTable.userId, userId));
-  const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
+  const allCourses = await visibleActiveCourses();
   const progressRecords = await getUserProgress(userId);
   const progressMap = new Map(progressRecords.map(p => [p.courseId, p]));
   const lightweightCourse = { includeVideoUrl: false };
@@ -365,7 +442,7 @@ router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   const role = req.user!.role?.toLowerCase();
   const includeVideoUrl = role === "admin" || role === "superadmin";
 
-  const allCourses = await db.select().from(coursesTable).where(eq(coursesTable.isActive, true)).orderBy(coursesTable.displayOrder);
+  const allCourses = await visibleActiveCourses();
   const progressRecords = await getUserProgress(userId);
   const progressMap = new Map(progressRecords.map(p => [p.courseId, p]));
 
@@ -539,15 +616,37 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
     }).returning();
   }
 
-  // Update gamification XP if completed
+  // Update gamification XP and badge awards if completed
+  const awardedBadges: BadgeSummary[] = [];
   if (isCompleted && !existing?.completedAt) {
-    const [gp] = await db.select().from(gamificationProfilesTable).where(eq(gamificationProfilesTable.userId, userId));
-    if (gp) {
-      const newXp = gp.xp + course.xpReward;
-      await db.update(gamificationProfilesTable).set({ xp: newXp, level: Math.floor(newXp / 200) + 1, lastActivityAt: new Date() }).where(eq(gamificationProfilesTable.userId, userId));
-    }
-    if (course.badgeId) {
-      await db.insert(userBadgesTable).values({ userId, badgeId: course.badgeId }).onConflictDoNothing();
+    await awardXp(userId, course.xpReward);
+    const courseBadge = await awardBadgeIfNew(userId, course.badgeId);
+    if (courseBadge) awardedBadges.push(courseBadge);
+
+    if (course.moduleId) {
+      const [module] = await db.select().from(courseModulesTable).where(eq(courseModulesTable.id, course.moduleId));
+      if (module?.badgeId) {
+        const moduleCourses = await db
+          .select({ id: coursesTable.id })
+          .from(coursesTable)
+          .where(and(eq(coursesTable.moduleId, course.moduleId), eq(coursesTable.isActive, true)));
+        const moduleCourseIds = moduleCourses.map(item => item.id);
+        if (moduleCourseIds.length > 0) {
+          const completedModuleCourses = await db
+            .select({ courseId: userCourseProgressTable.courseId })
+            .from(userCourseProgressTable)
+            .where(and(
+              eq(userCourseProgressTable.userId, userId),
+              eq(userCourseProgressTable.status, "completed"),
+              inArray(userCourseProgressTable.courseId, moduleCourseIds),
+            ));
+          const completedIds = new Set(completedModuleCourses.map(item => item.courseId));
+          if (moduleCourseIds.every(id => completedIds.has(id))) {
+            const moduleBadge = await awardBadgeIfNew(userId, module.badgeId);
+            if (moduleBadge) awardedBadges.push(moduleBadge);
+          }
+        }
+      }
     }
   }
 
@@ -558,6 +657,7 @@ router.patch("/courses/:id/progress", requireAuth, async (req, res): Promise<voi
     xpEarned: record.xpEarned,
     completedMarkdownSections: record.completedMarkdownSections,
     completedAt: record.completedAt?.toISOString() ?? null,
+    awardedBadges,
   });
 });
 
