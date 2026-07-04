@@ -22,7 +22,7 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
           <a href="#features" className="hover:text-foreground transition-colors">Intelligence</a>
           <a href="#platform" className="hover:text-foreground transition-colors">Platform</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
         </nav>
         <div className="flex items-center gap-4">
           <ThemeToggle />

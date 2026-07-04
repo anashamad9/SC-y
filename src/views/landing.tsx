@@ -53,7 +53,7 @@ export default function Landing() {
     },
     {
       q: "What languages does the platform support?",
-      a: "CyberCultX is fully bilingual in Arabic and English with native RTL layout support for Arabic — critical for Gulf region deployments. Additional languages are available on the Intelligence tier.",
+      a: "CyberCultX is fully bilingual in Arabic and English with native RTL layout support for Arabic — critical for Gulf region deployments. Additional languages can be configured for regional rollout needs.",
     },
     {
       q: "How is human risk data protected?",
@@ -61,11 +61,7 @@ export default function Landing() {
     },
     {
       q: "Can we integrate CyberCultX with our existing security stack?",
-      a: "Yes. The Intelligence tier includes pre-built connectors for Microsoft Sentinel, Splunk, IBM QRadar, and ServiceNow. REST API access is available on the Command tier for custom integrations.",
-    },
-    {
-      q: "Is there a free trial?",
-      a: "Yes — the Operative plan includes a 30-day free trial with no credit card required. You get full access to all Operative-tier features for up to 50 users during the trial period.",
+      a: "Yes. CyberCultX can connect with Microsoft Sentinel, Splunk, IBM QRadar, ServiceNow, and custom systems through approved integration workflows.",
     },
   ];
 
@@ -282,7 +278,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register">
                 <Button size="lg" className="h-12 px-8 bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(204,0,0,0.3)]">
-                  Start Free Trial
+                  Book a Briefing
                 </Button>
               </Link>
               <Link href="/login">

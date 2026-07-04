@@ -91,8 +91,7 @@ export default function EmployeeAssessments() {
         pending: "قيد الانتظار",
         questions: "أسئلة",
         last: "آخر مرة",
-        retake: "إعادة التقييم",
-        start: "ابدأ التقييم",
+        start: "الدخول إلى التقييم",
         infoTitle: "كيف تؤثر التقييمات على درجتك",
         infoBody: "يعتمد النظام الآن على التقييم النفسي فقط لحساب الملف السلوكي ودرجة الجاهزية، ثم يوصي بالدورات المناسبة بعد الإكمال.",
       }
@@ -114,8 +113,7 @@ export default function EmployeeAssessments() {
         pending: "Pending",
         questions: "questions",
         last: "Last",
-        retake: "Retake Assessment",
-        start: "Start Assessment",
+        start: "Enter Assessment",
         infoTitle: "How Assessments Affect Your Score",
         infoBody: "The platform now relies on the psychometric assessment to calculate the behavioral profile and readiness score, then recommends the right courses after completion.",
       };
@@ -340,12 +338,14 @@ export default function EmployeeAssessments() {
               )}
             </div>
 
-            <Button
-              onClick={() => startAssessment(assessment.id)}
-              className={assessment.completed ? "border border-border bg-white/5 text-foreground hover:bg-white/10" : "bg-primary text-white hover:bg-primary/80"}
-            >
-              {assessment.completed ? copy.retake : isRTL ? `← ${copy.start}` : `${copy.start} →`}
-            </Button>
+            {!assessment.completed && (
+              <Button
+                onClick={() => startAssessment(assessment.id)}
+                className="bg-primary text-white hover:bg-primary/80"
+              >
+                {isRTL ? `← ${copy.start}` : `${copy.start} →`}
+              </Button>
+            )}
           </motion.div>
         ))}
       </div>

@@ -13,16 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLogin, useVerifyMfa } from "@workspace/api-client-react";
 import BrandLogo from "@/components/brand-logo";
 import ThemeToggle from "@/components/theme-toggle";
-import { API_BASE } from "@/lib/runtime";
 import { useI18n, type Lang } from "@/lib/i18n";
-
-const testRoles = [
-  { role: "employee" },
-  { role: "executive" },
-  { role: "hr" },
-  { role: "admin" },
-  { role: "superadmin" },
-];
 
 type LoginFormValues = {
   email: string;
@@ -44,8 +35,6 @@ function loginCopy(lang: Lang) {
         forgotPassword: "نسيت الوصول؟",
         authenticating: "جارٍ التحقق...",
         authorize: "تسجيل الدخول",
-        tempAccess: "وصول تجريبي مؤقت",
-        signingIn: "جارٍ الدخول...",
         mfaLabel: "رمز التحقق متعدد العوامل",
         verifying: "جارٍ التحقق...",
         verify: "تحقق من الهوية",
@@ -57,20 +46,10 @@ function loginCopy(lang: Lang) {
         identityVerified: "تم التحقق من الهوية",
         verificationFailed: "فشل التحقق",
         invalidMfa: "رمز التحقق غير صحيح",
-        tempLoginFailed: "فشل الدخول المؤقت",
-        tempUnable: "تعذر بدء جلسة الاختبار",
-        tempSignedIn: "تم الدخول باسم",
         invalidCredentials: "بيانات الدخول غير صحيحة",
         emailError: "أدخل بريداً إلكترونياً صالحاً",
         passwordError: "كلمة المرور مطلوبة",
         codeError: "يجب أن يكون الرمز من 6 أرقام",
-        roles: {
-          employee: "موظف",
-          executive: "تنفيذي",
-          hr: "الموارد البشرية",
-          admin: "مسؤول",
-          superadmin: "مسؤول عام",
-        },
         orbitLabels: ["إشارات التهديد", "درجة الجاهزية", "التحكم بالوصول", "تدريب مباشر"],
       }
     : {
@@ -82,8 +61,6 @@ function loginCopy(lang: Lang) {
         forgotPassword: "Lost Access?",
         authenticating: "Authenticating...",
         authorize: "Authorize Access",
-        tempAccess: "Temporary test access",
-        signingIn: "Signing in...",
         mfaLabel: "Multi-Factor Authorization Code",
         verifying: "Verifying...",
         verify: "Verify Identity",
@@ -95,20 +72,10 @@ function loginCopy(lang: Lang) {
         identityVerified: "Identity Verified",
         verificationFailed: "Verification Failed",
         invalidMfa: "Invalid MFA code",
-        tempLoginFailed: "Temporary Login Failed",
-        tempUnable: "Unable to start test session",
-        tempSignedIn: "Signed in as",
         invalidCredentials: "Invalid credentials",
         emailError: "Enter a valid email address",
         passwordError: "Password is required",
         codeError: "Code must be 6 digits",
-        roles: {
-          employee: "Employee",
-          executive: "Executive",
-          hr: "HR",
-          admin: "Admin",
-          superadmin: "Super Admin",
-        },
         orbitLabels: ["Threat Signals", "Readiness Score", "Access Control", "Live Training"],
       };
 }
@@ -136,7 +103,6 @@ export default function Login() {
   const loginMutation = useLogin();
   const verifyMfaMutation = useVerifyMfa();
   const [requiresMfa, setRequiresMfa] = useState(false);
-  const [tempRole, setTempRole] = useState<string | null>(null);
 
   const loginSchema = useMemo(
     () =>
@@ -219,41 +185,6 @@ export default function Login() {
     setLocation(routeMap[role] ?? "/portal");
   };
 
-  const handleTempLogin = async (role: string) => {
-    setTempRole(role);
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/temp-login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ role }),
-      });
-      const responseText = await response.text();
-      let data: any = {};
-      try {
-        data = responseText ? JSON.parse(responseText) : {};
-      } catch {
-        data = { error: normalizeAuthErrorMessage(responseText, copy.tempUnable) };
-      }
-
-      if (!response.ok) {
-        throw new Error(normalizeAuthErrorMessage(data?.error || copy.tempLoginFailed, copy.tempUnable));
-      }
-
-      localStorage.setItem("ccx_token", data.token);
-      toast({ title: copy.accessGranted, description: `${copy.tempSignedIn} ${data.user.role}` });
-      routeUser(data.user.role);
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: copy.tempLoginFailed,
-        description: normalizeAuthErrorMessage(err.message || copy.tempUnable, copy.tempUnable),
-      });
-    } finally {
-      setTempRole(null);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background grid lg:grid-cols-[minmax(360px,0.9fr)_1.1fr] relative overflow-hidden" dir={isRTL ? "rtl" : "ltr"}>
       <div className={`absolute top-4 z-20 flex items-center gap-2 ${isRTL ? "left-4" : "right-4"}`}>
@@ -323,28 +254,6 @@ export default function Login() {
                 <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-submit">
                   {loginMutation.isPending ? copy.authenticating : copy.authorize}
                 </Button>
-
-                <div className="space-y-2 bg-background rounded-lg p-3 border border-border">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {copy.tempAccess}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {testRoles.map((item) => (
-                      <Button
-                        key={item.role}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleTempLogin(item.role)}
-                        disabled={tempRole !== null}
-                        className="text-[11px]"
-                        data-testid={`button-temp-login-${item.role}`}
-                      >
-                        {tempRole === item.role ? copy.signingIn : copy.roles[item.role as keyof typeof copy.roles]}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
               </form>
             </Form>
           ) : (
