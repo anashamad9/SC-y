@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useGetCourse, useGetMe, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2 } from "lucide-react";
 import { CourseMarkdown } from "@/components/course-markdown";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/runtime";
 
 const DIFFICULTY_COLOR: Record<string, string> = {
@@ -128,6 +131,9 @@ export function CourseProfilePage({
   const completedMarkdownSections: string[] = localCompletedSections ?? (courseRecord?.completedMarkdownSections ?? []);
   const sectionProgressPct = markdownSections.length > 0 ? Math.round((completedMarkdownSections.length / markdownSections.length) * 100) : null;
   const currentPct = localProgress ?? sectionProgressPct ?? (courseRecord?.progressPct ?? 0);
+  const defaultOpenMarkdownSections = markdownSections.length > 0
+    ? [markdownSections.find((section) => !completedMarkdownSections.includes(section.id))?.id ?? markdownSections[0].id]
+    : [];
   const canTrackProgress = mode === "learner";
   const canUseLessonProgress = canTrackProgress && markdownSections.length === 0;
 
@@ -430,45 +436,79 @@ export function CourseProfilePage({
           </aside>
 
           {markdownSections.length > 0 && (
-            <div className="rounded-xl border border-border bg-background/70 p-5 lg:col-span-2">
+            <div className="rounded-xl border border-border bg-background/70 p-4 shadow-sm shadow-black/10 lg:col-span-2 lg:p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
               </div>
-              <div className="space-y-4">
+              <Accordion type="multiple" defaultValue={defaultOpenMarkdownSections} className="space-y-3">
                 {markdownSections.map((section, index) => {
                   const isSectionDone = completedMarkdownSections.includes(section.id) || currentPct >= 100;
                   return (
-                    <section key={section.id} className="rounded-lg border border-border bg-card/55 p-4">
-                      <div className="mb-4">
-                        <div>
-                          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{copy.chapter} {index + 1}</div>
-                          <h3 className="mt-1 text-base font-semibold">{section.title || section.fileName || `${copy.courseNotes} ${index + 1}`}</h3>
+                    <AccordionItem
+                      key={section.id}
+                      value={section.id}
+                      className={cn(
+                        "overflow-hidden rounded-lg border bg-card/55 shadow-sm shadow-black/5",
+                        isSectionDone ? "border-emerald-500/25" : "border-border",
+                      )}
+                    >
+                      <AccordionTrigger className="min-h-16 px-4 py-3 text-start hover:no-underline data-[state=open]:border-b data-[state=open]:border-border">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <span
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                              isSectionDone ? "bg-emerald-500/15 text-emerald-400" : "bg-primary/12 text-primary",
+                            )}
+                          >
+                            {isSectionDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{copy.chapter} {index + 1}</div>
+                            <h3 className="mt-1 text-base font-semibold leading-snug">{section.title || section.fileName || `${copy.courseNotes} ${index + 1}`}</h3>
+                          </div>
                         </div>
-                      </div>
-                      {section.content ? (
-                        <CourseMarkdown content={section.content} />
-                      ) : section.url ? (
-                        <div>
-                          <a href={section.url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                            {copy.openMarkdown}
-                          </a>
-                        </div>
-                      ) : null}
-                      <div className="mt-5 flex justify-end border-t border-border pt-4">
-                        <Button
-                          size="sm"
-                          variant={isSectionDone ? "outline" : "default"}
-                          onClick={() => completeMarkdownSection(section.id)}
-                          disabled={!canTrackProgress || progressMutation.isPending || isSectionDone}
-                          className={isSectionDone ? "border-emerald-500/30 text-emerald-400" : "bg-primary text-white hover:bg-primary/85"}
+                        <span
+                          className={cn(
+                            "ms-3 hidden shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium sm:inline-flex",
+                            isSectionDone
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                              : "border-primary/25 bg-primary/10 text-primary",
+                          )}
                         >
                           {isSectionDone ? copy.chapterCompleted : copy.finishChapter}
-                        </Button>
-                      </div>
-                    </section>
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4 pt-0">
+                        <div className="pt-4">
+                          {section.content ? (
+                            <CourseMarkdown content={section.content} />
+                          ) : section.url ? (
+                            <div>
+                              <a href={section.url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                                {copy.openMarkdown}
+                              </a>
+                            </div>
+                          ) : null}
+                          <div className="mt-5 flex justify-end border-t border-border pt-4">
+                            <Button
+                              size="sm"
+                              variant={isSectionDone ? "outline" : "default"}
+                              onClick={() => completeMarkdownSection(section.id)}
+                              disabled={!canTrackProgress || progressMutation.isPending || isSectionDone}
+                              className={cn(
+                                "active:scale-[0.96] transition-transform",
+                                isSectionDone ? "border-emerald-500/30 text-emerald-400" : "bg-primary text-white hover:bg-primary/85",
+                              )}
+                            >
+                              {isSectionDone ? copy.chapterCompleted : copy.finishChapter}
+                            </Button>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
                   );
                 })}
-              </div>
+              </Accordion>
             </div>
           )}
         </div>
