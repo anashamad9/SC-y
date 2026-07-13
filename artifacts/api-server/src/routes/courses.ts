@@ -15,8 +15,12 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.en
 type MarkdownSection = {
   id: string;
   title: string;
+  titleEn?: string | null;
+  titleAr?: string | null;
   fileName?: string | null;
   content?: string | null;
+  contentEn?: string | null;
+  contentAr?: string | null;
   url?: string | null;
   sizeBytes?: number | null;
   uploadedAt?: string | null;
@@ -34,6 +38,19 @@ function normalizeOptionalNumber(value: unknown) {
   if (value === "" || value === null || value === undefined) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getPreferredLanguage(req: { headers: Record<string, string | string[] | undefined>; query?: Record<string, unknown> }): "en" | "ar" {
+  const queryLang = typeof req.query?.lang === "string" ? req.query.lang : "";
+  const header = req.headers["accept-language"];
+  const headerLang = Array.isArray(header) ? header[0] : header ?? "";
+  return `${queryLang || headerLang}`.toLowerCase().startsWith("ar") ? "ar" : "en";
+}
+
+function pickLocalized(lang: "en" | "ar", fallback?: string | null, en?: string | null, ar?: string | null) {
+  const preferred = lang === "ar" ? ar : en;
+  const alternate = lang === "ar" ? en : ar;
+  return preferred || fallback || alternate || "";
 }
 
 function getSupabaseUrl() {
@@ -93,8 +110,12 @@ function normalizeMarkdownSections(value: unknown, existing?: MarkdownSection[] 
       return {
         id: normalizeOptionalString(item.id) ?? `section-${index + 1}`,
         title,
+        titleEn: normalizeOptionalString(item.titleEn),
+        titleAr: normalizeOptionalString(item.titleAr),
         fileName,
         content,
+        contentEn: normalizeOptionalString(item.contentEn),
+        contentAr: normalizeOptionalString(item.contentAr),
         url,
         sizeBytes: normalizeOptionalNumber(item.sizeBytes),
         uploadedAt: normalizeOptionalString(item.uploadedAt),
@@ -112,10 +133,20 @@ function getCourseMarkdownSections(course: typeof coursesTable.$inferSelect): Ma
     title: course.markdownFileName ?? "Course notes",
     fileName: course.markdownFileName,
     content: course.markdownContent,
+    contentEn: course.markdownContentEn,
+    contentAr: course.markdownContentAr,
     url: course.markdownUrl,
     sizeBytes: course.markdownSizeBytes,
     uploadedAt: course.markdownUploadedAt?.toISOString() ?? null,
   }];
+}
+
+function localizeMarkdownSections(sections: MarkdownSection[], lang: "en" | "ar") {
+  return sections.map(section => ({
+    ...section,
+    title: pickLocalized(lang, section.title, section.titleEn, section.titleAr) || section.title,
+    content: pickLocalized(lang, section.content, section.contentEn, section.contentAr) || section.content,
+  }));
 }
 
 function buildCourseWritePayload(
@@ -145,8 +176,12 @@ function buildCourseWritePayload(
     moduleId: normalizeOptionalNumber(body.moduleId),
     badgeId: normalizeOptionalNumber(body.badgeId),
     title: String(body.title ?? existing?.title ?? ""),
+    titleEn: normalizeOptionalString(body.titleEn) ?? existing?.titleEn ?? null,
+    titleAr: normalizeOptionalString(body.titleAr) ?? existing?.titleAr ?? null,
     category: String(body.category ?? existing?.category ?? ""),
     description: String(body.description ?? existing?.description ?? ""),
+    descriptionEn: normalizeOptionalString(body.descriptionEn) ?? existing?.descriptionEn ?? null,
+    descriptionAr: normalizeOptionalString(body.descriptionAr) ?? existing?.descriptionAr ?? null,
     videoUrl: normalizeOptionalString(body.videoUrl),
     videoFileName,
     videoMimeType,
@@ -155,6 +190,8 @@ function buildCourseWritePayload(
     markdownUrl,
     markdownFileName,
     markdownContent,
+    markdownContentEn: normalizeOptionalString(body.markdownContentEn) ?? existing?.markdownContentEn ?? null,
+    markdownContentAr: normalizeOptionalString(body.markdownContentAr) ?? existing?.markdownContentAr ?? null,
     markdownSizeBytes,
     markdownSections,
     markdownUploadedAt: markdownTouched && (markdownFileName || markdownContent || markdownUrl || markdownSizeBytes) ? new Date() : (existing?.markdownUploadedAt ?? null),
@@ -190,18 +227,18 @@ function validateCoursePayload(payload: Partial<typeof coursesTable.$inferInsert
 function buildCourseWithProgress(
   course: typeof coursesTable.$inferSelect,
   progress?: typeof userCourseProgressTable.$inferSelect | null,
-  options: { includeVideoUrl?: boolean } = {},
+  options: { includeVideoUrl?: boolean; lang?: "en" | "ar" } = {},
 ) {
-  const { includeVideoUrl = true } = options;
+  const { includeVideoUrl = true, lang = "en" } = options;
   const markdownSections = getCourseMarkdownSections(course);
   const completedMarkdownSections = Array.isArray(progress?.completedMarkdownSections) ? progress.completedMarkdownSections : [];
   return {
     id: course.id,
     moduleId: course.moduleId,
     badgeId: course.badgeId,
-    title: course.title,
+    title: pickLocalized(lang, course.title, course.titleEn, course.titleAr),
     category: course.category,
-    description: course.description,
+    description: pickLocalized(lang, course.description, course.descriptionEn, course.descriptionAr),
     videoUrl: includeVideoUrl ? course.videoUrl : null,
     videoFileName: course.videoFileName,
     videoMimeType: course.videoMimeType,
@@ -209,10 +246,10 @@ function buildCourseWithProgress(
     videoUploadedAt: course.videoUploadedAt?.toISOString() ?? null,
     markdownUrl: course.markdownUrl,
     markdownFileName: course.markdownFileName,
-    markdownContent: course.markdownContent,
+    markdownContent: pickLocalized(lang, course.markdownContent, course.markdownContentEn, course.markdownContentAr) || null,
     markdownSizeBytes: course.markdownSizeBytes,
     markdownUploadedAt: course.markdownUploadedAt?.toISOString() ?? null,
-    markdownSections,
+    markdownSections: localizeMarkdownSections(markdownSections, lang),
     completedMarkdownSections,
     minScore: course.minScore,
     maxScore: course.maxScore,
@@ -250,13 +287,13 @@ function buildBadgeSummary(badge: typeof badgesTable.$inferSelect): BadgeSummary
   };
 }
 
-function buildModule(module: typeof courseModulesTable.$inferSelect, badge?: BadgeSummary | null) {
+function buildModule(module: typeof courseModulesTable.$inferSelect, badge?: BadgeSummary | null, lang: "en" | "ar" = "en") {
   return {
     id: module.id,
     badgeId: module.badgeId,
     badge: badge ?? null,
-    title: module.title,
-    description: module.description,
+    title: pickLocalized(lang, module.title, module.titleEn, module.titleAr),
+    description: pickLocalized(lang, module.description, module.descriptionEn, module.descriptionAr) || null,
     difficulty: module.difficulty,
     displayOrder: module.displayOrder,
     isActive: module.isActive,
@@ -318,6 +355,7 @@ function readinessLevelFromPoints(points: number | null | undefined) {
 
 // GET /courses/modules — list course modules
 router.get("/courses/modules", requireAuth, async (_req, res): Promise<void> => {
+  const lang = getPreferredLanguage(_req);
   const modules = await db
     .select()
     .from(courseModulesTable)
@@ -330,7 +368,7 @@ router.get("/courses/modules", requireAuth, async (_req, res): Promise<void> => 
     : [];
   const badgeMap = new Map(badges.map(badge => [badge.id, buildBadgeSummary(badge)]));
 
-  res.json(modules.map(module => buildModule(module, module.badgeId ? badgeMap.get(module.badgeId) : null)));
+  res.json(modules.map(module => buildModule(module, module.badgeId ? badgeMap.get(module.badgeId) : null, lang)));
 });
 
 // POST /courses/modules — create module (superadmin only)
@@ -396,12 +434,13 @@ router.delete("/courses/modules/:id", requireAuth, async (req, res): Promise<voi
 // GET /courses/learning-path — MUST be before /:id
 router.get("/courses/learning-path", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
+  const lang = getPreferredLanguage(req);
 
   const [profile] = await db.select().from(psychometricProfilesTable).where(eq(psychometricProfilesTable.userId, userId));
   const allCourses = await visibleActiveCourses();
   const progressRecords = await getUserProgress(userId);
   const progressMap = new Map(progressRecords.map(p => [p.courseId, p]));
-  const lightweightCourse = { includeVideoUrl: false };
+  const lightweightCourse = { includeVideoUrl: false, lang };
 
   const completed = allCourses.filter(c => progressMap.get(c.id)?.status === "completed").map(c => buildCourseWithProgress(c, progressMap.get(c.id), lightweightCourse));
   const inProgress = allCourses.filter(c => progressMap.get(c.id)?.status === "in_progress").map(c => buildCourseWithProgress(c, progressMap.get(c.id), lightweightCourse));
@@ -441,6 +480,7 @@ router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   const { category, difficulty, moduleId } = req.query as { category?: string; difficulty?: string; moduleId?: string };
   const role = req.user!.role?.toLowerCase();
   const includeVideoUrl = role === "admin" || role === "superadmin";
+  const lang = getPreferredLanguage(req);
 
   const allCourses = await visibleActiveCourses();
   const progressRecords = await getUserProgress(userId);
@@ -451,13 +491,14 @@ router.get("/courses", requireAuth, async (req, res): Promise<void> => {
   if (difficulty) filtered = filtered.filter(c => c.difficulty === difficulty);
   if (moduleId) filtered = filtered.filter(c => c.moduleId === Number(moduleId));
 
-  res.json(filtered.map(c => buildCourseWithProgress(c, progressMap.get(c.id), { includeVideoUrl })));
+  res.json(filtered.map(c => buildCourseWithProgress(c, progressMap.get(c.id), { includeVideoUrl, lang })));
 });
 
 // GET /courses/:id — course detail with lessons
 router.get("/courses/:id", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
   const courseId = Number(req.params.id);
+  const lang = getPreferredLanguage(req);
 
   const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId));
   if (!course) { res.status(404).json({ message: "Not found" }); return; }
@@ -466,12 +507,12 @@ router.get("/courses/:id", requireAuth, async (req, res): Promise<void> => {
   const [progress] = await db.select().from(userCourseProgressTable).where(and(eq(userCourseProgressTable.userId, userId), eq(userCourseProgressTable.courseId, courseId)));
 
   res.json({
-    ...buildCourseWithProgress(course, progress, { includeVideoUrl: false }),
+    ...buildCourseWithProgress(course, progress, { includeVideoUrl: false, lang }),
     lessons: lessons.map(l => ({
       id: l.id,
-      title: l.title,
+      title: pickLocalized(lang, l.title, l.titleEn, l.titleAr),
       type: l.type,
-      content: l.content,
+      content: pickLocalized(lang, l.content, l.contentEn, l.contentAr) || null,
       xpReward: l.xpReward,
       displayOrder: l.displayOrder,
     })),

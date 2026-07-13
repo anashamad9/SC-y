@@ -36,7 +36,7 @@ function IndicatorBar({ label, indicator }: { label: string; indicator: Indicato
         <span className="text-muted-foreground truncate max-w-[160px]">{label}</span>
         <div className="flex items-center gap-2 shrink-0">
           <span style={{ color: trendColor }} className="font-mono text-xs">{trendIcon}</span>
-          <span className="font-mono" style={{ color }}>{indicator.score}</span>
+          <span className="font-mono" style={{ color }}>{Math.round(indicator.score)} of 100</span>
           <span
             className="text-xs px-1.5 py-0.5 rounded-full border capitalize"
             style={{

@@ -39,11 +39,12 @@ function scoreColor(category: string, score: number) {
 function ScoreBar({ category, score, lang }: { category: string; score: number; lang: "en" | "ar" }) {
   const color = scoreColor(category, score);
   const label = CATEGORY_LABELS[category]?.[lang] ?? category;
+  const scoreLabel = lang === "ar" ? `${Math.round(score)} من 100` : `${Math.round(score)} of 100`;
   return (
     <div>
       <div className="mb-1 flex justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono" style={{ color }}>{Math.round(score)}</span>
+        <span className="font-mono" style={{ color }}>{scoreLabel}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-white/5">
         <motion.div
@@ -94,6 +95,7 @@ export default function EmployeeAssessments() {
         start: "الدخول إلى التقييم",
         infoTitle: "كيف تؤثر التقييمات على درجتك",
         infoBody: "يعتمد النظام الآن على التقييم النفسي فقط لحساب الملف السلوكي ودرجة الجاهزية، ثم يوصي بالدورات المناسبة بعد الإكمال.",
+        of100: "من 100",
       }
     : {
         complete: "Assessment Complete",
@@ -116,6 +118,7 @@ export default function EmployeeAssessments() {
         start: "Enter Assessment",
         infoTitle: "How Assessments Affect Your Score",
         infoBody: "The platform now relies on the psychometric assessment to calculate the behavioral profile and readiness score, then recommends the right courses after completion.",
+        of100: "of 100",
       };
 
   const questions = activeAssessment?.questions ?? [];
@@ -191,7 +194,7 @@ export default function EmployeeAssessments() {
               <h2 className="text-lg font-bold">{assessment?.title}</h2>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold font-mono text-primary">{Math.round(resultData.overallScore)}</div>
+              <div className="text-3xl font-bold font-mono text-primary">{Math.round(resultData.overallScore)} {copy.of100}</div>
               <div className="text-xs text-muted-foreground">{copy.overall}</div>
             </div>
           </div>

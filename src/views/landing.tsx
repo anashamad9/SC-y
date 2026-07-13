@@ -90,7 +90,7 @@ export default function Landing() {
             </div>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1]">
               Transforming Human Risk Into{" "}
-              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-red-700 via-primary to-red-700 bg-clip-text text-transparent dark:from-primary dark:via-accent dark:to-primary">
                 Measurable Intelligence
               </span>
             </h1>
@@ -170,7 +170,7 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-24 px-6 relative z-10">
+      <section id="platform" className="py-24 px-6 relative z-10">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

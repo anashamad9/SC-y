@@ -135,9 +135,25 @@ function useRoleTitle(role: string): string {
 
 function LanguageToggle() {
   const { lang, setLang } = useI18n();
+  const queryClient = useQueryClient();
+  function toggleLanguage() {
+    setLang(lang === "en" ? "ar" : "en");
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === "string" && (
+          key.includes("/api/courses") ||
+          key === "listCourses" ||
+          key === "getCourse" ||
+          key === "getLearningPath"
+        );
+      },
+    });
+  }
+
   return (
     <button
-      onClick={() => setLang(lang === "en" ? "ar" : "en")}
+      onClick={toggleLanguage}
       className="flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-[11px] font-medium text-primary border border-border transition-colors hover:bg-muted"
       title="Toggle language / تغيير اللغة"
     >
@@ -405,6 +421,7 @@ export default function Portal({ role }: { role: string }) {
 
   const navItems = navByRole[role] ?? [];
   const activeItem = navItems.find(n => n.key === activeKey);
+  const homeKey = navItems[0]?.key ?? "dashboard";
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -434,18 +451,23 @@ export default function Portal({ role }: { role: string }) {
             initial={{ x: isRTL ? 280 : -280, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: isRTL ? 280 : -280, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="sticky top-0 h-screen w-64 bg-card text-card-foreground flex flex-col shrink-0 border-r border-border"
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="sticky top-0 h-screen w-64 bg-card text-card-foreground flex flex-col shrink-0 border-e border-border"
           >
             {/* Logo */}
             <div className="px-5 py-4">
-              <Link href="/" className="flex items-center gap-3.5">
+              <button
+                type="button"
+                onClick={() => setActiveKey(homeKey)}
+                className="flex w-full items-center gap-3.5 rounded-lg text-start transition-colors hover:bg-muted/60"
+                data-testid="button-platform-home"
+              >
                 <BrandLogo className="h-12 w-10 object-contain" />
                 <div>
                   <div className="font-bold text-sm tracking-[0.22em] text-foreground">CYBERCULTX</div>
                   <div className="text-sm text-muted-foreground">{t(`roleTitle.${role}`)}</div>
                 </div>
-              </Link>
+              </button>
             </div>
 
             {/* Nav */}

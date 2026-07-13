@@ -92,6 +92,13 @@ function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   return headers;
 }
 
+function getClientLanguage(): string | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage?.getItem("ccx-lang");
+  if (stored === "ar" || stored === "en") return stored;
+  return window.navigator?.language?.startsWith("ar") ? "ar" : "en";
+}
+
 function getMediaType(headers: Headers): string | null {
   const value = headers.get("content-type");
   return value ? value.split(";", 1)[0].trim().toLowerCase() : null;
@@ -362,6 +369,11 @@ export async function customFetch<T = unknown>(
 
   if (responseType === "json" && !headers.has("accept")) {
     headers.set("accept", DEFAULT_JSON_ACCEPT);
+  }
+
+  if (!headers.has("accept-language")) {
+    const lang = getClientLanguage();
+    if (lang) headers.set("accept-language", lang);
   }
 
   // Attach bearer token when an auth getter is configured and no

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useGetCourse, useGetMe, useUpdateCourseProgress } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -107,6 +107,8 @@ export function CourseProfilePage({
   const [deferredVideoUrl, setDeferredVideoUrl] = useState<string | null>(null);
   const [videoLoading, setVideoLoading] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<any[]>([]);
+  const [activeLessonIndex, setActiveLessonIndex] = useState(0);
+  const lessonContentRef = useRef<HTMLDivElement | null>(null);
   const { lang, isRTL } = useI18n();
   const copy = profileCopy(lang);
 
@@ -136,6 +138,11 @@ export function CourseProfilePage({
     : [];
   const canTrackProgress = mode === "learner";
   const canUseLessonProgress = canTrackProgress && markdownSections.length === 0;
+  const activeLesson = lessons[activeLessonIndex];
+
+  useEffect(() => {
+    setActiveLessonIndex(0);
+  }, [courseId]);
 
   useEffect(() => {
     if (!courseRecord?.id) return;
@@ -184,6 +191,14 @@ export function CourseProfilePage({
     const lessonCount = Math.max(lessons.length, 1);
     const pct = Math.round(((lessonIndex + 1) / lessonCount) * 100);
     updateProgress(pct, lessons[lessonIndex]?.id);
+  }
+
+  function openLesson(lessonIndex: number) {
+    setActiveLessonIndex(lessonIndex);
+    startLesson(lessonIndex);
+    window.requestAnimationFrame(() => {
+      lessonContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function updateProgress(pct: number, lastLessonId?: number) {
@@ -392,9 +407,11 @@ export function CourseProfilePage({
                   return (
                     <button
                       key={lesson.id}
-                      onClick={() => startLesson(index)}
+                      onClick={() => openLesson(index)}
                       className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition-all ${
-                        isDone
+                        activeLessonIndex === index
+                          ? "border-primary/45 bg-primary/10 text-foreground"
+                          : isDone
                           ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
                           : "border-border bg-white/3 text-foreground hover:border-primary/30 hover:bg-white/5"
                       }`}
@@ -423,7 +440,7 @@ export function CourseProfilePage({
                         Math.floor((currentPct / 100) * Math.max(lessons.length, 1)),
                         Math.max(lessons.length - 1, 0),
                       );
-                      startLesson(nextIdx);
+                      openLesson(nextIdx);
                     }}
                     disabled={progressMutation.isPending}
                     className="mt-2 w-full bg-primary text-white hover:bg-primary/80"
@@ -434,6 +451,21 @@ export function CourseProfilePage({
               </div>
             )}
           </aside>
+
+          {canUseLessonProgress && activeLesson && (
+            <div ref={lessonContentRef} className="rounded-xl border border-border bg-background/70 p-4 shadow-sm shadow-black/10 lg:col-span-2 lg:p-5">
+              <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+                {copy.chapter} {activeLessonIndex + 1}
+              </div>
+              <h3 className="text-xl font-semibold leading-tight">{activeLesson.title}</h3>
+              {activeLesson.content && (
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">{activeLesson.content}</p>
+              )}
+              <div className="mt-4 text-xs capitalize text-muted-foreground">
+                {activeLesson.type} · +{activeLesson.xpReward}xp
+              </div>
+            </div>
+          )}
 
           {markdownSections.length > 0 && (
             <div className="rounded-xl border border-border bg-background/70 p-4 shadow-sm shadow-black/10 lg:col-span-2 lg:p-5">
