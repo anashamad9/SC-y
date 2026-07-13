@@ -190,3 +190,38 @@
   }
   
 }
+
+@layer components {
+  .course-mdx-alert,
+  .course-mdx-alert__body,
+  .course-mdx-alert__body * {
+    color: var(--course-alert-body) !important;
+    opacity: 1 !important;
+  }
+
+  .course-mdx-alert__title {
+    color: var(--course-alert-title) !important;
+    opacity: 1 !important;
+  }
+
+  .course-mdx-alert__icon,
+  .course-mdx-alert__icon * {
+    color: var(--course-alert-icon) !important;
+    opacity: 1 !important;
+  }
+
+  .dark .course-mdx-alert,
+  .dark .course-mdx-alert__body,
+  .dark .course-mdx-alert__body * {
+    color: var(--course-alert-body-dark) !important;
+  }
+
+  .dark .course-mdx-alert__title {
+    color: var(--course-alert-title-dark) !important;
+  }
+
+  .dark .course-mdx-alert__icon,
+  .dark .course-mdx-alert__icon * {
+    color: var(--course-alert-icon-dark) !important;
+  }
+}

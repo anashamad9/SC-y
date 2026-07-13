@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { AlertTriangle, CheckCircle2, Info, Lightbulb, ShieldAlert, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -409,52 +409,76 @@ function SecurityAlertBlock({
   const title = isCritical ? "تنبيه أمني" : normalizedType === "tip" ? "نصيحة" : normalizedType === "warning" ? "تحذير" : "ملاحظة";
   const tone = isCritical
     ? {
-        shell: "border-red-200 bg-red-50 !text-red-950 ring-red-500/20 dark:border-red-500/25 dark:bg-red-500/10 dark:!text-red-100 dark:ring-red-500/20",
-        icon: "bg-red-100 !text-red-700 ring-red-200 dark:bg-red-500/15 dark:!text-red-100 dark:ring-red-500/25",
-        title: "!text-red-950 dark:!text-red-100",
-        body: "!text-red-900 dark:!text-red-100",
+        shell: "border-red-200 bg-red-50 ring-red-500/20 dark:border-red-500/25 dark:bg-red-500/10 dark:ring-red-500/20",
+        icon: "bg-red-100 ring-red-200 dark:bg-red-500/15 dark:ring-red-500/25",
+        style: {
+          "--course-alert-title": "#450a0a",
+          "--course-alert-body": "#7f1d1d",
+          "--course-alert-icon": "#b91c1c",
+          "--course-alert-title-dark": "#fee2e2",
+          "--course-alert-body-dark": "#fee2e2",
+          "--course-alert-icon-dark": "#fee2e2",
+        },
       }
     : normalizedType === "tip"
       ? {
-          shell: "border-emerald-200 bg-emerald-50 !text-emerald-950 ring-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:!text-emerald-100 dark:ring-emerald-500/20",
-          icon: "bg-emerald-100 !text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:!text-emerald-100 dark:ring-emerald-500/25",
-          title: "!text-emerald-950 dark:!text-emerald-100",
-          body: "!text-emerald-900 dark:!text-emerald-100",
+          shell: "border-emerald-200 bg-emerald-50 ring-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:ring-emerald-500/20",
+          icon: "bg-emerald-100 ring-emerald-200 dark:bg-emerald-500/15 dark:ring-emerald-500/25",
+          style: {
+            "--course-alert-title": "#022c22",
+            "--course-alert-body": "#064e3b",
+            "--course-alert-icon": "#047857",
+            "--course-alert-title-dark": "#d1fae5",
+            "--course-alert-body-dark": "#d1fae5",
+            "--course-alert-icon-dark": "#d1fae5",
+          },
         }
       : normalizedType === "warning"
         ? {
-            shell: "border-amber-200 bg-amber-50 !text-amber-950 ring-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/10 dark:!text-amber-100 dark:ring-amber-500/20",
-            icon: "bg-amber-100 !text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:!text-amber-100 dark:ring-amber-500/25",
-            title: "!text-amber-950 dark:!text-amber-100",
-            body: "!text-amber-900 dark:!text-amber-100",
+            shell: "border-amber-200 bg-amber-50 ring-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/10 dark:ring-amber-500/20",
+            icon: "bg-amber-100 ring-amber-200 dark:bg-amber-500/15 dark:ring-amber-500/25",
+            style: {
+              "--course-alert-title": "#451a03",
+              "--course-alert-body": "#78350f",
+              "--course-alert-icon": "#b45309",
+              "--course-alert-title-dark": "#fef3c7",
+              "--course-alert-body-dark": "#fef3c7",
+              "--course-alert-icon-dark": "#fef3c7",
+            },
           }
         : {
-            shell: "border-sky-200 bg-sky-50 !text-sky-950 ring-sky-500/20 dark:border-sky-500/25 dark:bg-sky-500/10 dark:!text-sky-100 dark:ring-sky-500/20",
-            icon: "bg-sky-100 !text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:!text-sky-100 dark:ring-sky-500/25",
-            title: "!text-sky-950 dark:!text-sky-100",
-            body: "!text-sky-900 dark:!text-sky-100",
+            shell: "border-sky-200 bg-sky-50 ring-sky-500/20 dark:border-sky-500/25 dark:bg-sky-500/10 dark:ring-sky-500/20",
+            icon: "bg-sky-100 ring-sky-200 dark:bg-sky-500/15 dark:ring-sky-500/25",
+            style: {
+              "--course-alert-title": "#082f49",
+              "--course-alert-body": "#0c4a6e",
+              "--course-alert-icon": "#0369a1",
+              "--course-alert-title-dark": "#e0f2fe",
+              "--course-alert-body-dark": "#e0f2fe",
+              "--course-alert-icon-dark": "#e0f2fe",
+            },
           };
 
   return (
     <div
       role="note"
       className={cn(
-        "my-5 flex gap-3 rounded-2xl border p-4 ring-1",
+        "course-mdx-alert my-5 flex gap-3 rounded-2xl border p-4 ring-1",
         tone.shell,
       )}
+      style={tone.style as CSSProperties}
     >
-      <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1", tone.icon)}>
+      <span
+        className={cn("course-mdx-alert__icon mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1", tone.icon)}
+      >
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <div className={cn("text-sm font-semibold leading-6", tone.title)}>{title}</div>
-        <div className={cn("text-sm leading-7", tone.body)}>
+        <div className="course-mdx-alert__title text-sm font-semibold leading-6">{title}</div>
+        <div className="course-mdx-alert__body text-sm leading-7">
           <MarkdownText
             content={content}
-            className={cn(
-              tone.body,
-              "[&_p:first-child]:mt-1 [&_p:last-child]:mb-0 [&_*]:!text-inherit [&_a]:!underline",
-            )}
+            className="[&_p:first-child]:mt-1 [&_p:last-child]:mb-0 [&_*]:!text-inherit [&_a]:!underline"
           />
         </div>
       </div>
