@@ -32,7 +32,7 @@ function loginCopy(lang: Lang) {
         email: "البريد الإلكتروني",
         emailPlaceholder: "agent@harvesters.com",
         password: "عبارة المرور",
-        forgotPassword: "نسيت الوصول؟",
+        forgotPassword: "نسيت كلمة المرور",
         authenticating: "جارٍ التحقق...",
         authorize: "تسجيل الدخول",
         mfaLabel: "رمز التحقق متعدد العوامل",

@@ -48,6 +48,7 @@ function profileCopy(lang: "en" | "ar") {
         finishChapter: "إنهاء الفصل",
         chapterCompleted: "اكتمل الفصل",
         chapter: "الفصل",
+        chapters: "الفصول",
         earned: "تم كسب",
         continueLearning: "متابعة التعلم",
         startCourse: "ابدأ الدورة",
@@ -76,6 +77,7 @@ function profileCopy(lang: "en" | "ar") {
         finishChapter: "Finish chapter",
         chapterCompleted: "Chapter completed",
         chapter: "Chapter",
+        chapters: "chapters",
         earned: "earned",
         continueLearning: "Continue learning",
         startCourse: "Start course",
@@ -88,6 +90,32 @@ function profileCopy(lang: "en" | "ar") {
 
 function isDirectVideo(url: string) {
   return /^(data:video|blob:|https?:.*\.(mp4|webm|ogg)(\?.*)?$|\/)/i.test(url);
+}
+
+function stripMarkdownInline(value: string) {
+  return value
+    .replace(/[*_`#>[\]()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getReadableSectionTitle(section: MarkdownSection, fallback: string) {
+  const explicitTitle = (section.title || "").trim();
+  const looksLikePlaceholder = !explicitTitle || /^\d+(\s*\(\d+\))?$/.test(explicitTitle) || /^section\s*\d+$/i.test(explicitTitle);
+  if (!looksLikePlaceholder) return explicitTitle;
+
+  const heading = section.content?.match(/^\s{0,3}#{1,3}\s+(.+)$/m)?.[1];
+  if (heading) return stripMarkdownInline(heading);
+  return section.fileName || fallback;
+}
+
+function getSectionSummary(section: MarkdownSection) {
+  const lines = (section.content || "")
+    .split(/\r?\n/)
+    .map((line) => stripMarkdownInline(line))
+    .filter((line) => line && !/^(title|subtitle|duration|level|category|description):/i.test(line));
+  const firstBodyLine = lines.find((line) => line.length > 24 && !line.startsWith("SecurityAlert"));
+  return firstBodyLine ? `${firstBodyLine.slice(0, 130)}${firstBodyLine.length > 130 ? "..." : ""}` : "";
 }
 
 export function CourseProfilePage({
@@ -468,68 +496,98 @@ export function CourseProfilePage({
           )}
 
           {markdownSections.length > 0 && (
-            <div className="rounded-xl border border-border bg-background/70 p-4 shadow-sm shadow-black/10 lg:col-span-2 lg:p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
+            <div className="rounded-2xl border border-border bg-background/70 p-3 shadow-sm shadow-black/10 lg:col-span-2 lg:p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    <span className="font-medium tabular-nums text-foreground">{completedMarkdownSections.length}</span>
+                    <span className="mx-1">/</span>
+                    <span className="tabular-nums">{markdownSections.length}</span>
+                    <span className="ms-1">{copy.chapters}</span>
+                  </div>
+                </div>
+                {canTrackProgress && (
+                  <div className="min-w-32">
+                    <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{copy.progress}</span>
+                      <span className="tabular-nums">{Math.round(currentPct)}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <motion.div
+                        animate={{ width: `${currentPct}%` }}
+                        transition={{ duration: 0.35, ease: "easeOut" }}
+                        className="h-full rounded-full bg-primary"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-              <Accordion type="multiple" defaultValue={defaultOpenMarkdownSections} className="space-y-3">
+              <Accordion type="multiple" defaultValue={defaultOpenMarkdownSections} className="space-y-2">
                 {markdownSections.map((section, index) => {
                   const isSectionDone = completedMarkdownSections.includes(section.id) || currentPct >= 100;
+                  const sectionTitle = getReadableSectionTitle(section, `${copy.chapter} ${index + 1}`);
+                  const sectionSummary = getSectionSummary(section);
                   return (
                     <AccordionItem
                       key={section.id}
                       value={section.id}
                       className={cn(
-                        "overflow-hidden rounded-lg border bg-card/55 shadow-sm shadow-black/5",
-                        isSectionDone ? "border-emerald-500/25" : "border-border",
+                        "overflow-hidden rounded-xl border-0 bg-card shadow-sm shadow-black/5 ring-1 transition-[box-shadow,transform] duration-200",
+                        isSectionDone ? "ring-emerald-500/25" : "ring-border/80 hover:ring-primary/25",
                       )}
                     >
-                      <AccordionTrigger className="min-h-16 px-4 py-3 text-start hover:no-underline data-[state=open]:border-b data-[state=open]:border-border">
+                      <AccordionTrigger className="min-h-16 px-4 py-3 text-start hover:no-underline data-[state=open]:border-b data-[state=open]:border-border/70 sm:px-5">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <span
                             className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                              isSectionDone ? "bg-emerald-500/15 text-emerald-400" : "bg-primary/12 text-primary",
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                              isSectionDone ? "bg-emerald-500/15 text-emerald-500" : "bg-primary/12 text-primary",
                             )}
                           >
                             {isSectionDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
                           </span>
                           <div className="min-w-0">
                             <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{copy.chapter} {index + 1}</div>
-                            <h3 className="mt-1 text-base font-semibold leading-snug">{section.title || section.fileName || `${copy.courseNotes} ${index + 1}`}</h3>
+                            <h3 className="mt-1 text-base font-semibold leading-snug text-balance">{sectionTitle}</h3>
+                            {sectionSummary && (
+                              <p className="mt-1 hidden max-w-3xl truncate text-xs leading-5 text-muted-foreground sm:block">
+                                {sectionSummary}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <span
                           className={cn(
-                            "ms-3 hidden shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium sm:inline-flex",
+                            "ms-3 hidden min-h-8 shrink-0 items-center rounded-full border px-3 py-1 text-xs font-medium sm:inline-flex",
                             isSectionDone
-                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
                               : "border-primary/25 bg-primary/10 text-primary",
                           )}
                         >
                           {isSectionDone ? copy.chapterCompleted : copy.finishChapter}
                         </span>
                       </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4 pt-0">
+                      <AccordionContent className="px-4 pb-4 pt-0 sm:px-5">
                         <div className="pt-4">
                           {section.content ? (
                             <CourseMarkdown content={section.content} />
                           ) : section.url ? (
-                            <div>
-                              <a href={section.url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                            <div className="rounded-lg bg-muted/40 p-4">
+                              <a href={section.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
                                 {copy.openMarkdown}
                               </a>
                             </div>
                           ) : null}
-                          <div className="mt-5 flex justify-end border-t border-border pt-4">
+                          <div className="mt-5 flex justify-end border-t border-border/70 pt-4">
                             <Button
                               size="sm"
                               variant={isSectionDone ? "outline" : "default"}
                               onClick={() => completeMarkdownSection(section.id)}
                               disabled={!canTrackProgress || progressMutation.isPending || isSectionDone}
                               className={cn(
-                                "active:scale-[0.96] transition-transform",
-                                isSectionDone ? "border-emerald-500/30 text-emerald-400" : "bg-primary text-white hover:bg-primary/85",
+                                "min-h-10 active:scale-[0.96] transition-transform",
+                                isSectionDone ? "border-emerald-500/30 text-emerald-500" : "bg-primary text-white hover:bg-primary/85",
                               )}
                             >
                               {isSectionDone ? copy.chapterCompleted : copy.finishChapter}

@@ -21,6 +21,7 @@ import {
   useGetPsychometricProfile,
 } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
+import UserAvatar from "@/components/user-avatar";
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   beginner: "text-emerald-400 border-emerald-500/25 bg-emerald-500/10",
@@ -43,10 +44,6 @@ function formatNumber(value?: number | null) {
 
 function clampPct(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
-}
-
-function initials(firstName?: string | null, lastName?: string | null) {
-  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.trim().toUpperCase() || "U";
 }
 
 function dashboardCopy(lang: "en" | "ar") {
@@ -538,9 +535,7 @@ export default function EmployeeDashboard() {
                   }`}
                 >
                   <div className="w-7 text-xs font-semibold tabular-nums text-muted-foreground">#{entry.rank}</div>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                    {initials(entry.firstName, entry.lastName)}
-                  </div>
+                  <UserAvatar user={entry} role="Employee" className="h-9 w-9" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-foreground">{entry.firstName} {entry.lastName}</div>
                     <div className="truncate text-xs text-muted-foreground">{entry.departmentName ?? `${copy.level} ${entry.level}`}</div>

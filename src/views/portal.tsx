@@ -34,6 +34,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import ThemeToggle from "@/components/theme-toggle";
+import UserAvatar from "@/components/user-avatar";
 import ReadinessAssessmentModal from "@/components/readiness-assessment-modal";
 import EmployeeDashboard from "./employee/EmployeeDashboard";
 import EmployeeAssessments from "./employee/EmployeeAssessments";
@@ -111,23 +112,6 @@ const navByRole: Record<string, NavItem[]> = {
   ],
 };
 
-const roleColors: Record<string, string> = {
-  Employee: "from-blue-600 to-blue-800",
-  employee: "from-blue-600 to-blue-800",
-  Executive: "from-primary to-red-900",
-  executive: "from-primary to-red-900",
-  HR: "from-purple-600 to-purple-800",
-  hr: "from-purple-600 to-purple-800",
-  Admin: "from-orange-600 to-orange-800",
-  admin: "from-orange-600 to-orange-800",
-  SuperAdmin: "from-primary to-red-900",
-  superadmin: "from-primary to-red-900",
-};
-
-function roleColorClass(role: string) {
-  return roleColors[role] ?? roleColors.Employee;
-}
-
 function useRoleTitle(role: string): string {
   const { t } = useTranslation();
   return t(`roleTitle.${role}`, { defaultValue: role });
@@ -160,25 +144,6 @@ function LanguageToggle() {
       <Languages className="h-3.5 w-3.5" />
       <span className="font-mono">{lang === "en" ? "العربية" : "English"}</span>
     </button>
-  );
-}
-
-function UserAvatar({ user, role, className = "h-9 w-9" }: { user: any; role: string; className?: string }) {
-  const initials = user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` : "?";
-  if (user?.avatarUrl) {
-    return (
-      <img
-        src={user.avatarUrl}
-        alt={`${user.firstName} ${user.lastName}`}
-        className={`${className} rounded-full object-cover border border-border bg-background shrink-0`}
-      />
-    );
-  }
-
-  return (
-    <div className={`${className} rounded-full bg-gradient-to-br ${roleColorClass(role)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-      {initials}
-    </div>
   );
 }
 

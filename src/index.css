@@ -83,7 +83,7 @@
   --sidebar-foreground: 240 10% 8%;
   --sidebar-border: 240 7% 90%;
 
-  --radius: 0.5rem;
+  --radius: 1rem;
 }
 
 .light {
@@ -157,7 +157,7 @@
   --sidebar-foreground: 0 0% 98%;
   --sidebar-border: 240 10% 15%;
 
-  --radius: 0.5rem;
+  --radius: 1rem;
 }
 
 @layer base {
@@ -183,6 +183,10 @@
 
   html[dir="rtl"] .text-right {
     text-align: left;
+  }
+
+  main :where([class*="shadow"]):not([class*="shadow-[inset"]) {
+    box-shadow: none !important;
   }
   
 }

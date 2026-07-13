@@ -1,7 +1,6 @@
 import { useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { AlertTriangle, CheckCircle2, Info, Lightbulb, ShieldAlert, XCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -124,13 +123,13 @@ function toTableRows(value: unknown): Array<Record<string, unknown> | unknown[]>
 }
 
 const MARKDOWN_COMPONENTS: Components = {
-  h1: ({ children }) => <h1 className="mb-5 mt-7 text-3xl font-bold leading-tight text-current">{children}</h1>,
-  h2: ({ children }) => <h2 className="mb-4 mt-7 text-2xl font-bold leading-tight text-current">{children}</h2>,
-  h3: ({ children }) => <h3 className="mb-3 mt-6 text-xl font-semibold leading-tight text-current">{children}</h3>,
-  h4: ({ children }) => <h4 className="mb-2 mt-5 text-lg font-semibold text-current">{children}</h4>,
-  p: ({ children }) => <p className="my-4 leading-8 text-current">{children}</p>,
-  ul: ({ children }) => <ul className="my-4 list-disc space-y-2 ps-6 text-current">{children}</ul>,
-  ol: ({ children }) => <ol className="my-4 list-decimal space-y-2 ps-6 text-current">{children}</ol>,
+  h1: ({ children }) => <h1 className="mb-5 mt-7 text-3xl font-bold leading-tight text-current text-balance">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-4 mt-7 text-2xl font-bold leading-tight text-current text-balance">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-3 mt-6 text-xl font-semibold leading-tight text-current text-balance">{children}</h3>,
+  h4: ({ children }) => <h4 className="mb-2 mt-5 text-lg font-semibold text-current text-balance">{children}</h4>,
+  p: ({ children }) => <p className="my-4 leading-8 text-current text-pretty">{children}</p>,
+  ul: ({ children }) => <ul className="my-4 list-disc space-y-2 ps-6 text-current text-pretty">{children}</ul>,
+  ol: ({ children }) => <ol className="my-4 list-decimal space-y-2 ps-6 text-current text-pretty">{children}</ol>,
   li: ({ children }) => <li className="leading-8 text-current marker:text-current/70">{children}</li>,
   strong: ({ children }) => <strong className="font-bold text-current">{children}</strong>,
   em: ({ children }) => <em className="text-current">{children}</em>,
@@ -409,27 +408,31 @@ function SecurityAlertBlock({
   const Icon = isCritical ? ShieldAlert : normalizedType === "tip" ? Lightbulb : normalizedType === "warning" ? AlertTriangle : Info;
   const title = isCritical ? "تنبيه أمني" : normalizedType === "tip" ? "نصيحة" : normalizedType === "warning" ? "تحذير" : "ملاحظة";
   const toneClass = isCritical
-    ? "border-red-500/70 bg-red-50 text-red-950"
+    ? "ring-red-500/30 bg-red-50/70 text-red-950 dark:bg-red-500/10 dark:text-red-100"
     : normalizedType === "tip"
-      ? "border-emerald-500/55 bg-emerald-50 text-emerald-950"
+      ? "ring-emerald-500/30 bg-emerald-50/80 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-100"
       : normalizedType === "warning"
-        ? "border-amber-500/60 bg-amber-50 text-amber-950"
-        : "border-sky-500/55 bg-sky-50 text-sky-950";
+        ? "ring-amber-500/30 bg-amber-50/80 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100"
+        : "ring-sky-500/30 bg-sky-50/80 text-sky-950 dark:bg-sky-500/10 dark:text-sky-100";
 
   return (
-    <Alert
-      variant="default"
+    <div
+      role="note"
       className={cn(
-        "my-5 border shadow-sm [&>svg]:text-current",
+        "my-5 flex gap-3 rounded-xl p-4 shadow-sm ring-1",
         toneClass,
       )}
     >
-      <Icon className="h-4 w-4" />
-      <AlertTitle className="text-current">{title}</AlertTitle>
-      <AlertDescription className="text-current [&_*]:!text-current">
-        <MarkdownText content={content} />
-      </AlertDescription>
-    </Alert>
+      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/60 text-current shadow-sm ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold leading-6 text-current">{title}</div>
+        <div className="text-sm leading-7 text-current/85 [&_*]:!text-current">
+          <MarkdownText content={content} className="[&_p:first-child]:mt-1 [&_p:last-child]:mb-0" />
+        </div>
+      </div>
+    </div>
   );
 }
 

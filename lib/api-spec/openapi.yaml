@@ -2093,6 +2093,8 @@ components:
           type: string
         lastName:
           type: string
+        avatarUrl:
+          type: ["string", "null"]
         departmentName:
           type: ["string", "null"]
         xp:

@@ -8,23 +8,14 @@ import {
 } from "@workspace/api-client-react";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
-
-const AVATAR_TONES = ["bg-sky-500", "bg-fuchsia-500", "bg-amber-500", "bg-emerald-500", "bg-violet-500", "bg-primary"];
+import UserAvatar from "@/components/user-avatar";
 
 function formatNumber(value?: number | null) {
   return Number(value ?? 0).toLocaleString();
 }
 
-function initials(firstName?: string | null, lastName?: string | null) {
-  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.trim().toUpperCase() || "U";
-}
-
 function entryName(entry: any, fallback: string) {
   return `${entry?.firstName ?? ""} ${entry?.lastName ?? ""}`.trim() || fallback;
-}
-
-function avatarTone(index: number) {
-  return AVATAR_TONES[index % AVATAR_TONES.length];
 }
 
 function xpProgress(profile: any) {
@@ -64,7 +55,6 @@ function BadgeStrip({ badges, compact = false }: { badges?: any[]; compact?: boo
 }
 
 function PodiumCard({ entry, place, lifted = false, employeeLabel }: { entry: any; place: 1 | 2 | 3; lifted?: boolean; employeeLabel: string }) {
-  const tone = place === 1 ? "bg-primary" : place === 2 ? "bg-fuchsia-500" : "bg-amber-500";
   const ring = place === 1 ? "border-primary/45 shadow-primary/12" : "border-border shadow-black/20";
 
   return (
@@ -75,9 +65,7 @@ function PodiumCard({ entry, place, lifted = false, employeeLabel }: { entry: an
       className={`relative rounded-lg border ${ring} bg-card/88 p-5 text-center shadow-2xl`}
     >
       {place === 1 && <Trophy className="absolute left-1/2 top-3 h-5 w-5 -translate-x-1/2 text-amber-300" />}
-      <div className={`mx-auto mb-4 mt-3 flex h-16 w-16 items-center justify-center rounded-full ${tone} text-lg font-bold text-white`}>
-        {initials(entry?.firstName, entry?.lastName)}
-      </div>
+      <UserAvatar user={entry} role="Employee" className="mx-auto mb-4 mt-3 h-16 w-16 text-lg" />
       <div className="mx-auto mb-3 flex h-7 w-7 items-center justify-center rounded-full bg-background text-xs font-bold tabular-nums text-primary">
         {place}
       </div>
@@ -230,9 +218,7 @@ export default function EmployeeLeaderboard() {
                   >
                     <div className="text-sm font-bold tabular-nums text-muted-foreground">#{entry.rank}</div>
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${avatarTone(index)} text-xs font-bold text-white`}>
-                        {initials(entry.firstName, entry.lastName)}
-                      </div>
+                      <UserAvatar user={entry} role="Employee" className="h-10 w-10" />
                       <div className="min-w-0">
                         <div className={`truncate text-sm font-semibold ${entry.isCurrentUser ? "text-primary" : "text-foreground"}`}>
                           {entryName(entry, copy.employee)}
@@ -272,9 +258,7 @@ export default function EmployeeLeaderboard() {
           <span className="text-xs font-medium text-primary">{copy.sameTenant}</span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
-            {initials(user?.firstName, user?.lastName)}
-          </div>
+          <UserAvatar user={user} role={user?.role ?? "Employee"} className="h-14 w-14 text-sm" />
           <div>
             <div className="text-xl font-bold text-foreground">{currentEntry ? `#${currentEntry.rank}` : leaderboard?.currentUserRank ? `#${leaderboard.currentUserRank}` : "-"}</div>
             <div className="text-sm text-muted-foreground">{user ? `${user.firstName} ${user.lastName}` : copy.you}</div>

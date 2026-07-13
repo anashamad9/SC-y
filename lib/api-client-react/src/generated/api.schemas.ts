@@ -363,6 +363,8 @@ export interface LeaderboardEntry {
   firstName: string;
   lastName: string;
   /** @nullable */
+  avatarUrl?: string | null;
+  /** @nullable */
   departmentName?: string | null;
   xp: number;
   level: number;

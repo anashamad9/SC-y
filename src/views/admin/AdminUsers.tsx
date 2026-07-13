@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE } from "@/lib/runtime";
+import UserAvatar from "@/components/user-avatar";
 
 const ROLE_COLORS: Record<string, string> = {
   employee: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -245,13 +246,7 @@ export default function AdminUsers() {
                   {editingId === u.id ? (
                     <div className="space-y-2 pr-2">
                       <div className="flex items-center gap-2">
-                        {editForm.avatarUrl ? (
-                          <img src={editForm.avatarUrl} alt={`${editForm.firstName} ${editForm.lastName}`} className="h-8 w-8 rounded-full object-cover border border-border" />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
-                            {(editForm.firstName[0] ?? "?")}{editForm.lastName[0] ?? ""}
-                          </div>
-                        )}
+                        <UserAvatar user={editForm} role={editForm.role || "employee"} className="h-8 w-8" />
                         <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e => handleEditAvatarFile(e.target.files?.[0])} className="h-8 text-xs" />
                       </div>
                       {editImageMessage && <div className="text-[11px] text-muted-foreground">{editImageMessage}</div>}
@@ -263,13 +258,7 @@ export default function AdminUsers() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      {(u as any).avatarUrl ? (
-                        <img src={(u as any).avatarUrl} alt={`${u.firstName} ${u.lastName}`} className="h-8 w-8 rounded-full object-cover border border-border" />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
-                          {u.firstName[0]}{u.lastName[0]}
-                        </div>
-                      )}
+                      <UserAvatar user={u as any} role={u.role} className="h-8 w-8" />
                       <div className="min-w-0">
                         <div className="font-medium text-sm truncate">{u.firstName} {u.lastName}</div>
                         <div className="text-xs text-muted-foreground truncate">{(u as any).jobTitle ?? "—"}</div>

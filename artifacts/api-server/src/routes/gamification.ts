@@ -164,6 +164,7 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
       streakDays: gamificationProfilesTable.streakDays,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
+      avatarUrl: usersTable.avatarUrl,
       departmentId: usersTable.departmentId,
     })
     .from(gamificationProfilesTable)
@@ -229,6 +230,7 @@ router.get("/leaderboard", requireAuth, async (req, res): Promise<void> => {
     userId: e.userId,
     firstName: e.firstName,
     lastName: e.lastName,
+    avatarUrl: e.avatarUrl,
     departmentName: e.departmentId ? (deptMap.get(e.departmentId) ?? null) : null,
     xp: e.xp,
     level: e.level,
