@@ -407,29 +407,51 @@ function SecurityAlertBlock({
   const isCritical = normalizedType === "critical" || normalizedType === "danger";
   const Icon = isCritical ? ShieldAlert : normalizedType === "tip" ? Lightbulb : normalizedType === "warning" ? AlertTriangle : Info;
   const title = isCritical ? "تنبيه أمني" : normalizedType === "tip" ? "نصيحة" : normalizedType === "warning" ? "تحذير" : "ملاحظة";
-  const toneClass = isCritical
-    ? "ring-red-500/30 bg-red-50/70 text-red-950 dark:bg-red-500/10 dark:text-red-100"
+  const tone = isCritical
+    ? {
+        shell: "border-red-200 bg-red-50 text-red-950 ring-red-500/20 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-100 dark:ring-red-500/20",
+        icon: "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/15 dark:text-red-100 dark:ring-red-500/25",
+        body: "text-red-900 dark:text-red-100",
+      }
     : normalizedType === "tip"
-      ? "ring-emerald-500/30 bg-emerald-50/80 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-100"
+      ? {
+          shell: "border-emerald-200 bg-emerald-50 text-emerald-950 ring-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-100 dark:ring-emerald-500/20",
+          icon: "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-100 dark:ring-emerald-500/25",
+          body: "text-emerald-900 dark:text-emerald-100",
+        }
       : normalizedType === "warning"
-        ? "ring-amber-500/30 bg-amber-50/80 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100"
-        : "ring-sky-500/30 bg-sky-50/80 text-sky-950 dark:bg-sky-500/10 dark:text-sky-100";
+        ? {
+            shell: "border-amber-200 bg-amber-50 text-amber-950 ring-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100 dark:ring-amber-500/20",
+            icon: "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-500/25",
+            body: "text-amber-900 dark:text-amber-100",
+          }
+        : {
+            shell: "border-sky-200 bg-sky-50 text-sky-950 ring-sky-500/20 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-100 dark:ring-sky-500/20",
+            icon: "bg-sky-100 text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-100 dark:ring-sky-500/25",
+            body: "text-sky-900 dark:text-sky-100",
+          };
 
   return (
     <div
       role="note"
       className={cn(
-        "my-5 flex gap-3 rounded-xl p-4 shadow-sm ring-1",
-        toneClass,
+        "my-5 flex gap-3 rounded-2xl border p-4 ring-1",
+        tone.shell,
       )}
     >
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/60 text-current shadow-sm ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10">
+      <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1", tone.icon)}>
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0">
         <div className="text-sm font-semibold leading-6 text-current">{title}</div>
-        <div className="text-sm leading-7 text-current/85 [&_*]:!text-current">
-          <MarkdownText content={content} className="[&_p:first-child]:mt-1 [&_p:last-child]:mb-0" />
+        <div className={cn("text-sm leading-7", tone.body)}>
+          <MarkdownText
+            content={content}
+            className={cn(
+              tone.body,
+              "[&_p:first-child]:mt-1 [&_p:last-child]:mb-0 [&_*]:!text-inherit",
+            )}
+          />
         </div>
       </div>
     </div>

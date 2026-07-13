@@ -496,7 +496,7 @@ export function CourseProfilePage({
           )}
 
           {markdownSections.length > 0 && (
-            <div className="rounded-2xl border border-border bg-background/70 p-3 shadow-sm shadow-black/10 lg:col-span-2 lg:p-4">
+            <div className="rounded-2xl border border-border bg-muted/25 p-3 lg:col-span-2 lg:p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">{copy.courseNotes}</div>
@@ -523,7 +523,7 @@ export function CourseProfilePage({
                   </div>
                 )}
               </div>
-              <Accordion type="multiple" defaultValue={defaultOpenMarkdownSections} className="space-y-2">
+              <Accordion type="multiple" defaultValue={defaultOpenMarkdownSections} className="space-y-3">
                 {markdownSections.map((section, index) => {
                   const isSectionDone = completedMarkdownSections.includes(section.id) || currentPct >= 100;
                   const sectionTitle = getReadableSectionTitle(section, `${copy.chapter} ${index + 1}`);
@@ -533,11 +533,13 @@ export function CourseProfilePage({
                       key={section.id}
                       value={section.id}
                       className={cn(
-                        "overflow-hidden rounded-xl border-0 bg-card shadow-sm shadow-black/5 ring-1 transition-[box-shadow,transform] duration-200",
-                        isSectionDone ? "ring-emerald-500/25" : "ring-border/80 hover:ring-primary/25",
+                        "overflow-hidden rounded-2xl border bg-muted/55 ring-1 ring-border/80 transition-[background-color,border-color,ring-color,transform] duration-200",
+                        isSectionDone
+                          ? "border-emerald-500/30 ring-emerald-500/25 dark:bg-muted/20"
+                          : "border-border/90 hover:bg-muted/70 hover:ring-primary/25 dark:bg-muted/20 dark:hover:bg-muted/30",
                       )}
                     >
-                      <AccordionTrigger className="min-h-16 px-4 py-3 text-start hover:no-underline data-[state=open]:border-b data-[state=open]:border-border/70 sm:px-5">
+                      <AccordionTrigger className="min-h-20 px-4 py-4 text-start hover:no-underline data-[state=open]:border-b data-[state=open]:border-border/70 sm:px-5">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <span
                             className={cn(
@@ -568,7 +570,7 @@ export function CourseProfilePage({
                           {isSectionDone ? copy.chapterCompleted : copy.finishChapter}
                         </span>
                       </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4 pt-0 sm:px-5">
+                      <AccordionContent className="bg-background/85 px-4 pb-4 pt-0 sm:px-5">
                         <div className="pt-4">
                           {section.content ? (
                             <CourseMarkdown content={section.content} />
