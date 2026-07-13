@@ -409,26 +409,30 @@ function SecurityAlertBlock({
   const title = isCritical ? "تنبيه أمني" : normalizedType === "tip" ? "نصيحة" : normalizedType === "warning" ? "تحذير" : "ملاحظة";
   const tone = isCritical
     ? {
-        shell: "border-red-200 bg-red-50 text-red-950 ring-red-500/20 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-100 dark:ring-red-500/20",
-        icon: "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/15 dark:text-red-100 dark:ring-red-500/25",
-        body: "text-red-900 dark:text-red-100",
+        shell: "border-red-200 bg-red-50 !text-red-950 ring-red-500/20 dark:border-red-500/25 dark:bg-red-500/10 dark:!text-red-100 dark:ring-red-500/20",
+        icon: "bg-red-100 !text-red-700 ring-red-200 dark:bg-red-500/15 dark:!text-red-100 dark:ring-red-500/25",
+        title: "!text-red-950 dark:!text-red-100",
+        body: "!text-red-900 dark:!text-red-100",
       }
     : normalizedType === "tip"
       ? {
-          shell: "border-emerald-200 bg-emerald-50 text-emerald-950 ring-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-100 dark:ring-emerald-500/20",
-          icon: "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-100 dark:ring-emerald-500/25",
-          body: "text-emerald-900 dark:text-emerald-100",
+          shell: "border-emerald-200 bg-emerald-50 !text-emerald-950 ring-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:!text-emerald-100 dark:ring-emerald-500/20",
+          icon: "bg-emerald-100 !text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:!text-emerald-100 dark:ring-emerald-500/25",
+          title: "!text-emerald-950 dark:!text-emerald-100",
+          body: "!text-emerald-900 dark:!text-emerald-100",
         }
       : normalizedType === "warning"
         ? {
-            shell: "border-amber-200 bg-amber-50 text-amber-950 ring-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100 dark:ring-amber-500/20",
-            icon: "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-500/25",
-            body: "text-amber-900 dark:text-amber-100",
+            shell: "border-amber-200 bg-amber-50 !text-amber-950 ring-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/10 dark:!text-amber-100 dark:ring-amber-500/20",
+            icon: "bg-amber-100 !text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:!text-amber-100 dark:ring-amber-500/25",
+            title: "!text-amber-950 dark:!text-amber-100",
+            body: "!text-amber-900 dark:!text-amber-100",
           }
         : {
-            shell: "border-sky-200 bg-sky-50 text-sky-950 ring-sky-500/20 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-100 dark:ring-sky-500/20",
-            icon: "bg-sky-100 text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-100 dark:ring-sky-500/25",
-            body: "text-sky-900 dark:text-sky-100",
+            shell: "border-sky-200 bg-sky-50 !text-sky-950 ring-sky-500/20 dark:border-sky-500/25 dark:bg-sky-500/10 dark:!text-sky-100 dark:ring-sky-500/20",
+            icon: "bg-sky-100 !text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:!text-sky-100 dark:ring-sky-500/25",
+            title: "!text-sky-950 dark:!text-sky-100",
+            body: "!text-sky-900 dark:!text-sky-100",
           };
 
   return (
@@ -443,13 +447,13 @@ function SecurityAlertBlock({
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <div className="text-sm font-semibold leading-6 text-current">{title}</div>
+        <div className={cn("text-sm font-semibold leading-6", tone.title)}>{title}</div>
         <div className={cn("text-sm leading-7", tone.body)}>
           <MarkdownText
             content={content}
             className={cn(
               tone.body,
-              "[&_p:first-child]:mt-1 [&_p:last-child]:mb-0 [&_*]:!text-inherit",
+              "[&_p:first-child]:mt-1 [&_p:last-child]:mb-0 [&_*]:!text-inherit [&_a]:!underline",
             )}
           />
         </div>
